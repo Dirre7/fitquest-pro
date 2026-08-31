@@ -78,15 +78,21 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ lang, onSuccess, onConti
       }
     } catch (err: any) {
       console.error('Auth error', err);
-      let msg = 'Error al autenticar. Por favor revisa tus credenciales.';
+      let msg = err.message || 'Error al autenticar.';
       if (err.code === 'auth/email-already-in-use') {
-        msg = 'Este correo electrónico ya está registrado. Haz clic en "Iniciar Sesión".';
+        msg = 'Este correo ya está registrado. Haz clic en "Iniciar Sesión" arriba.';
       } else if (err.code === 'auth/wrong-password' || err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential') {
-        msg = 'Correo o contraseña incorrectos.';
+        msg = isSignUp
+          ? 'Error al crear la cuenta. Por favor verifica los datos.'
+          : 'Credenciales no encontradas. Si eres nuevo, haz clic en la pestaña "Crear Cuenta (Registro)" de arriba.';
       } else if (err.code === 'auth/invalid-email') {
-        msg = 'El formato del correo no es válido.';
+        msg = 'El formato del correo electrónico no es válido.';
       } else if (err.code === 'auth/weak-password') {
         msg = 'La contraseña es demasiado débil. Usa al menos 6 caracteres.';
+      } else if (err.code === 'auth/unauthorized-domain') {
+        msg = 'Dominio de Vercel no autorizado en Firebase Auth. Añade tu dominio de Vercel en la consola de Firebase (Authentication > Settings > Authorized domains) o entra como Invitado Local.';
+      } else if (err.code === 'auth/operation-not-allowed') {
+        msg = 'El proveedor de autenticación no está habilitado en la consola de Firebase.';
       }
       setError(msg);
     } finally {
@@ -108,8 +114,10 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ lang, onSuccess, onConti
       }
     } catch (err: any) {
       console.error('Google auth error', err);
-      if (err.code !== 'auth/popup-closed-by-user') {
-        setError('No se pudo completar el inicio de sesión con Google. Inténtalo con correo y contraseña.');
+      if (err.code === 'auth/unauthorized-domain') {
+        setError('Para usar Google en Vercel, agrega el dominio en Firebase Console (Authentication > Settings > Authorized Domains). Mientras tanto puedes registrarte con correo/contraseña o explorar como invitado.');
+      } else if (err.code !== 'auth/popup-closed-by-user') {
+        setError(err.message || 'No se pudo completar el inicio de sesión con Google. Inténtalo creando tu cuenta con correo y contraseña.');
       }
     } finally {
       setLoading(false);
