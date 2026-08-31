@@ -1,6 +1,6 @@
 ﻿import React, { useState } from 'react';
 import { Target, Trophy, Sparkles } from 'lucide-react';
-import { CommunityChallenge, LeaderboardUser, Achievement, UserProfile, Language } from '../types';
+import { CommunityChallenge, LeaderboardUser, Achievement, UserProfile, Language, WorkoutHistoryEntry } from '../types';
 import { WeeklyChallengesView } from './WeeklyChallengesView';
 import { LeaderboardView } from './LeaderboardView';
 import { AchievementsView } from './AchievementsView';
@@ -10,6 +10,7 @@ interface CommunityViewProps {
   leaderboard: LeaderboardUser[];
   achievements: Achievement[];
   user: UserProfile;
+  history?: WorkoutHistoryEntry[];
   lang: Language;
   initialSubTab?: 'challenges' | 'leaderboard' | 'achievements';
   onJoinChallenge: (challengeId: string) => void;
@@ -23,6 +24,7 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
   leaderboard,
   achievements,
   user,
+  history = [],
   lang,
   initialSubTab = 'challenges',
   onJoinChallenge,
@@ -89,7 +91,8 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
 
       {subTab === 'leaderboard' && (
         <LeaderboardView
-          users={leaderboard}
+          user={user}
+          history={history}
           currentLeague={user.league}
           lang={lang}
         />

@@ -15,6 +15,7 @@ import { FitStorage } from './lib/storage';
 import { translations } from './lib/i18n';
 import { sound } from './lib/soundFx';
 import { auth, onAuthStateChanged, signOut as fbSignOut } from './lib/firebase';
+import { evaluateWeeklyLeagueReset } from './lib/leagueEngine';
 
 // Components
 import { Navbar } from './components/Navbar';
@@ -71,13 +72,18 @@ export default function App() {
           firebaseUser.email || undefined,
           firebaseUser.displayName || undefined
         );
-        setUser(cloudData.user);
+        const evaluated = evaluateWeeklyLeagueReset(cloudData.user, cloudData.history);
+        setUser(evaluated.updatedUser);
         setHistory(cloudData.history);
         setAchievements(cloudData.achievements);
         setChallenges(cloudData.challenges);
         setRoutines(cloudData.routines);
       } else {
         setIsAuthenticated(false);
+        const localUser = FitStorage.getUser();
+        const localHistory = FitStorage.getHistory();
+        const evaluated = evaluateWeeklyLeagueReset(localUser, localHistory);
+        setUser(evaluated.updatedUser);
       }
       setAuthLoading(false);
     });
@@ -413,6 +419,7 @@ export default function App() {
             leaderboard={leaderboard}
             achievements={achievements}
             user={user}
+            history={history}
             lang={lang}
             initialSubTab={activeTab === 'leaderboard' ? 'leaderboard' : activeTab === 'achievements' ? 'achievements' : 'challenges'}
             onJoinChallenge={handleJoinChallenge}
