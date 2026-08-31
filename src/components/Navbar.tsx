@@ -105,13 +105,12 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   const xpPercent = user?.nextLevelXp ? Math.min(100, Math.round((user.currentLevelXp / user.nextLevelXp) * 100)) : 0;
 
-  // 5 core key sections for a clean, spacious Liquid Glass Dock
+  // 4 Core Master Sections for maximum comfort & zero clutter
   const dockItems = [
     { id: 'dashboard', label: 'Inicio', icon: Activity },
     { id: 'routines', label: 'Entrenar', icon: Dumbbell },
     { id: 'analytics', label: 'Progreso', icon: BarChart3 },
     { id: 'community', label: 'Comunidad', icon: Trophy },
-    { id: 'smartwatch', label: 'Smartwatch', icon: Watch, hasPulse: isWatchConnected },
   ];
 
   return (
@@ -183,13 +182,13 @@ export const Navbar: React.FC<NavbarProps> = ({
             {/* Smartwatch BPM Telemetry Badge */}
             <button
               id="btn-nav-smartwatch"
-              onClick={() => handleSetTab('smartwatch')}
+              onClick={() => handleSetTab('settings')}
               className={`flex items-center gap-1.5 px-2.5 py-1 rounded-2xl text-xs font-mono font-medium border transition-all ${
                 isWatchConnected
                   ? 'bg-red-500/10 border-red-500/25 text-neutral-200 hover:border-red-500/40'
                   : 'bg-white/5 border-white/5 text-neutral-400 hover:text-white'
               }`}
-              title={isWatchConnected ? `${watchName} - ${liveHeartRate} BPM` : 'Vincular Smartwatch'}
+              title={isWatchConnected ? `${watchName} - ${liveHeartRate} BPM (Clic para configurar)` : 'Vincular Smartwatch'}
             >
               <Heart className={`w-3.5 h-3.5 ${isWatchConnected ? 'text-red-500 fill-red-500 animate-pulse' : 'text-neutral-500'}`} />
               <span className="font-bold text-neutral-100 text-[11px]">{liveHeartRate} <span className="text-[9px] text-neutral-400">BPM</span></span>
@@ -313,10 +312,10 @@ export const Navbar: React.FC<NavbarProps> = ({
         </div>
       </header>
 
-      {/* Floating Liquid Glass Bottom Navigation Dock */}
-      <div className="fixed bottom-3 sm:bottom-6 left-1/2 -translate-x-1/2 z-50 w-[94%] sm:w-auto max-w-lg pointer-events-auto">
+      {/* Floating Liquid Glass Bottom Navigation Dock - 4 Master Buttons */}
+      <div className="fixed bottom-3 sm:bottom-6 left-1/2 -translate-x-1/2 z-50 w-[88%] sm:w-auto max-w-md pointer-events-auto">
         <nav 
-          className="bg-[#121214]/90 backdrop-blur-2xl border border-white/15 rounded-3xl sm:rounded-full p-1.5 sm:p-2 shadow-[0_15px_50px_rgba(0,0,0,0.9),0_0_20px_rgba(6,182,212,0.2)] flex items-center justify-around sm:justify-center sm:gap-2"
+          className="bg-[#121214]/90 backdrop-blur-2xl border border-white/15 rounded-3xl sm:rounded-full p-1.5 sm:p-2 shadow-[0_15px_50px_rgba(0,0,0,0.9),0_0_20px_rgba(6,182,212,0.2)] flex items-center justify-around sm:justify-center sm:gap-3"
           aria-label="Navegación principal inferior"
         >
           {dockItems.map((item) => {
@@ -330,14 +329,14 @@ export const Navbar: React.FC<NavbarProps> = ({
                   handleSetTab(item.id);
                   sound.playBeep(650, 40);
                 }}
-                className={`flex-1 sm:flex-initial flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 py-2 sm:py-2.5 px-2 sm:px-4 rounded-2xl sm:rounded-full text-xs font-mono font-bold transition-all duration-300 ${
+                className={`flex-1 sm:flex-initial flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 py-2 sm:py-2.5 px-3 sm:px-5 rounded-2xl sm:rounded-full text-xs font-mono font-bold transition-all duration-300 ${
                   isActive
                     ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-neutral-950 shadow-[0_0_20px_rgba(6,182,212,0.5)] scale-[1.03]'
                     : 'text-neutral-400 hover:text-neutral-100 hover:bg-white/5'
                 }`}
               >
                 <Icon className={`w-4 h-4 sm:w-4 sm:h-4 ${isActive ? 'text-neutral-950 stroke-[2.5]' : 'text-neutral-400'}`} />
-                <span className="text-[10px] sm:text-xs whitespace-nowrap tracking-tight">
+                <span className="text-[11px] sm:text-xs whitespace-nowrap tracking-tight">
                   {item.label}
                 </span>
               </button>

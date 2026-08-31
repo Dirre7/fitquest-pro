@@ -19,6 +19,7 @@ import {
   Info,
   CheckCircle2,
   Trophy,
+  Calculator,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import {
@@ -82,6 +83,11 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
 
   // Active biometrics
   const [liveCalories, setLiveCalories] = useState<number>(0);
+
+  // 1RM Strength Calculator Modal
+  const [show1rmModal, setShow1rmModal] = useState<boolean>(false);
+  const [calcWeight, setCalcWeight] = useState<number>(80);
+  const [calcReps, setCalcReps] = useState<number>(8);
 
   // Active workout timer loop
   useEffect(() => {
@@ -330,6 +336,16 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
             <span>{liveCalories}</span>
             <span className="text-[10px] opacity-75 font-sans font-normal">kcal</span>
           </div>
+
+          {/* 1RM Strength Calculator */}
+          <button
+            id="btn-workout-1rm-calc"
+            onClick={() => setShow1rmModal(true)}
+            className="p-2.5 rounded-2xl bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-400 transition-colors"
+            title="Calculadora 1RM & Tabla de Fuerza"
+          >
+            <Calculator className="w-4 h-4" />
+          </button>
 
           {/* Pause / Play Toggle */}
           <button
@@ -750,6 +766,114 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
                 Guardar y Reclamar XP
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* 1RM Strength & Load Calculator Modal */}
+      {show1rmModal && (
+        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-xl flex items-center justify-center p-4">
+          <div className="bg-[#121214] border border-cyan-500/30 rounded-3xl p-6 max-w-md w-full shadow-2xl relative animate-in zoom-in-95">
+            <div className="flex items-center justify-between pb-3 border-b border-white/10 mb-4">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-cyan-500/20 text-cyan-400 flex items-center justify-center">
+                  <Calculator className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-display font-bold text-white text-base">Calculadora 1RM & Cargas</h3>
+                  <p className="text-[11px] text-neutral-400">Fórmula de Fuerza Máxima Estimada</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShow1rmModal(false)}
+                className="p-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-neutral-400 hover:text-white"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Inputs: Peso y Reps */}
+            <div className="grid grid-cols-2 gap-3 mb-4">
+              <div>
+                <label className="block text-[10px] font-mono uppercase font-bold text-neutral-400 mb-1">
+                  Peso Levantado (kg)
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  max="500"
+                  value={calcWeight}
+                  onChange={(e) => setCalcWeight(Math.max(1, Number(e.target.value)))}
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm font-mono font-bold text-white focus:border-cyan-500 focus:outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] font-mono uppercase font-bold text-neutral-400 mb-1">
+                  Reps Completadas
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  max="15"
+                  value={calcReps}
+                  onChange={(e) => setCalcReps(Math.max(1, Math.min(15, Number(e.target.value))))}
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm font-mono font-bold text-white focus:border-cyan-500 focus:outline-none"
+                />
+              </div>
+            </div>
+
+            {/* 1RM Result Display */}
+            {(() => {
+              const estimated1rm = Math.round(calcWeight * (1 + calcReps / 30));
+              return (
+                <div className="space-y-3">
+                  <div className="bg-gradient-to-r from-cyan-500/15 via-blue-500/10 to-transparent border border-cyan-500/30 rounded-2xl p-4 text-center">
+                    <span className="text-[10px] font-mono font-bold text-cyan-400 uppercase tracking-wider">
+                      1RM Estimado (Fuerza Máxima)
+                    </span>
+                    <p className="font-mono font-black text-3xl text-white mt-1">
+                      {estimated1rm} <span className="text-sm font-sans font-normal text-cyan-400">kg</span>
+                    </p>
+                  </div>
+
+                  {/* Percentage Intensity Table */}
+                  <div className="bg-white/5 border border-white/5 rounded-2xl p-3 space-y-1.5 text-xs font-mono">
+                    <div className="flex justify-between items-center text-neutral-400 pb-1 border-b border-white/5 text-[10px] uppercase font-bold">
+                      <span>Intensidad</span>
+                      <span>Objetivo</span>
+                      <span>Carga Sugerida</span>
+                    </div>
+                    <div className="flex justify-between items-center text-red-300">
+                      <span>90% 1RM</span>
+                      <span className="text-[10px] text-neutral-400 font-sans">Fuerza Pura (3-4 r)</span>
+                      <span className="font-bold text-white">{Math.round(estimated1rm * 0.9)} kg</span>
+                    </div>
+                    <div className="flex justify-between items-center text-amber-300">
+                      <span>85% 1RM</span>
+                      <span className="text-[10px] text-neutral-400 font-sans">Fuerza/Masa (5-6 r)</span>
+                      <span className="font-bold text-white">{Math.round(estimated1rm * 0.85)} kg</span>
+                    </div>
+                    <div className="flex justify-between items-center text-cyan-300">
+                      <span>80% 1RM</span>
+                      <span className="text-[10px] text-neutral-400 font-sans">Hipertrofia (7-8 r)</span>
+                      <span className="font-bold text-white">{Math.round(estimated1rm * 0.8)} kg</span>
+                    </div>
+                    <div className="flex justify-between items-center text-emerald-300">
+                      <span>70% 1RM</span>
+                      <span className="text-[10px] text-neutral-400 font-sans">Resistencia (10-12 r)</span>
+                      <span className="font-bold text-white">{Math.round(estimated1rm * 0.7)} kg</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+
+            <button
+              onClick={() => setShow1rmModal(false)}
+              className="w-full mt-4 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-neutral-950 font-mono font-bold text-xs shadow-md transition-all"
+            >
+              Entendido
+            </button>
           </div>
         </div>
       )}

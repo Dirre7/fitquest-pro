@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React, { useState } from 'react';
 import {
   BarChart,
   Bar,
@@ -28,6 +28,10 @@ import {
   Heart,
   Dumbbell,
   Shield,
+  FileSpreadsheet,
+  ChevronDown,
+  ChevronUp,
+  Sparkles
 } from 'lucide-react';
 import { WorkoutHistoryEntry, UserProfile, Language } from '../types';
 import { translations } from '../lib/i18n';
@@ -46,45 +50,44 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
   lang,
 }) => {
   const t = translations[lang];
+  const [expandedSessionId, setExpandedSessionId] = useState<string | null>(null);
 
   // Volume progression over time chart data
-  const volumeData = [...history].reverse().map((h) => ({
-    date: h.date.slice(5), // MM-DD
-    vol: h.totalVolumeKg,
-    calories: h.calories,
-    bpm: h.avgHeartRate,
-    duration: h.durationMinutes,
-  }));
+  const volumeData = history.length > 0 
+    ? [...history].reverse().map((h) => ({
+        date: h.date.slice(5), // MM-DD
+        vol: h.totalVolumeKg,
+        calories: h.calories,
+        bpm: h.avgHeartRate,
+        duration: h.durationMinutes,
+      }))
+    : [
+        { date: 'Lun', vol: 1200, calories: 340, bpm: 130, duration: 45 },
+        { date: 'Mie', vol: 2400, calories: 480, bpm: 142, duration: 55 },
+        { date: 'Vie', vol: 3100, calories: 520, bpm: 145, duration: 60 },
+        { date: 'Dom', vol: 1800, calories: 390, bpm: 135, duration: 40 },
+      ];
 
   // Estimated 1RM Progression data
   const strength1rmData = [
-    { week: 'Sem 1', Bench: 90, Squat: 120, Deadlift: 140, OHP: 55 },
-    { week: 'Sem 2', Bench: 92.5, Squat: 125, Deadlift: 145, OHP: 57.5 },
-    { week: 'Sem 3', Bench: 97.5, Squat: 130, Deadlift: 150, OHP: 60 },
-    { week: 'Sem 4', Bench: 100, Squat: 135, Deadlift: 155, OHP: 62.5 },
-    { week: 'Sem 5', Bench: 105, Squat: 145, Deadlift: 165, OHP: 65 },
+    { week: 'Sem 1', Bench: 70, Squat: 90, Deadlift: 110, OHP: 45 },
+    { week: 'Sem 2', Bench: 72.5, Squat: 95, Deadlift: 115, OHP: 47.5 },
+    { week: 'Sem 3', Bench: 77.5, Squat: 100, Deadlift: 122.5, OHP: 50 },
+    { week: 'Sem 4', Bench: 82.5, Squat: 107.5, Deadlift: 130, OHP: 52.5 },
+    { week: 'Sem 5', Bench: 87.5, Squat: 115, Deadlift: 140, OHP: 55 },
   ];
 
   // Muscle group split breakdown
   const muscleDistributionData = [
-    { muscle: 'Pectoral', value: 85 },
-    { muscle: 'Espalda', value: 90 },
-    { muscle: 'Piernas', value: 95 },
-    { muscle: 'Hombros', value: 75 },
-    { muscle: 'Brazos', value: 70 },
+    { muscle: 'Pectoral', value: user.attributes.strength || 60 },
+    { muscle: 'Espalda', value: Math.min(100, (user.attributes.strength || 60) + 5) },
+    { muscle: 'Piernas', value: user.attributes.endurance || 65 },
+    { muscle: 'Hombros', value: user.attributes.discipline || 55 },
+    { muscle: 'Brazos', value: user.attributes.agility || 50 },
     { muscle: 'Core', value: 65 },
   ];
 
-  // Body weight tracking
-  const bodyWeightData = [
-    { date: '01 Feb', weight: 78.2 },
-    { date: '08 Feb', weight: 77.8 },
-    { date: '15 Feb', weight: 77.2 },
-    { date: '22 Feb', weight: 76.8 },
-    { date: '28 Feb', weight: 76.5 },
-  ];
-
-  // Export JSON handler
+  // Export JSON backup
   const handleExportJson = () => {
     sound.playAchievement();
     const dataStr = FitStorage.exportAllData();
@@ -97,52 +100,84 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
     URL.revokeObjectURL(url);
   };
 
+  // Export CSV for Excel
+  const handleExportCsv = () => {
+    sound.playAchievement();
+    let csvContent = 'data:text/csv;charset=utf-8,';
+    csvContent += 'Fecha,Rutina,Duracion (min),Volumen Total (kg),Calorias,FC Promedio (BPM),XP Ganada,Valoracion,Notas\n';
+    
+    history.forEach((h) => {
+      csvContent += `${h.date},"${h.routineTitle}",${h.durationMinutes},${h.totalVolumeKg},${h.calories},${h.avgHeartRate},${h.xpEarned},${h.rating},"${h.notes || ''}"\n`;
+    });
+
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `fitquest-entrenamientos-${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
       
-      {/* Header & Export Action */}
+      {/* Header & Export Actions */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <span className="text-xs font-black uppercase px-2.5 py-0.5 rounded-full bg-teal-500/20 text-teal-400 border border-teal-500/30">
-              📊 Gráficos de Rendimiento
+            <span className="text-xs font-black uppercase px-2.5 py-0.5 rounded-full bg-cyan-500/20 text-cyan-400 border border-cyan-500/30">
+              📊 Telemetría & Rendimiento
             </span>
-            <span className="text-xs font-bold text-neutral-400">
-              {history.length} Sesiones Analizadas
+            <span className="text-xs font-mono font-bold text-neutral-400">
+              {history.length} Sesiones Registradas
             </span>
           </div>
-          <h2 className="font-display font-extrabold text-2xl sm:text-3xl text-white mt-1">
-            {t.analyticsTitle}
+          <h2 className="font-display font-black text-2xl sm:text-3xl text-white mt-1">
+            Analíticas de Progreso
           </h2>
           <p className="text-xs sm:text-sm text-neutral-400 mt-0.5">
-            {t.analyticsSubtitle}
+            Evolución de tonelaje levantado, gasto calórico y progresión de fuerza 1RM.
           </p>
         </div>
 
-        <button
-          id="btn-export-analytics-json"
-          onClick={handleExportJson}
-          className="px-4 py-2.5 rounded-2xl bg-neutral-900 border border-neutral-700 hover:border-emerald-500 text-emerald-400 font-bold text-xs flex items-center justify-center gap-2 shadow-lg transition-colors"
-        >
-          <Download className="w-4 h-4" />
-          <span>{t.exportData}</span>
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            id="btn-export-analytics-csv"
+            onClick={handleExportCsv}
+            className="px-3.5 py-2 rounded-2xl bg-[#121214] border border-white/10 hover:border-cyan-500/40 text-neutral-200 hover:text-cyan-400 font-mono font-bold text-xs flex items-center justify-center gap-2 shadow-lg transition-colors"
+            title="Descargar datos en formato Excel / CSV"
+          >
+            <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-400" />
+            <span>Exportar CSV</span>
+          </button>
+          
+          <button
+            id="btn-export-analytics-json"
+            onClick={handleExportJson}
+            className="px-3.5 py-2 rounded-2xl bg-[#121214] border border-white/10 hover:border-cyan-500/40 text-cyan-400 font-mono font-bold text-xs flex items-center justify-center gap-2 shadow-lg transition-colors"
+            title="Copia de seguridad JSON completa"
+          >
+            <Download className="w-3.5 h-3.5" />
+            <span>Backup JSON</span>
+          </button>
+        </div>
       </div>
 
       {/* Main Charts Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         
         {/* Volume Trend (kg) Chart */}
-        <div className="bg-neutral-900 border border-neutral-800 rounded-3xl p-5 sm:p-6 shadow-xl space-y-3">
+        <div className="bg-[#121214] border border-white/10 rounded-3xl p-5 sm:p-6 shadow-xl space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <TrendingUp className="w-5 h-5 text-emerald-400" />
+              <TrendingUp className="w-5 h-5 text-cyan-400" />
               <h3 className="font-display font-bold text-lg text-white">
-                {t.volumeTrend}
+                Sobrecarga Progresiva (Volumen en kg)
               </h3>
             </div>
-            <span className="text-xs font-mono font-bold text-emerald-400 bg-emerald-950/60 px-2.5 py-1 rounded-xl border border-emerald-500/30">
-              Sobrecarga Progresiva ↑
+            <span className="text-xs font-mono font-bold text-cyan-400">
+              {user.stats.totalVolumeKg.toLocaleString()} kg Total
             </span>
           </div>
 
@@ -150,35 +185,33 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={volumeData}>
                 <defs>
-                  <linearGradient id="colorVol" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.4} />
-                    <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                  <linearGradient id="volGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#06b6d4" stopOpacity={0.4} />
+                    <stop offset="95%" stopColor="#06b6d4" stopOpacity={0.0} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="#262626" />
-                <XAxis dataKey="date" stroke="#737373" fontSize={11} />
+                <XAxis dataKey="date" stroke="#737373" fontSize={11} fontStyle="italic" />
                 <YAxis stroke="#737373" fontSize={11} />
                 <Tooltip
-                  contentStyle={{ backgroundColor: '#171717', borderColor: '#404040', borderRadius: '12px', fontSize: '12px' }}
+                  contentStyle={{ backgroundColor: '#121214', borderColor: '#333', borderRadius: '16px', fontSize: '12px' }}
                 />
-                <Area type="monotone" dataKey="vol" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorVol)" name="Volumen (kg)" />
+                <Area type="monotone" dataKey="vol" stroke="#06b6d4" strokeWidth={2.5} fillOpacity={1} fill="url(#volGrad)" name="Volumen (kg)" />
               </AreaChart>
             </ResponsiveContainer>
           </div>
         </div>
 
-        {/* 1RM Strength Curve Chart */}
-        <div className="bg-neutral-900 border border-neutral-800 rounded-3xl p-5 sm:p-6 shadow-xl space-y-3">
+        {/* 1RM Strength Evolution Chart */}
+        <div className="bg-[#121214] border border-white/10 rounded-3xl p-5 sm:p-6 shadow-xl space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Dumbbell className="w-5 h-5 text-amber-400" />
+              <BarChart3 className="w-5 h-5 text-emerald-400" />
               <h3 className="font-display font-bold text-lg text-white">
-                {t.estimated1rm}
+                Fuerza Máxima 1RM Estimada (kg)
               </h3>
             </div>
-            <span className="text-xs font-mono font-bold text-amber-400 bg-amber-950/60 px-2.5 py-1 rounded-xl border border-amber-500/30">
-              +15 kg en 5 semanas
-            </span>
+            <span className="text-xs font-mono font-bold text-emerald-400">Básicos</span>
           </div>
 
           <div className="h-64 w-full pt-4">
@@ -186,30 +219,29 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
               <LineChart data={strength1rmData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#262626" />
                 <XAxis dataKey="week" stroke="#737373" fontSize={11} />
-                <YAxis stroke="#737373" fontSize={11} />
+                <YAxis stroke="#737373" fontSize={11} domain={[30, 'auto']} />
                 <Tooltip
-                  contentStyle={{ backgroundColor: '#171717', borderColor: '#404040', borderRadius: '12px', fontSize: '12px' }}
+                  contentStyle={{ backgroundColor: '#121214', borderColor: '#333', borderRadius: '16px', fontSize: '12px' }}
                 />
-                <Line type="monotone" dataKey="Squat" stroke="#ef4444" strokeWidth={2} name="Sentadilla (kg)" />
-                <Line type="monotone" dataKey="Bench" stroke="#f59e0b" strokeWidth={2} name="Banca (kg)" />
-                <Line type="monotone" dataKey="Deadlift" stroke="#10b981" strokeWidth={2} name="P. Muerto (kg)" />
-                <Line type="monotone" dataKey="OHP" stroke="#06b6d4" strokeWidth={2} name="Militar (kg)" />
+                <Line type="monotone" dataKey="Bench" stroke="#06b6d4" strokeWidth={2} name="Banca" />
+                <Line type="monotone" dataKey="Squat" stroke="#10b981" strokeWidth={2} name="Sentadilla" />
+                <Line type="monotone" dataKey="Deadlift" stroke="#f59e0b" strokeWidth={2} name="Peso Muerto" />
               </LineChart>
             </ResponsiveContainer>
           </div>
         </div>
 
         {/* Calorie Burn & Average BPM Correlation */}
-        <div className="bg-neutral-900 border border-neutral-800 rounded-3xl p-5 sm:p-6 shadow-xl space-y-3">
+        <div className="bg-[#121214] border border-white/10 rounded-3xl p-5 sm:p-6 shadow-xl space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Flame className="w-5 h-5 text-orange-400" />
               <h3 className="font-display font-bold text-lg text-white">
-                {t.calorieTrend}
+                Gasto Calórico por Sesión
               </h3>
             </div>
             <span className="text-xs font-mono font-bold text-orange-400">
-              Promedio: 510 kcal / 146 BPM
+              {user.stats.caloriesBurned.toLocaleString()} kcal Acumuladas
             </span>
           </div>
 
@@ -220,24 +252,24 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
                 <XAxis dataKey="date" stroke="#737373" fontSize={11} />
                 <YAxis stroke="#737373" fontSize={11} />
                 <Tooltip
-                  contentStyle={{ backgroundColor: '#171717', borderColor: '#404040', borderRadius: '12px', fontSize: '12px' }}
+                  contentStyle={{ backgroundColor: '#121214', borderColor: '#333', borderRadius: '16px', fontSize: '12px' }}
                 />
-                <Bar dataKey="calories" fill="#f97316" radius={[6, 6, 0, 0]} name="Calorías (kcal)" />
+                <Bar dataKey="calories" fill="#f97316" radius={[8, 8, 0, 0]} name="Calorías (kcal)" />
               </BarChart>
             </ResponsiveContainer>
           </div>
         </div>
 
         {/* Muscle Group Breakdown Radar */}
-        <div className="bg-neutral-900 border border-neutral-800 rounded-3xl p-5 sm:p-6 shadow-xl space-y-3">
+        <div className="bg-[#121214] border border-white/10 rounded-3xl p-5 sm:p-6 shadow-xl space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Shield className="w-5 h-5 text-teal-400" />
               <h3 className="font-display font-bold text-lg text-white">
-                {t.muscleDistribution}
+                Distribución de Estímulo Muscular
               </h3>
             </div>
-            <span className="text-xs font-bold text-neutral-400">Balance Óptimo</span>
+            <span className="text-xs font-bold text-cyan-400 font-mono">Radar RPG</span>
           </div>
 
           <div className="h-64 w-full flex items-center justify-center pt-2">
@@ -246,55 +278,74 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
                 <PolarGrid stroke="#333" />
                 <PolarAngleAxis dataKey="muscle" stroke="#9ca3af" fontSize={11} />
                 <PolarRadiusAxis angle={30} domain={[0, 100]} stroke="#555" />
-                <Radar name="Frecuencia de Carga" dataKey="value" stroke="#10b981" fill="#10b981" fillOpacity={0.4} />
+                <Radar name="Frecuencia de Carga" dataKey="value" stroke="#06b6d4" fill="#06b6d4" fillOpacity={0.35} />
               </RadarChart>
             </ResponsiveContainer>
           </div>
         </div>
       </div>
 
-      {/* PR Wall & Recent Workout Sessions Table */}
-      <div className="bg-neutral-900 border border-neutral-800 rounded-3xl p-5 sm:p-7 shadow-xl space-y-4">
+      {/* PR Wall & Interactive Detailed Workout Sessions Table */}
+      <div className="bg-[#121214] border border-white/10 rounded-3xl p-5 sm:p-7 shadow-2xl space-y-4">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Award className="w-5 h-5 text-yellow-400" />
-            <h3 className="font-display font-extrabold text-xl text-white">
-              Historial Reciente de Sesiones
+          <div className="flex items-center gap-2.5">
+            <Award className="w-5 h-5 text-amber-400" />
+            <h3 className="font-display font-black text-xl text-white">
+              Historial Detallado de Entrenamientos
             </h3>
           </div>
-          <span className="text-xs text-neutral-400 font-mono">Últimas 5 sesiones</span>
+          <span className="text-xs text-neutral-400 font-mono font-semibold">
+            {history.length} sesiones registradas
+          </span>
         </div>
 
-        <div className="space-y-3">
-          {history.map((hist) => (
-            <div
-              key={hist.id}
-              className="p-4 rounded-2xl bg-neutral-800/60 border border-neutral-700/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
-            >
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="font-bold text-white text-sm">{hist.routineTitle}</span>
-                  <span className="text-xs font-mono font-semibold text-neutral-400">({hist.date})</span>
-                </div>
-                <p className="text-xs text-neutral-400 mt-1">
-                  ⏱ {hist.durationMinutes} min • 🔥 {hist.calories} kcal • ❤️ {hist.avgHeartRate} BPM prom. • 🏋️ {hist.totalVolumeKg.toLocaleString()} kg
-                </p>
-                {hist.notes && (
-                  <p className="text-xs text-emerald-400 italic mt-1 font-medium">"{hist.notes}"</p>
-                )}
-              </div>
+        {history.length === 0 ? (
+          <div className="p-8 rounded-2xl bg-white/[0.02] border border-white/5 text-center">
+            <Dumbbell className="w-10 h-10 text-neutral-600 mx-auto mb-3 animate-pulse" />
+            <h4 className="font-display font-bold text-white text-base">Aún no has registrado entrenamientos</h4>
+            <p className="text-xs text-neutral-400 max-w-sm mx-auto mt-1">
+              Ve a la pestaña de <span className="text-cyan-400 font-bold">Entrenar</span>, inicia una rutina y completa tus series para desbloquear estadísticas reales aquí.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {history.map((hist) => {
+              const isExpanded = expandedSessionId === hist.id;
+              return (
+                <div
+                  key={hist.id}
+                  className="p-4 rounded-2xl bg-white/[0.03] border border-white/10 hover:border-cyan-500/30 transition-all"
+                >
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-white text-sm sm:text-base">{hist.routineTitle}</span>
+                        <span className="text-xs font-mono font-semibold text-cyan-400 bg-cyan-500/10 px-2 py-0.5 rounded-lg border border-cyan-500/20">
+                          {hist.date}
+                        </span>
+                      </div>
+                      <p className="text-xs text-neutral-400 mt-1 font-mono">
+                        ⏱ {hist.durationMinutes} min • 🔥 {hist.calories} kcal • ❤️ {hist.avgHeartRate} BPM • 🏋️ {hist.totalVolumeKg.toLocaleString()} kg total
+                      </p>
+                      {hist.notes && (
+                        <p className="text-xs text-cyan-300 italic mt-1 font-medium">"{hist.notes}"</p>
+                      )}
+                    </div>
 
-              <div className="flex items-center gap-3 self-end sm:self-center">
-                <div className="text-amber-400 text-xs font-mono font-bold">
-                  {'★'.repeat(hist.rating)}
+                    <div className="flex items-center gap-3 self-end sm:self-center">
+                      <div className="text-amber-400 text-xs font-mono font-bold">
+                        {'★'.repeat(hist.rating || 5)}
+                      </div>
+                      <span className="font-mono font-black text-sm text-cyan-400 bg-cyan-500/10 px-3 py-1 rounded-xl border border-cyan-500/30">
+                        +{hist.xpEarned} XP
+                      </span>
+                    </div>
+                  </div>
                 </div>
-                <span className="font-mono font-extrabold text-sm text-yellow-400 bg-yellow-500/10 px-2.5 py-1 rounded-xl border border-yellow-500/20">
-                  +{hist.xpEarned} XP
-                </span>
-              </div>
-            </div>
-          ))}
-        </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );
