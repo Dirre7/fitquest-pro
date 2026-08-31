@@ -428,122 +428,117 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-[#09090b]/95 backdrop-blur-2xl flex flex-col overflow-y-auto">
+    <div className="fixed inset-0 z-50 bg-[#09090b]/95 backdrop-blur-2xl flex flex-col overflow-y-auto overflow-x-hidden w-full max-w-full">
       {/* Top Session HUD Bar */}
-      <div className="sticky top-0 z-20 bg-[#121214]/90 backdrop-blur-xl border-b border-white/5 px-4 sm:px-6 py-3 flex items-center justify-between gap-3 shadow-2xl">
-        <div className="flex items-center gap-3.5">
-          <div className="w-10 h-10 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400 shadow-[0_0_12px_rgba(6,182,212,0.25)]">
-            <Timer className="w-5 h-5 animate-pulse" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h2 className="font-display font-bold text-white text-base sm:text-lg leading-tight truncate max-w-[200px] sm:max-w-md">
-                {routine.title}
-              </h2>
-              <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
-                {completionPercent}%
-              </span>
+      <div className="sticky top-0 z-20 bg-[#121214]/95 backdrop-blur-xl border-b border-white/5 px-2.5 sm:px-6 py-2 sm:py-3 w-full max-w-full shadow-2xl">
+        <div className="max-w-4xl mx-auto flex items-center justify-between gap-1.5 sm:gap-4">
+          
+          {/* Left: Minimize / Back + Routine Info & Live Timer */}
+          <div className="flex items-center gap-1.5 sm:gap-3 min-w-0">
+            <button
+              id="btn-workout-minimize"
+              onClick={handleMinimize}
+              className="p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl sm:rounded-2xl bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-400 font-mono font-bold text-xs flex items-center gap-1 shrink-0 transition-all hover:scale-105"
+              title="Minimizar y volver al menú principal"
+            >
+              <Minimize2 className="w-3.5 h-3.5" />
+              <span className="hidden md:inline">Minimizar</span>
+            </button>
+
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5">
+                <h2 className="font-display font-bold text-white text-xs sm:text-base leading-tight truncate max-w-[110px] xs:max-w-[150px] sm:max-w-xs">
+                  {routine.title}
+                </h2>
+                <span className="text-[9px] sm:text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 shrink-0">
+                  {completionPercent}%
+                </span>
+              </div>
+              <p className="text-[10px] sm:text-xs text-neutral-400 font-mono truncate">
+                <span className="text-cyan-400 font-bold">{formatTime(elapsedSeconds)}</span>
+                <span className="hidden sm:inline"> • {totalVolume.toLocaleString()} kg {t.volumeLifted.toLowerCase()}</span>
+              </p>
             </div>
-            <p className="text-xs text-neutral-400 font-mono">
-              {formatTime(elapsedSeconds)} • {totalVolume.toLocaleString()} kg {t.volumeLifted.toLowerCase()}
-            </p>
-          </div>
-        </div>
-
-        {/* Real-time Telemetry Widgets */}
-        <div className="flex items-center gap-2 sm:gap-3">
-          {/* Live Heart Rate from Smartwatch */}
-          <div
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-2xl border text-xs font-mono font-bold ${getHrZoneColor(
-              smartwatch.liveHeartRate
-            )}`}
-            title={`Zona: ${smartwatch.activeZone}`}
-          >
-            <Heart className="w-4 h-4 fill-current animate-heart-beat" />
-            <span>{smartwatch.liveHeartRate}</span>
-            <span className="text-[10px] opacity-75 font-sans font-normal">BPM</span>
           </div>
 
-          {/* Active Calories */}
-          <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-orange-500/10 border border-orange-500/20 text-orange-400 text-xs font-mono font-bold shadow-[0_0_10px_rgba(249,115,22,0.15)]">
-            <Flame className="w-4 h-4 fill-current" />
-            <span>{liveCalories}</span>
-            <span className="text-[10px] opacity-75 font-sans font-normal">kcal</span>
+          {/* Right Action Tools: BPM + 1RM + Pause + Finish + Discard */}
+          <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+            {/* Live Heart Rate */}
+            <div
+              className={`flex items-center gap-1 px-1.5 sm:px-2.5 py-1 rounded-xl sm:rounded-2xl border text-[11px] font-mono font-bold ${getHrZoneColor(
+                smartwatch.liveHeartRate
+              )}`}
+              title={`Zona: ${smartwatch.activeZone}`}
+            >
+              <Heart className="w-3 h-3 sm:w-3.5 sm:h-3.5 fill-current animate-heart-beat" />
+              <span>{smartwatch.liveHeartRate}</span>
+              <span className="text-[8px] opacity-75 font-sans hidden sm:inline">BPM</span>
+            </div>
+
+            {/* 1RM Strength Calculator */}
+            <button
+              id="btn-workout-1rm-calc"
+              onClick={() => setShow1rmModal(true)}
+              className="p-1.5 sm:p-2 rounded-xl sm:rounded-2xl bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-400 transition-colors"
+              title="Calculadora 1RM & Tabla de Fuerza"
+            >
+              <Calculator className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+            </button>
+
+            {/* Pause / Play Toggle */}
+            <button
+              id="btn-workout-pause"
+              onClick={() => setIsPaused(!isPaused)}
+              className="p-1.5 sm:p-2 rounded-xl sm:rounded-2xl bg-white/5 border border-white/10 text-neutral-300 hover:text-white hover:bg-white/10 transition-colors"
+              title={isPaused ? t.resume : t.pause}
+            >
+              {isPaused ? <Play className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-cyan-400" /> : <Pause className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-400" />}
+            </button>
+
+            {/* Finish & Save Workout Button */}
+            <button
+              id="btn-workout-finish"
+              onClick={handleOpenFinish}
+              className="px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-xl sm:rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-neutral-950 font-mono font-bold text-[11px] sm:text-xs shadow-lg shadow-cyan-500/25 transition-all hover:scale-105 active:scale-95 whitespace-nowrap"
+            >
+              <span className="sm:hidden">Fin</span>
+              <span className="hidden sm:inline">{t.finishWorkout}</span>
+            </button>
+
+            {/* Discard session */}
+            <button
+              id="btn-workout-discard"
+              onClick={() => setShowDiscardConfirm(true)}
+              className="p-1.5 sm:p-2 rounded-xl sm:rounded-2xl bg-white/5 hover:bg-red-500/20 border border-white/5 text-neutral-400 hover:text-red-400 transition-colors"
+              title="Descartar entrenamiento"
+            >
+              <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+            </button>
           </div>
-
-          {/* 1RM Strength Calculator */}
-          <button
-            id="btn-workout-1rm-calc"
-            onClick={() => setShow1rmModal(true)}
-            className="p-2.5 rounded-2xl bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-400 transition-colors"
-            title="Calculadora 1RM & Tabla de Fuerza"
-          >
-            <Calculator className="w-4 h-4" />
-          </button>
-
-          {/* Minimize / Exit to Home while keeping workout active */}
-          <button
-            id="btn-workout-minimize"
-            onClick={handleMinimize}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-400 text-xs font-mono font-bold transition-all hover:scale-105"
-            title="Minimizar y volver al menú principal"
-          >
-            <Minimize2 className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Minimizar</span>
-          </button>
-
-          {/* Pause / Play Toggle */}
-          <button
-            id="btn-workout-pause"
-            onClick={() => setIsPaused(!isPaused)}
-            className="p-2.5 rounded-2xl bg-white/5 border border-white/10 text-neutral-300 hover:text-white hover:bg-white/10 transition-colors"
-            title={isPaused ? t.resume : t.pause}
-          >
-            {isPaused ? <Play className="w-4 h-4 text-cyan-400" /> : <Pause className="w-4 h-4 text-amber-400" />}
-          </button>
-
-          {/* Finish & Save Workout Button */}
-          <button
-            id="btn-workout-finish"
-            onClick={handleOpenFinish}
-            className="px-3.5 sm:px-4 py-2 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-neutral-950 font-mono font-bold text-xs shadow-lg shadow-cyan-500/25 transition-all hover:scale-105 active:scale-95"
-          >
-            {t.finishWorkout}
-          </button>
-
-          {/* Discard session */}
-          <button
-            id="btn-workout-discard"
-            onClick={() => setShowDiscardConfirm(true)}
-            className="p-2.5 rounded-2xl bg-white/5 hover:bg-red-500/20 border border-white/5 text-neutral-400 hover:text-red-400 transition-colors"
-            title="Descartar entrenamiento"
-          >
-            <Trash2 className="w-4 h-4" />
-          </button>
         </div>
       </div>
 
       {/* PR Celebration Floating Toast Notification */}
       {showPrNotification && (
-        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 bg-gradient-to-r from-amber-400 to-yellow-500 text-neutral-950 px-5 py-3 rounded-2xl shadow-[0_0_25px_rgba(245,158,11,0.5)] flex items-center gap-3 animate-bounce font-mono font-bold text-xs border border-amber-300">
-          <Award className="w-5 h-5 fill-current" />
+        <div className="fixed top-16 sm:top-20 left-1/2 -translate-x-1/2 z-50 bg-gradient-to-r from-amber-400 to-yellow-500 text-neutral-950 px-4 py-2.5 rounded-2xl shadow-[0_0_25px_rgba(245,158,11,0.5)] flex items-center gap-2 animate-bounce font-mono font-bold text-xs border border-amber-300">
+          <Award className="w-4 h-4 fill-current" />
           <span>{t.personalRecord}: {showPrNotification}</span>
         </div>
       )}
 
       {/* Sequential Set Warning Toast */}
       {activeWarningToast && (
-        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 bg-[#18181b] border border-amber-500/60 text-amber-300 px-5 py-3 rounded-2xl shadow-[0_0_25px_rgba(245,158,11,0.4)] flex items-center gap-2.5 animate-in slide-in-from-top-3 font-mono font-bold text-xs">
+        <div className="fixed top-16 sm:top-20 left-1/2 -translate-x-1/2 z-50 bg-[#18181b] border border-amber-500/60 text-amber-300 px-4 py-2.5 rounded-2xl shadow-[0_0_25px_rgba(245,158,11,0.4)] flex items-center gap-2 animate-in slide-in-from-top-3 font-mono font-bold text-xs">
           <AlertCircle className="w-4 h-4 text-amber-400 shrink-0 animate-pulse" />
           <span>{activeWarningToast}</span>
         </div>
       )}
 
       {/* Main Content Area */}
-      <div className="max-w-4xl mx-auto w-full px-4 sm:px-6 py-6 flex-1 flex flex-col gap-6">
+      <div className="max-w-4xl mx-auto w-full px-3 sm:px-6 py-4 sm:py-6 flex-1 flex flex-col gap-4 sm:gap-6 overflow-x-hidden">
         
         {/* Exercise Switcher Tab Strip */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-2 no-scrollbar">
+        <div className="flex items-center gap-2 overflow-x-auto pb-1.5 no-scrollbar max-w-full">
           {exercises.map((ex, idx) => {
             const isDone = ex.sets.every((s) => s.completed);
             const isSelected = idx === currentExerciseIndex;
@@ -552,7 +547,7 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
                 key={ex.id}
                 id={`btn-ex-tab-${idx}`}
                 onClick={() => handleTryChangeExercise(idx)}
-                className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-mono font-bold whitespace-nowrap transition-all border ${
+                className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-2xl text-xs font-mono font-bold whitespace-nowrap transition-all border shrink-0 ${
                   isSelected
                     ? 'bg-cyan-500 text-neutral-950 border-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.35)]'
                     : isDone
@@ -567,7 +562,7 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
                     {idx + 1}
                   </span>
                 )}
-                <span>{ex.name}</span>
+                <span className="truncate max-w-[130px] sm:max-w-none">{ex.name}</span>
               </button>
             );
           })}
@@ -575,11 +570,11 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
 
         {/* Current Exercise Detail Card */}
         {currentExercise && (
-          <div className="bg-[#121214] border border-white/5 rounded-3xl p-6 sm:p-8 shadow-2xl relative overflow-hidden">
+          <div className="bg-[#121214] border border-white/5 rounded-3xl p-4 sm:p-8 shadow-2xl relative overflow-hidden w-full max-w-full">
             <div className="absolute top-0 right-0 w-48 h-48 bg-cyan-500/5 blur-3xl pointer-events-none" />
             
             {/* Header info */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-5 border-b border-white/5 relative z-10">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 sm:pb-5 border-b border-white/5 relative z-10">
               <div>
                 <div className="flex items-center gap-2">
                   <span className="text-[10px] font-mono font-bold px-2.5 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 uppercase tracking-wider">
@@ -594,7 +589,7 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
                     </span>
                   ) : null}
                 </div>
-                <h3 className="font-display font-extrabold text-xl sm:text-2xl text-white mt-1.5">
+                <h3 className="font-display font-extrabold text-lg sm:text-2xl text-white mt-1.5">
                   {currentExercise.name}
                 </h3>
               </div>
@@ -605,28 +600,28 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
                   id="btn-prev-exercise"
                   disabled={currentExerciseIndex === 0}
                   onClick={() => handleTryChangeExercise(currentExerciseIndex - 1)}
-                  className="px-3.5 py-2 rounded-2xl bg-white/5 hover:bg-white/10 text-neutral-300 disabled:opacity-30 disabled:pointer-events-none text-xs font-mono font-semibold flex items-center gap-1 transition-colors border border-white/5"
+                  className="px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-2xl bg-white/5 hover:bg-white/10 text-neutral-300 disabled:opacity-30 disabled:pointer-events-none text-xs font-mono font-semibold flex items-center gap-1 transition-colors border border-white/5"
                 >
-                  <ChevronLeft className="w-4 h-4" /> {t.prevExercise}
+                  <ChevronLeft className="w-4 h-4" /> <span className="hidden xs:inline">{t.prevExercise}</span><span className="xs:hidden">Ant</span>
                 </button>
                 <button
                   id="btn-next-exercise"
                   disabled={currentExerciseIndex === exercises.length - 1}
                   onClick={() => handleTryChangeExercise(currentExerciseIndex + 1)}
-                  className={`px-3.5 py-2 rounded-2xl text-xs font-mono font-semibold flex items-center gap-1 transition-all border ${
+                  className={`px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-2xl text-xs font-mono font-semibold flex items-center gap-1 transition-all border ${
                     currentExercise.sets.every((s) => s.completed)
                       ? 'bg-cyan-500 text-neutral-950 border-cyan-400 shadow-[0_0_12px_rgba(6,182,212,0.4)] animate-pulse'
                       : 'bg-white/5 hover:bg-white/10 text-neutral-300 disabled:opacity-30 border-white/5'
                   }`}
                 >
-                  {t.nextExercise} <ChevronRight className="w-4 h-4" />
+                  <span className="hidden xs:inline">{t.nextExercise}</span><span className="xs:hidden">Sig</span> <ChevronRight className="w-4 h-4" />
                 </button>
               </div>
             </div>
 
             {/* Instruction Tip */}
             {currentExercise.instructions && (
-              <div className="mt-4 p-4 bg-white/5 border border-white/5 rounded-2xl flex items-start gap-3 text-xs text-neutral-300 leading-relaxed relative z-10">
+              <div className="mt-3 sm:mt-4 p-3 sm:p-4 bg-white/5 border border-white/5 rounded-2xl flex items-start gap-2.5 text-xs text-neutral-300 leading-relaxed relative z-10">
                 <Info className="w-4 h-4 text-cyan-400 shrink-0 mt-0.5" />
                 <div>
                   <p>{currentExercise.instructions}</p>
@@ -638,15 +633,15 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
             )}
 
             {/* Sets Logging Table */}
-            <div className="mt-6 relative z-10">
-              <div className="grid grid-cols-12 gap-2 text-[11px] font-mono font-bold text-neutral-400 uppercase tracking-wider px-3 pb-2">
-                <div className="col-span-2">{t.set}</div>
-                <div className="col-span-4 text-center">{t.weight}</div>
-                <div className="col-span-3 text-center">{t.reps}</div>
-                <div className="col-span-3 text-center">{t.completedSet}</div>
+            <div className="mt-4 sm:mt-6 relative z-10 w-full max-w-full">
+              <div className="grid grid-cols-12 gap-1 sm:gap-2 text-[10px] sm:text-[11px] font-mono font-bold text-neutral-400 uppercase tracking-wider px-2 sm:px-3 pb-2 text-center">
+                <div className="col-span-2 sm:col-span-2 text-left">{t.set}</div>
+                <div className="col-span-4 sm:col-span-4">{t.weight}</div>
+                <div className="col-span-3 sm:col-span-3">{t.reps}</div>
+                <div className="col-span-3 sm:col-span-3">{t.completedSet}</div>
               </div>
 
-              <div className="space-y-3">
+              <div className="space-y-2.5 sm:space-y-3">
                 {(() => {
                   const activeSetIdx = currentExercise.sets.findIndex((s) => !s.completed);
 
@@ -660,7 +655,7 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
                     return (
                       <div
                         key={set.id}
-                        className={`grid grid-cols-12 gap-2 items-center p-3.5 rounded-2xl border transition-all ${
+                        className={`grid grid-cols-12 gap-1 sm:gap-2 items-center p-2.5 sm:p-3.5 rounded-2xl border transition-all ${
                           set.completed
                             ? 'bg-cyan-500/10 border-cyan-500/30 text-cyan-100 shadow-[0_0_15px_rgba(6,182,212,0.1)]'
                             : isCurrentActive
@@ -671,8 +666,8 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
                         }`}
                       >
                         {/* Set Number & Badge */}
-                        <div className="col-span-2 flex items-center gap-1.5">
-                          <span className={`w-6 h-6 rounded-lg font-mono font-bold text-xs flex items-center justify-center ${
+                        <div className="col-span-2 sm:col-span-2 flex items-center gap-1 sm:gap-1.5">
+                          <span className={`w-5 h-5 sm:w-6 sm:h-6 rounded-lg font-mono font-bold text-[11px] sm:text-xs flex items-center justify-center ${
                             isCurrentActive
                               ? 'bg-cyan-500 text-neutral-950 shadow-md shadow-cyan-500/40'
                               : 'bg-white/10 text-neutral-200'
@@ -680,92 +675,89 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
                             {setIdx + 1}
                           </span>
                           {set.isWarmup && (
-                            <span className="text-[9px] font-mono font-extrabold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                            <span className="text-[8px] sm:text-[9px] font-mono font-extrabold px-1 sm:px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30">
                               W
                             </span>
                           )}
-                          {isCurrentActive && (
-                            <span className="hidden md:inline-block text-[9px] font-mono font-black uppercase text-cyan-400 tracking-wider">
-                              ACTIVA
-                            </span>
-                          )}
                         </div>
 
-                      {/* Weight Adjuster (kg) */}
-                      <div className="col-span-4 flex items-center justify-center gap-1.5">
-                        <button
-                          onClick={() => handleUpdateSetVal(set.id, 'actualWeightKg', -2.5)}
-                          className="w-8 h-8 rounded-xl bg-white/5 hover:bg-white/10 text-white flex items-center justify-center font-bold border border-white/5"
-                          title="-2.5 kg"
-                        >
-                          <Minus className="w-3 h-3" />
-                        </button>
-                        <div className="w-18 text-center">
+                        {/* Weight Adjuster (kg) */}
+                        <div className="col-span-4 sm:col-span-4 flex items-center justify-center gap-1 sm:gap-1.5">
+                          <button
+                            onClick={() => handleUpdateSetVal(set.id, 'actualWeightKg', -2.5)}
+                            className="w-6 h-6 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-white/5 hover:bg-white/10 text-white flex items-center justify-center font-bold border border-white/5 shrink-0"
+                            title="-2.5 kg"
+                          >
+                            <Minus className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
+                          </button>
+                          <div className="w-12 sm:w-18 text-center min-w-0">
+                            <input
+                              type="number"
+                              value={set.actualWeightKg}
+                              onChange={(e) => {
+                                const val = parseFloat(e.target.value) || 0;
+                                handleUpdateSetVal(set.id, 'actualWeightKg', val - set.actualWeightKg);
+                              }}
+                              className="w-full bg-[#09090b] text-center font-mono font-bold text-xs sm:text-sm rounded-lg sm:rounded-xl py-1 sm:py-1.5 border border-white/10 focus:border-cyan-500 focus:outline-none text-white px-0.5"
+                            />
+                            {set.actualWeightKg > 0 && (
+                              <span className="text-[8px] sm:text-[9px] text-neutral-400 block font-mono mt-0.5 hidden xs:block">1RM:{estimated1rm}k</span>
+                            )}
+                          </div>
+                          <button
+                            onClick={() => handleUpdateSetVal(set.id, 'actualWeightKg', 2.5)}
+                            className="w-6 h-6 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-white/5 hover:bg-white/10 text-white flex items-center justify-center font-bold border border-white/5 shrink-0"
+                            title="+2.5 kg"
+                          >
+                            <Plus className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
+                          </button>
+                        </div>
+
+                        {/* Reps Adjuster */}
+                        <div className="col-span-3 sm:col-span-3 flex items-center justify-center gap-1 sm:gap-1.5">
+                          <button
+                            onClick={() => handleUpdateSetVal(set.id, 'actualReps', -1)}
+                            className="w-6 h-6 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-white/5 hover:bg-white/10 text-white flex items-center justify-center font-bold border border-white/5 shrink-0"
+                          >
+                            <Minus className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
+                          </button>
                           <input
                             type="number"
-                            value={set.actualWeightKg}
+                            value={set.actualReps}
                             onChange={(e) => {
-                              const val = parseFloat(e.target.value) || 0;
-                              handleUpdateSetVal(set.id, 'actualWeightKg', val - set.actualWeightKg);
+                              const val = parseInt(e.target.value) || 0;
+                              handleUpdateSetVal(set.id, 'actualReps', val - set.actualReps);
                             }}
-                            className="w-full bg-[#09090b] text-center font-mono font-bold text-sm rounded-xl py-1.5 border border-white/10 focus:border-cyan-500 focus:outline-none text-white"
+                            className="w-9 sm:w-12 bg-[#09090b] text-center font-mono font-bold text-xs sm:text-sm rounded-lg sm:rounded-xl py-1 sm:py-1.5 border border-white/10 focus:border-cyan-500 focus:outline-none text-white px-0.5"
                           />
-                          {set.actualWeightKg > 0 && (
-                            <span className="text-[9px] text-neutral-400 block font-mono mt-0.5">1RM: {estimated1rm}kg</span>
-                          )}
+                          <button
+                            onClick={() => handleUpdateSetVal(set.id, 'actualReps', 1)}
+                            className="w-6 h-6 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-white/5 hover:bg-white/10 text-white flex items-center justify-center font-bold border border-white/5 shrink-0"
+                          >
+                            <Plus className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
+                          </button>
                         </div>
-                        <button
-                          onClick={() => handleUpdateSetVal(set.id, 'actualWeightKg', 2.5)}
-                          className="w-8 h-8 rounded-xl bg-white/5 hover:bg-white/10 text-white flex items-center justify-center font-bold border border-white/5"
-                          title="+2.5 kg"
-                        >
-                          <Plus className="w-3 h-3" />
-                        </button>
-                      </div>
 
-                      {/* Reps Adjuster */}
-                      <div className="col-span-3 flex items-center justify-center gap-1.5">
-                        <button
-                          onClick={() => handleUpdateSetVal(set.id, 'actualReps', -1)}
-                          className="w-8 h-8 rounded-xl bg-white/5 hover:bg-white/10 text-white flex items-center justify-center font-bold border border-white/5"
-                        >
-                          <Minus className="w-3 h-3" />
-                        </button>
-                        <input
-                          type="number"
-                          value={set.actualReps}
-                          onChange={(e) => {
-                            const val = parseInt(e.target.value) || 0;
-                            handleUpdateSetVal(set.id, 'actualReps', val - set.actualReps);
-                          }}
-                          className="w-12 bg-[#09090b] text-center font-mono font-bold text-sm rounded-xl py-1.5 border border-white/10 focus:border-cyan-500 focus:outline-none text-white"
-                        />
-                        <button
-                          onClick={() => handleUpdateSetVal(set.id, 'actualReps', 1)}
-                          className="w-8 h-8 rounded-xl bg-white/5 hover:bg-white/10 text-white flex items-center justify-center font-bold border border-white/5"
-                        >
-                          <Plus className="w-3 h-3" />
-                        </button>
+                        {/* Complete Checkbox */}
+                        <div className="col-span-3 sm:col-span-3 flex justify-center">
+                          <button
+                            id={`btn-complete-set-${setIdx}`}
+                            onClick={() => handleToggleSet(set.id)}
+                            className={`w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl flex items-center justify-center transition-all ${
+                              set.completed
+                                ? 'bg-cyan-500 text-neutral-950 shadow-[0_0_15px_rgba(6,182,212,0.4)] scale-105'
+                                : isCurrentActive
+                                ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/40 hover:bg-cyan-500/30 animate-pulse'
+                                : 'bg-white/5 hover:bg-white/10 text-neutral-400 border border-white/10'
+                            }`}
+                          >
+                            <Check className="w-4 h-4 sm:w-5 sm:h-5 stroke-[3]" />
+                          </button>
+                        </div>
                       </div>
-
-                      {/* Complete Checkbox */}
-                      <div className="col-span-3 flex justify-center">
-                        <button
-                          id={`btn-complete-set-${setIdx}`}
-                          onClick={() => handleToggleSet(set.id)}
-                          className={`w-10 h-10 rounded-2xl flex items-center justify-center transition-all ${
-                            set.completed
-                              ? 'bg-cyan-500 text-neutral-950 shadow-[0_0_15px_rgba(6,182,212,0.4)] scale-105'
-                              : 'bg-white/5 hover:bg-white/10 text-neutral-300 border border-white/10'
-                          }`}
-                        >
-                          <Check className="w-5 h-5 stroke-[3]" />
-                        </button>
-                      </div>
-                    </div>
-                  );
-                });
-              })()}
+                    );
+                  });
+                })()}
               </div>
 
               {/* Add Set button */}
