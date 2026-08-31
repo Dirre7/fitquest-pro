@@ -1,0 +1,47 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Athlete profile with gamified attributes, level, streak and statistics",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "level": { "type": "number" },
+        "xp": { "type": "number" },
+        "currentLevelXp": { "type": "number" },
+        "nextLevelXp": { "type": "number" },
+        "rankTitle": { "type": "string" },
+        "league": { "type": "string" }
+      },
+      "required": ["id", "name", "level", "xp"]
+    },
+    "WorkoutHistoryEntry": {
+      "title": "WorkoutHistoryEntry",
+      "description": "Historical logged workout session with telemetry",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "routineId": { "type": "string" },
+        "routineTitle": { "type": "string" },
+        "date": { "type": "string" },
+        "durationMinutes": { "type": "number" },
+        "totalVolumeKg": { "type": "number" },
+        "calories": { "type": "number" },
+        "xpEarned": { "type": "number" }
+      },
+      "required": ["id", "routineTitle", "date", "durationMinutes"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "Individual user document containing athlete statistics and settings"
+    },
+    "/users/{userId}/history/{historyId}": {
+      "schema": "WorkoutHistoryEntry",
+      "description": "Workout logs registered by the user"
+    }
+  }
+}

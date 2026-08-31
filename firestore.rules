@@ -1,0 +1,41 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // User profile documents: Any authenticated user can read profiles (for leaderboards/duels); only the user can write their own profile
+    match /users/{userId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.uid == userId;
+      
+      // User workout history subcollection
+      match /history/{historyId} {
+        allow read: if request.auth != null;
+        allow write: if request.auth != null && request.auth.uid == userId;
+      }
+
+      // User custom routines
+      match /routines/{routineId} {
+        allow read: if request.auth != null;
+        allow write: if request.auth != null && request.auth.uid == userId;
+      }
+    }
+
+    // Community challenges
+    match /challenges/{challengeId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+    }
+
+    // Live duel match rooms
+    match /duelRooms/{roomId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+    }
+
+    // Public leaderboards aggregate
+    match /leaderboards/{league} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+    }
+  }
+}

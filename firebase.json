@@ -1,0 +1,8 @@
+{
+  "firestore": {
+    "databaseId": "ai-studio-fitquestprogamif-27893167-336a-4d03-889b-7360b4f74229",
+    "rules": "firestore.rules",
+    "edition": "ENTERPRISE",
+    "dataAccessMode": "FIRESTORE_NATIVE"
+  }
+}
