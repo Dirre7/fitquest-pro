@@ -4,7 +4,6 @@ import {
   Zap,
   Activity,
   Trophy,
-  Swords,
   Dumbbell,
   Target,
   BarChart3,
@@ -110,23 +109,22 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   const xpPercent = user?.nextLevelXp ? Math.min(100, Math.round((user.currentLevelXp / user.nextLevelXp) * 100)) : 0;
 
-  const navItems = [
+  // Optimized key primary navigation items for the Liquid Glass Dock
+  const dockItems = [
     { id: 'dashboard', label: t.navDashboard, icon: Activity },
     { id: 'routines', label: t.navWorkouts, icon: Dumbbell },
-    { id: 'duel', label: t.navLiveDuel, icon: Swords, badge: 'LIVE' },
-    { id: 'leaderboard', label: t.navLeaderboard, icon: Trophy },
     { id: 'challenges', label: t.navChallenges, icon: Target },
-    { id: 'achievements', label: t.navAchievements, icon: Sparkles },
+    { id: 'leaderboard', label: t.navLeaderboard, icon: Trophy },
     { id: 'analytics', label: t.navAnalytics, icon: BarChart3 },
+    { id: 'achievements', label: t.navAchievements, icon: Sparkles },
     { id: 'smartwatch', label: t.navSmartwatch, icon: Watch, hasPulse: isWatchConnected },
-    { id: 'settings', label: t.navSettings, icon: Settings },
   ];
 
   return (
-    <header className="sticky top-0 z-40 bg-[#09090b]/90 backdrop-blur-xl border-b border-white/10 px-4 lg:px-8 py-2.5 transition-all">
-      <div className="max-w-7xl mx-auto flex flex-col gap-2">
-        {/* Top Bar: Brand, User Summary, Settings / Controls */}
-        <div className="flex items-center justify-between gap-2 sm:gap-4">
+    <>
+      {/* Top Header Bar */}
+      <header className="sticky top-0 z-40 bg-[#09090b]/85 backdrop-blur-xl border-b border-white/10 px-4 lg:px-8 py-3 transition-all">
+        <div className="max-w-7xl mx-auto flex items-center justify-between gap-3 sm:gap-6">
           
           {/* Logo & Brand Identity */}
           <div className="flex items-center gap-3">
@@ -155,7 +153,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             </button>
 
             {/* User Level & XP Bar pill */}
-            <div className="hidden md:flex items-center gap-3 bg-white/5 border border-white/10 rounded-2xl px-3 py-1.5">
+            <div className="hidden md:flex items-center gap-3 bg-white/5 border border-white/10 rounded-2xl px-3 py-1.5 shadow-inner">
               <img
                 src={user.avatar || `https://api.dicebear.com/7.x/initials/svg?seed=${user.name}`}
                 alt={user.name}
@@ -185,7 +183,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             </div>
           </div>
 
-          {/* Right Header Actions: Auth, Smartwatch status, Cloud sync, Sound, Lang, Theme, Quick Start */}
+          {/* Right Header Actions: Auth, Smartwatch, Controls, Settings, Quick Start */}
           <div className="flex items-center gap-1.5 sm:gap-2">
             
             {/* Cloud User Auth / Sign In Button */}
@@ -212,8 +210,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-400 font-mono font-bold text-xs transition-all hover:scale-105"
               >
                 <LogIn className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Iniciar Sesión / Registro</span>
-                <span className="sm:hidden">Entrar</span>
+                <span className="hidden sm:inline">Cuenta</span>
               </button>
             )}
 
@@ -268,17 +265,6 @@ export const Navbar: React.FC<NavbarProps> = ({
               {isSoundMuted ? <VolumeX className="w-4 h-4 text-neutral-500" /> : <Volume2 className="w-4 h-4 text-cyan-400" />}
             </button>
 
-            {/* Theme Toggle (Dark / Light) */}
-            <button
-              id="btn-nav-theme"
-              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-              className="p-2 rounded-xl bg-white/5 border border-white/10 text-neutral-300 hover:text-white hover:border-cyan-500/30 transition-colors"
-              title={`Tema: ${theme}`}
-              aria-label="Cambiar tema visual"
-            >
-              {theme === 'dark' ? <Moon className="w-4 h-4 text-cyan-400" /> : <Sun className="w-4 h-4 text-amber-400" />}
-            </button>
-
             {/* Language Selector Dropdown */}
             <div className="relative">
               <button
@@ -318,69 +304,71 @@ export const Navbar: React.FC<NavbarProps> = ({
               )}
             </div>
 
-            {/* Notification Bell */}
+            {/* Settings Button */}
             <button
-              id="btn-nav-notifications"
-              onClick={onOpenNotifications}
-              className="relative p-2 rounded-xl bg-white/5 border border-white/10 text-neutral-300 hover:text-white transition-colors"
-              title="Notificaciones & Recordatorios"
-              aria-label="Ver notificaciones"
+              id="btn-nav-settings"
+              onClick={() => handleSetTab('settings')}
+              className={`p-2 rounded-xl border transition-colors ${
+                currentTab === 'settings'
+                  ? 'bg-cyan-500 text-neutral-950 border-cyan-400 shadow-[0_0_12px_rgba(6,182,212,0.4)]'
+                  : 'bg-white/5 border-white/10 text-neutral-300 hover:text-white hover:border-cyan-500/30'
+              }`}
+              title={t.navSettings}
+              aria-label="Configuración"
             >
-              <Bell className="w-4 h-4" />
-              {unreadNotifications > 0 && (
-                <span className="absolute -top-1 -right-1 w-4 h-4 bg-cyan-500 text-neutral-950 font-extrabold text-[10px] rounded-full flex items-center justify-center shadow-[0_0_8px_#06b6d4]">
-                  {unreadNotifications}
-                </span>
-              )}
+              <Settings className="w-4 h-4" />
             </button>
 
             {/* Quick Start Workout Action Button */}
             <button
               id="btn-nav-quick-start"
               onClick={onOpenQuickStart}
-              className="hidden sm:flex items-center gap-1.5 px-4 py-2 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-neutral-950 font-bold text-xs shadow-lg shadow-cyan-500/25 transition-all hover:scale-105 active:scale-95"
+              className="hidden sm:flex items-center gap-1.5 px-3.5 py-2 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-neutral-950 font-bold text-xs shadow-lg shadow-cyan-500/25 transition-all hover:scale-105 active:scale-95"
             >
               <Zap className="w-3.5 h-3.5 fill-current" />
               <span>{t.quickStart}</span>
             </button>
           </div>
         </div>
+      </header>
 
-        {/* Bottom Horizontal Tab Navigation Bar (Scrollable on mobile) */}
+      {/* Floating Liquid Glass Bottom Navigation Dock */}
+      <div className="fixed bottom-4 sm:bottom-6 left-1/2 -translate-x-1/2 z-50 w-[94%] max-w-2xl pointer-events-auto">
         <nav 
-          className="flex space-x-1 overflow-x-auto py-2 no-scrollbar border-t border-white/5"
-          aria-label="Secciones principales"
+          className="bg-[#121214]/80 backdrop-blur-2xl border border-white/15 rounded-3xl sm:rounded-full p-2 shadow-[0_12px_45px_rgba(0,0,0,0.85),0_0_25px_rgba(6,182,212,0.15)] flex items-center justify-between sm:justify-center sm:gap-2 overflow-x-auto no-scrollbar"
+          aria-label="Navegación principal inferior"
         >
-          {navItems.map((item) => {
+          {dockItems.map((item) => {
             const Icon = item.icon;
             const isActive = currentTab === item.id;
             return (
               <button
                 key={item.id}
-                id={`tab-${item.id}`}
+                id={`dock-tab-${item.id}`}
                 onClick={() => {
                   handleSetTab(item.id);
                   sound.playBeep(650, 40);
                 }}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
+                className={`relative flex items-center gap-2 px-3 sm:px-4 py-2.5 rounded-2xl sm:rounded-full text-xs font-mono font-bold transition-all duration-300 ${
                   isActive
-                    ? 'bg-cyan-500 text-neutral-950 shadow-[0_0_15px_rgba(6,182,212,0.4)] font-bold'
-                    : 'text-neutral-400 hover:text-neutral-100 hover:bg-white/5'
+                    ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-neutral-950 shadow-[0_0_20px_rgba(6,182,212,0.5)] scale-105'
+                    : 'text-neutral-400 hover:text-neutral-200 hover:bg-white/5'
                 }`}
-                aria-current={isActive ? 'page' : undefined}
               >
-                <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-neutral-950 stroke-[2.5]' : 'text-neutral-400'}`} />
-                <span>{item.label}</span>
-                {item.badge && (
-                  <span className={`text-[9px] px-1.5 rounded font-black ${isActive ? 'bg-black text-cyan-400' : 'bg-red-500/20 text-red-400 border border-red-500/30 animate-pulse'}`}>
-                    {item.badge}
-                  </span>
+                <Icon className={`w-4 h-4 ${isActive ? 'text-neutral-950 stroke-[2.5]' : 'text-neutral-400'}`} />
+                <span className={`hidden md:inline ${isActive ? 'font-black tracking-tight' : 'font-medium'}`}>
+                  {item.label}
+                </span>
+                
+                {/* Micro active indicator dot for mobile */}
+                {isActive && (
+                  <span className="md:hidden w-1.5 h-1.5 rounded-full bg-neutral-950 absolute -bottom-0.5 left-1/2 -translate-x-1/2 shadow-sm" />
                 )}
               </button>
             );
           })}
         </nav>
       </div>
-    </header>
+    </>
   );
 };

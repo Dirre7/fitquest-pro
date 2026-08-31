@@ -21,7 +21,6 @@ import { Navbar } from './components/Navbar';
 import { DashboardView } from './components/DashboardView';
 import { WorkoutCatalogView } from './components/WorkoutCatalogView';
 import { ActiveWorkoutTracker } from './components/ActiveWorkoutTracker';
-import { SocialLiveDuelView } from './components/SocialLiveDuelView';
 import { LeaderboardView } from './components/LeaderboardView';
 import { WeeklyChallengesView } from './components/WeeklyChallengesView';
 import { AchievementsView } from './components/AchievementsView';
@@ -382,8 +381,8 @@ export default function App() {
         onSignOut={handleSignOut}
       />
 
-      {/* Main Content Container */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      {/* Main Content Container with bottom padding for the floating Liquid Glass dock */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-28 sm:pb-32">
         
         {/* Render Tab Views */}
         {activeTab === 'dashboard' && (
@@ -407,12 +406,13 @@ export default function App() {
           />
         )}
 
-        {activeTab === 'duel' && (
-          <SocialLiveDuelView
-            user={user}
-            smartwatch={smartwatch}
+        {activeTab === 'challenges' && (
+          <WeeklyChallengesView
+            challenges={challenges}
             lang={lang}
-            onDuelWin={handleDuelWin}
+            onJoinChallenge={handleJoinChallenge}
+            onContribute={handleContributeChallenge}
+            onClaimReward={handleClaimChallengeReward}
           />
         )}
 
@@ -421,16 +421,6 @@ export default function App() {
             users={leaderboard}
             currentLeague={user.league}
             lang={lang}
-          />
-        )}
-
-        {activeTab === 'challenges' && (
-          <WeeklyChallengesView
-            challenges={challenges}
-            lang={lang}
-            onJoinChallenge={handleJoinChallenge}
-            onContribute={handleContributeChallenge}
-            onClaimReward={handleClaimChallengeReward}
           />
         )}
 
