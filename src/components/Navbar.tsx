@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import {
   Flame,
   Zap,
@@ -43,6 +43,7 @@ interface NavbarProps {
   unreadNotifications?: number;
   onOpenNotifications?: () => void;
   onOpenQuickStart?: () => void;
+  onOpenProfileModal?: () => void;
   isAuthenticated?: boolean;
   onOpenAuthModal?: () => void;
   onSignOut?: () => void;
@@ -68,6 +69,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   unreadNotifications = 0,
   onOpenNotifications,
   onOpenQuickStart,
+  onOpenProfileModal,
   isAuthenticated = false,
   onOpenAuthModal,
   onSignOut,
@@ -145,17 +147,22 @@ export const Navbar: React.FC<NavbarProps> = ({
               </div>
             </button>
 
-            {/* User Level & XP Bar chip (Desktop only) */}
-            <div className="hidden lg:flex items-center gap-3 bg-white/5 border border-white/10 rounded-2xl px-3 py-1.5 shadow-inner">
+            {/* User Level & XP Bar chip (Clickable to Edit Profile) */}
+            <button
+              id="btn-nav-profile-edit"
+              onClick={onOpenProfileModal}
+              className="flex items-center gap-2.5 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-cyan-500/40 rounded-2xl px-2.5 sm:px-3 py-1 sm:py-1.5 shadow-inner transition-all hover:scale-105"
+              title="Editar Perfil, Avatar y Títulos"
+            >
               <img
                 src={user.avatar || `https://api.dicebear.com/7.x/initials/svg?seed=${user.name}`}
                 alt={user.name}
-                className="w-7 h-7 rounded-xl object-cover border border-cyan-500/50"
+                className="w-7 h-7 rounded-xl object-cover border border-cyan-500/50 shrink-0"
               />
-              <div className="text-left min-w-[110px]">
-                <div className="flex justify-between items-center text-[10px] font-bold">
-                  <span className="text-white truncate max-w-[80px]">{user.name}</span>
-                  <span className="text-cyan-400 font-mono">Nvl {user.level}</span>
+              <div className="text-left min-w-[75px] sm:min-w-[110px]">
+                <div className="flex justify-between items-center text-[10px] font-bold gap-1">
+                  <span className="text-white truncate max-w-[70px] sm:max-w-[100px]">{user.name}</span>
+                  <span className="text-cyan-400 font-mono shrink-0">Nvl {user.level}</span>
                 </div>
                 <div className="h-1.5 bg-neutral-800 rounded-full overflow-hidden mt-0.5">
                   <div 
@@ -164,7 +171,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   />
                 </div>
               </div>
-            </div>
+            </button>
           </div>
 
           {/* Right Header: Streak + Smartwatch + Config + Quick Action */}

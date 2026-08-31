@@ -33,6 +33,7 @@ import { SmartwatchView } from './components/SmartwatchView';
 import { CloudAndSettingsView } from './components/CloudAndSettingsView';
 import { AuthModal } from './components/AuthModal';
 import { AuthScreen } from './components/AuthScreen';
+import { ProfileEditModal } from './components/ProfileEditModal';
 
 export default function App() {
   // Global States loaded from FitStorage
@@ -49,6 +50,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<string>('dashboard');
   const [activeRoutine, setActiveRoutine] = useState<WorkoutRoutine | null>(null);
   const [activeSession, setActiveSession] = useState<ActiveWorkoutState | null>(() => FitStorage.getActiveSession());
+  const [profileModalOpen, setProfileModalOpen] = useState<boolean>(false);
   const [lang, setLang] = useState<Language>(FitStorage.getLanguage());
   const [theme, setTheme] = useState<ThemeMode>(FitStorage.getTheme());
   const [isSoundMuted, setIsSoundMuted] = useState<boolean>(sound.getMuted());
@@ -418,6 +420,7 @@ export default function App() {
         smartwatch={smartwatch}
         unreadNotifications={reminders.filter((r) => r.enabled).length}
         onOpenNotifications={() => setActiveTab('settings')}
+        onOpenProfileModal={() => setProfileModalOpen(true)}
         onOpenQuickStart={() => {
           if (routines.length > 0) {
             handleStartRoutine(routines[0]);
@@ -579,6 +582,20 @@ export default function App() {
         lang={lang}
         onSuccess={handleAuthSuccess}
       />
+
+      {/* Profile Edit & Customization Modal */}
+      {profileModalOpen && (
+        <ProfileEditModal
+          user={user}
+          achievements={achievements}
+          lang={lang}
+          onClose={() => setProfileModalOpen(false)}
+          onSaveUser={(updatedUser) => {
+            FitStorage.saveUser(updatedUser);
+            setUser(updatedUser);
+          }}
+        />
+      )}
     </div>
   );
 }
