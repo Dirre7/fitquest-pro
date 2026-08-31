@@ -23,6 +23,9 @@ import {
   Minimize2,
   Trash2,
   AlertTriangle,
+  Lock,
+  ArrowRight,
+  AlertCircle,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import {
@@ -103,6 +106,8 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
   // Summary and confirmation modals
   const [showSummaryModal, setShowSummaryModal] = useState<boolean>(false);
   const [showDiscardConfirm, setShowDiscardConfirm] = useState<boolean>(false);
+  const [showSkipWarningModal, setShowSkipWarningModal] = useState<number | null>(null);
+  const [activeWarningToast, setActiveWarningToast] = useState<string | null>(null);
   const [rating, setRating] = useState<number>(5);
   const [notes, setNotes] = useState<string>(() => initialState?.notes || '');
   const [unlockedPrs, setUnlockedPrs] = useState<string[]>([]);
@@ -207,45 +212,96 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
 
   const currentExercise = exercises[currentExerciseIndex];
 
-  // Helper to toggle set completion
+  // Helper to toggle set completion with sequential validation
   const handleToggleSet = (setId: string) => {
     setExercises((prevExercises) => {
-      return prevExercises.map((ex, exIdx) => {
-        if (exIdx !== currentExerciseIndex) return ex;
+      const ex = prevExercises[currentExerciseIndex];
+      if (!ex) return prevExercises;
 
-        const updatedSets = ex.sets.map((set) => {
-          if (set.id !== setId) return set;
-          const willBeCompleted = !set.completed;
+      const targetIndex = ex.sets.findIndex((s) => s.id === setId);
+      if (targetIndex === -1) return prevExercises;
 
-          if (willBeCompleted) {
-            sound.playSetComplete();
+      const targetSet = ex.sets[targetIndex];
+      const willBeCompleted = !targetSet.completed;
 
-            // Check if 1RM is a new PR
-            const estimated1RM = Math.round(
-              set.actualWeightKg / (1.0278 - 0.0278 * Math.min(10, set.actualReps || 1))
-            );
-            if (set.actualWeightKg > 0 && (!ex.prKg || set.actualWeightKg > ex.prKg)) {
-              const prMsg = `${ex.name}: ${set.actualWeightKg} kg (${estimated1RM} kg 1RM)`;
-              setUnlockedPrs((prs) => (prs.includes(prMsg) ? prs : [...prs, prMsg]));
-              setShowPrNotification(prMsg);
-              sound.playAchievement();
-              setTimeout(() => setShowPrNotification(null), 4000);
+      // If completing, check that all previous sets are already finished
+      if (willBeCompleted) {
+        const firstIncompleteIdx = ex.sets.findIndex((s, idx) => !s.completed && idx < targetIndex);
+        if (firstIncompleteIdx !== -1) {
+          sound.playBeep(400, 100);
+          setActiveWarningToast(`Completa primero la Serie ${firstIncompleteIdx + 1}`);
+          setTimeout(() => setActiveWarningToast(null), 3000);
+          return prevExercises;
+        }
+      }
+
+      return prevExercises.map((exercise, exIdx) => {
+        if (exIdx !== currentExerciseIndex) return exercise;
+
+        const updatedSets = exercise.sets.map((set, sIdx) => {
+          if (sIdx === targetIndex) {
+            if (willBeCompleted) {
+              sound.playSetComplete();
+
+              // Check if 1RM is a new PR
+              const estimated1RM = Math.round(
+                set.actualWeightKg / (1.0278 - 0.0278 * Math.min(10, set.actualReps || 1))
+              );
+              if (set.actualWeightKg > 0 && (!exercise.prKg || set.actualWeightKg > exercise.prKg)) {
+                const prMsg = `${exercise.name}: ${set.actualWeightKg} kg (${estimated1RM} kg 1RM)`;
+                setUnlockedPrs((prs) => (prs.includes(prMsg) ? prs : [...prs, prMsg]));
+                setShowPrNotification(prMsg);
+                sound.playAchievement();
+                setTimeout(() => setShowPrNotification(null), 4000);
+              }
+
+              // Start auto rest timer
+              if (exercise.restSeconds > 0) {
+                setTotalRestTime(exercise.restSeconds);
+                setRestRemaining(exercise.restSeconds);
+                setIsResting(true);
+              }
             }
 
-            // Start auto rest timer
-            if (ex.restSeconds > 0) {
-              setTotalRestTime(ex.restSeconds);
-              setRestRemaining(ex.restSeconds);
-              setIsResting(true);
-            }
+            return { ...set, completed: willBeCompleted };
           }
 
-          return { ...set, completed: willBeCompleted };
+          // If uncompleting an earlier set, also uncomplete all subsequent sets
+          if (!willBeCompleted && sIdx > targetIndex) {
+            return { ...set, completed: false };
+          }
+
+          return set;
         });
 
-        return { ...ex, sets: updatedSets };
+        // If all sets in this exercise are now completed
+        const allCompletedNow = updatedSets.every((s) => s.completed);
+        if (allCompletedNow && willBeCompleted) {
+          sound.playLevelUp();
+        }
+
+        return { ...exercise, sets: updatedSets };
       });
     });
+  };
+
+  // Helper to validate exercise transition
+  const handleTryChangeExercise = (targetIndex: number) => {
+    if (targetIndex === currentExerciseIndex) return;
+
+    // Going backwards is always permitted
+    if (targetIndex < currentExerciseIndex) {
+      setCurrentExerciseIndex(targetIndex);
+      return;
+    }
+
+    // Advancing forward: check if current exercise is completed
+    const allSetsDone = currentExercise ? currentExercise.sets.every((s) => s.completed) : true;
+    if (allSetsDone) {
+      setCurrentExerciseIndex(targetIndex);
+    } else {
+      setShowSkipWarningModal(targetIndex);
+    }
   };
 
   // Helper to update weight or reps
@@ -475,6 +531,14 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
         </div>
       )}
 
+      {/* Sequential Set Warning Toast */}
+      {activeWarningToast && (
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 bg-[#18181b] border border-amber-500/60 text-amber-300 px-5 py-3 rounded-2xl shadow-[0_0_25px_rgba(245,158,11,0.4)] flex items-center gap-2.5 animate-in slide-in-from-top-3 font-mono font-bold text-xs">
+          <AlertCircle className="w-4 h-4 text-amber-400 shrink-0 animate-pulse" />
+          <span>{activeWarningToast}</span>
+        </div>
+      )}
+
       {/* Main Content Area */}
       <div className="max-w-4xl mx-auto w-full px-4 sm:px-6 py-6 flex-1 flex flex-col gap-6">
         
@@ -487,7 +551,7 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
               <button
                 key={ex.id}
                 id={`btn-ex-tab-${idx}`}
-                onClick={() => setCurrentExerciseIndex(idx)}
+                onClick={() => handleTryChangeExercise(idx)}
                 className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-mono font-bold whitespace-nowrap transition-all border ${
                   isSelected
                     ? 'bg-cyan-500 text-neutral-950 border-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.35)]'
@@ -540,7 +604,7 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
                 <button
                   id="btn-prev-exercise"
                   disabled={currentExerciseIndex === 0}
-                  onClick={() => setCurrentExerciseIndex((prev) => Math.max(0, prev - 1))}
+                  onClick={() => handleTryChangeExercise(currentExerciseIndex - 1)}
                   className="px-3.5 py-2 rounded-2xl bg-white/5 hover:bg-white/10 text-neutral-300 disabled:opacity-30 disabled:pointer-events-none text-xs font-mono font-semibold flex items-center gap-1 transition-colors border border-white/5"
                 >
                   <ChevronLeft className="w-4 h-4" /> {t.prevExercise}
@@ -548,8 +612,12 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
                 <button
                   id="btn-next-exercise"
                   disabled={currentExerciseIndex === exercises.length - 1}
-                  onClick={() => setCurrentExerciseIndex((prev) => Math.min(exercises.length - 1, prev + 1))}
-                  className="px-3.5 py-2 rounded-2xl bg-white/5 hover:bg-white/10 text-neutral-300 disabled:opacity-30 disabled:pointer-events-none text-xs font-mono font-semibold flex items-center gap-1 transition-colors border border-white/5"
+                  onClick={() => handleTryChangeExercise(currentExerciseIndex + 1)}
+                  className={`px-3.5 py-2 rounded-2xl text-xs font-mono font-semibold flex items-center gap-1 transition-all border ${
+                    currentExercise.sets.every((s) => s.completed)
+                      ? 'bg-cyan-500 text-neutral-950 border-cyan-400 shadow-[0_0_12px_rgba(6,182,212,0.4)] animate-pulse'
+                      : 'bg-white/5 hover:bg-white/10 text-neutral-300 disabled:opacity-30 border-white/5'
+                  }`}
                 >
                   {t.nextExercise} <ChevronRight className="w-4 h-4" />
                 </button>
@@ -579,31 +647,49 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
               </div>
 
               <div className="space-y-3">
-                {currentExercise.sets.map((set, setIdx) => {
-                  const estimated1rm = Math.round(
-                    set.actualWeightKg / (1.0278 - 0.0278 * Math.min(10, set.actualReps || 1))
-                  );
+                {(() => {
+                  const activeSetIdx = currentExercise.sets.findIndex((s) => !s.completed);
 
-                  return (
-                    <div
-                      key={set.id}
-                      className={`grid grid-cols-12 gap-2 items-center p-3.5 rounded-2xl border transition-all ${
-                        set.completed
-                          ? 'bg-cyan-500/10 border-cyan-500/30 text-cyan-100 shadow-[0_0_15px_rgba(6,182,212,0.1)]'
-                          : 'bg-white/5 border-white/5 text-white'
-                      }`}
-                    >
-                      {/* Set Number & Badge */}
-                      <div className="col-span-2 flex items-center gap-1.5">
-                        <span className="w-6 h-6 rounded-lg bg-white/10 text-neutral-200 font-mono font-bold text-xs flex items-center justify-center">
-                          {setIdx + 1}
-                        </span>
-                        {set.isWarmup && (
-                          <span className="text-[9px] font-mono font-extrabold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30">
-                            W
+                  return currentExercise.sets.map((set, setIdx) => {
+                    const estimated1rm = Math.round(
+                      set.actualWeightKg / (1.0278 - 0.0278 * Math.min(10, set.actualReps || 1))
+                    );
+                    const isCurrentActive = setIdx === activeSetIdx;
+                    const isLocked = !set.completed && activeSetIdx !== -1 && setIdx > activeSetIdx;
+
+                    return (
+                      <div
+                        key={set.id}
+                        className={`grid grid-cols-12 gap-2 items-center p-3.5 rounded-2xl border transition-all ${
+                          set.completed
+                            ? 'bg-cyan-500/10 border-cyan-500/30 text-cyan-100 shadow-[0_0_15px_rgba(6,182,212,0.1)]'
+                            : isCurrentActive
+                            ? 'bg-cyan-500/[0.05] border-cyan-500/60 ring-2 ring-cyan-500/30 text-white shadow-[0_0_20px_rgba(6,182,212,0.15)]'
+                            : isLocked
+                            ? 'bg-white/[0.02] border-white/5 text-neutral-400 opacity-70'
+                            : 'bg-white/5 border-white/5 text-white'
+                        }`}
+                      >
+                        {/* Set Number & Badge */}
+                        <div className="col-span-2 flex items-center gap-1.5">
+                          <span className={`w-6 h-6 rounded-lg font-mono font-bold text-xs flex items-center justify-center ${
+                            isCurrentActive
+                              ? 'bg-cyan-500 text-neutral-950 shadow-md shadow-cyan-500/40'
+                              : 'bg-white/10 text-neutral-200'
+                          }`}>
+                            {setIdx + 1}
                           </span>
-                        )}
-                      </div>
+                          {set.isWarmup && (
+                            <span className="text-[9px] font-mono font-extrabold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                              W
+                            </span>
+                          )}
+                          {isCurrentActive && (
+                            <span className="hidden md:inline-block text-[9px] font-mono font-black uppercase text-cyan-400 tracking-wider">
+                              ACTIVA
+                            </span>
+                          )}
+                        </div>
 
                       {/* Weight Adjuster (kg) */}
                       <div className="col-span-4 flex items-center justify-center gap-1.5">
@@ -678,7 +764,8 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
                       </div>
                     </div>
                   );
-                })}
+                });
+              })()}
               </div>
 
               {/* Add Set button */}
@@ -963,6 +1050,40 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
             >
               Entendido
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Skip Exercise Warning Modal */}
+      {showSkipWarningModal !== null && currentExercise && (
+        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-xl flex items-center justify-center p-4">
+          <div className="bg-[#121214] border border-amber-500/30 rounded-3xl p-6 max-w-sm w-full shadow-2xl text-center animate-in zoom-in-95">
+            <div className="w-12 h-12 rounded-2xl bg-amber-500/20 text-amber-400 flex items-center justify-center mx-auto mb-3 shadow-[0_0_15px_rgba(245,158,11,0.25)]">
+              <AlertTriangle className="w-6 h-6" />
+            </div>
+            <h3 className="font-display font-bold text-white text-lg">¿Avanzar de ejercicio?</h3>
+            <p className="text-xs text-neutral-400 mt-1.5 mb-5 leading-relaxed">
+              Aún tienes series sin completar en <span className="text-white font-bold">{currentExercise.name}</span>. ¿Deseas saltar al siguiente ejercicio de todos modos?
+            </p>
+            <div className="flex gap-2.5">
+              <button
+                onClick={() => setShowSkipWarningModal(null)}
+                className="flex-1 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-neutral-950 font-mono font-bold text-xs shadow-md transition-colors"
+              >
+                Completar Series
+              </button>
+              <button
+                id="btn-confirm-skip-exercise"
+                onClick={() => {
+                  const target = showSkipWarningModal;
+                  setShowSkipWarningModal(null);
+                  setCurrentExerciseIndex(target);
+                }}
+                className="flex-1 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-neutral-300 font-mono font-bold text-xs border border-white/10 transition-all"
+              >
+                Saltar Ejercicio
+              </button>
+            </div>
           </div>
         </div>
       )}
