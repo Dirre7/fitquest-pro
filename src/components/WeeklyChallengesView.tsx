@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import {
   Target,
   Flame,
@@ -7,35 +7,92 @@ import {
   Clock,
   Sparkles,
   CheckCircle2,
-  Plus,
   Award,
-  ChevronRight,
+  Dumbbell,
+  Calendar,
+  Zap,
+  Activity
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
-import { CommunityChallenge, Language } from '../types';
+import { CommunityChallenge, Language, WorkoutHistoryEntry, UserProfile } from '../types';
 import { translations } from '../lib/i18n';
 import { sound } from '../lib/soundFx';
 
 interface WeeklyChallengesViewProps {
   challenges: CommunityChallenge[];
+  user?: UserProfile;
+  history?: WorkoutHistoryEntry[];
   lang: Language;
-  onJoinChallenge: (challengeId: string) => void;
-  onContribute: (challengeId: string, amount: number) => void;
+  onJoinChallenge?: (challengeId: string) => void;
+  onContribute?: (challengeId: string, amount: number) => void;
   onClaimReward: (challengeId: string, rewardXp: number) => void;
 }
 
 export const WeeklyChallengesView: React.FC<WeeklyChallengesViewProps> = ({
   challenges,
+  user,
+  history = [],
   lang,
   onJoinChallenge,
-  onContribute,
   onClaimReward,
 }) => {
   const t = translations[lang];
 
-  const [contributeAmount, setContributeAmount] = useState<{ [id: string]: number }>({});
+  // Calculate days/hours left until Sunday 23:59:59
+  const [timeLeft, setTimeLeft] = useState<{ days: number; hours: number; mins: number }>({ days: 6, hours: 12, mins: 30 });
 
-  const handleClaim = (challenge: CommunityChallenge) => {
+  useEffect(() => {
+    const updateCountdown = () => {
+      const now = new Date();
+      const day = now.getDay(); // 0 is Sunday
+      const daysUntilSunday = day === 0 ? 0 : 7 - day;
+      const targetSunday = new Date(now);
+      targetSunday.setDate(now.getDate() + daysUntilSunday);
+      targetSunday.setHours(23, 59, 59, 999);
+
+      const diffMs = Math.max(0, targetSunday.getTime() - now.getTime());
+      const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const mins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+
+      setTimeLeft({ days, hours, mins });
+    };
+
+    updateCountdown();
+    const interval = setInterval(updateCountdown, 60000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Compute real user stats for current week (Monday 00:00:00 to now)
+  const mondayMidnight = (() => {
+    const d = new Date();
+    const day = d.getDay();
+    const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+    const monday = new Date(d.setDate(diff));
+    monday.setHours(0, 0, 0, 0);
+    return monday.getTime();
+  })();
+
+  const weekEntries = history.filter((h) => {
+    const entryTime = new Date(h.date).getTime();
+    return entryTime >= mondayMidnight || !isNaN(entryTime);
+  });
+
+  const weeklyVolumeKg = weekEntries.reduce((acc, h) => acc + (h.totalVolumeKg || 0), 0);
+  const weeklyWorkoutsCount = weekEntries.length;
+  const weeklyCalories = weekEntries.reduce((acc, h) => acc + (h.calories || 0), 0);
+
+  // Track claimed challenges state locally & persist
+  const [claimedIds, setClaimedIds] = useState<string[]>(() => {
+    try {
+      const data = localStorage.getItem('fitquest_claimed_challenges');
+      return data ? JSON.parse(data) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const handleClaim = (chId: string, rewardXp: number) => {
     sound.playLevelUp();
     try {
       confetti({
@@ -44,174 +101,193 @@ export const WeeklyChallengesView: React.FC<WeeklyChallengesViewProps> = ({
         origin: { y: 0.6 },
       });
     } catch {}
-    onClaimReward(challenge.id, challenge.rewardXp);
+    
+    const updated = [...claimedIds, chId];
+    setClaimedIds(updated);
+    localStorage.setItem('fitquest_claimed_challenges', JSON.stringify(updated));
+    onClaimReward(chId, rewardXp);
   };
 
-  const handleContributeSubmit = (challengeId: string) => {
-    const amount = contributeAmount[challengeId] || 25;
-    sound.playAchievement();
-    onContribute(challengeId, amount);
-    setContributeAmount((prev) => ({ ...prev, [challengeId]: 0 }));
-  };
+  // Predefined real dynamic weekly challenges
+  const activeChallenges = [
+    {
+      id: 'ch_weekly_volume_titan',
+      title: 'Levantamiento de Titán Semanal',
+      description: 'Acumula más de 20,000 kg de volumen total levantado en tus rutinas de esta semana.',
+      category: 'VOLUMEN',
+      icon: Dumbbell,
+      color: 'from-cyan-500 to-blue-600',
+      unit: 'kg',
+      goal: 20000,
+      userCurrent: weeklyVolumeKg,
+      rewardXp: 500,
+    },
+    {
+      id: 'ch_weekly_consistency_4',
+      title: 'Consistencia de Hierro (4 Días)',
+      description: 'Completa al menos 4 entrenamientos completos antes de la medianoche del domingo.',
+      category: 'SESIONES',
+      icon: Calendar,
+      color: 'from-emerald-500 to-teal-600',
+      unit: 'sesiones',
+      goal: 4,
+      userCurrent: weeklyWorkoutsCount,
+      rewardXp: 350,
+    },
+    {
+      id: 'ch_weekly_calorie_inferno',
+      title: 'Infierno Metabólico',
+      description: 'Quema 2,000 calorías acumuladas durante tus entrenamientos activos esta semana.',
+      category: 'CALORÍAS',
+      icon: Flame,
+      color: 'from-orange-500 to-amber-600',
+      unit: 'kcal',
+      goal: 2000,
+      userCurrent: weeklyCalories,
+      rewardXp: 400,
+    },
+  ];
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
       
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      {/* Header with real-time Sunday timer */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-white/5">
         <div>
           <div className="flex items-center gap-2">
-            <span className="text-xs font-black uppercase px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-              ⚔️ Retos Globales
+            <span className="text-xs font-mono font-black uppercase px-2.5 py-0.5 rounded-full bg-cyan-500/20 text-cyan-400 border border-cyan-500/30">
+              ⚔️ RETOS ACTIVOS
             </span>
-            <span className="text-xs font-bold text-neutral-400">
-              {challenges.length} Retos Activos Esta Semana
+            <span className="text-xs font-mono font-bold text-neutral-400">
+              Semana en Curso
             </span>
           </div>
-          <h2 className="font-display font-extrabold text-2xl sm:text-3xl text-white mt-1">
-            {t.weeklyChallenges}
+          <h2 className="font-display font-black text-2xl sm:text-3xl text-white mt-1">
+            Retos de la Comunidad
           </h2>
           <p className="text-xs sm:text-sm text-neutral-400 mt-0.5">
-            {t.challengesSubtitle}
+            El progreso se sincroniza automáticamente al completar tus entrenamientos.
           </p>
+        </div>
+
+        {/* Global Timer Badge */}
+        <div className="bg-[#121214] border border-cyan-500/30 rounded-2xl px-4 py-2 flex items-center gap-2.5 shadow-lg shrink-0">
+          <Clock className="w-4 h-4 text-cyan-400 animate-pulse" />
+          <div className="text-left">
+            <span className="text-[10px] font-mono uppercase text-neutral-400 block font-bold">Cierre de Retos:</span>
+            <span className="text-xs font-mono font-black text-cyan-300">
+              {timeLeft.days}d {timeLeft.hours}h {timeLeft.mins}m restantes
+            </span>
+          </div>
         </div>
       </div>
 
-      {/* Challenges List Cards */}
+      {/* Challenges Cards */}
       <div className="space-y-4">
-        {challenges.map((ch) => {
-          const percent = Math.min(100, Math.round((ch.currentProgress / ch.goalTarget) * 100));
+        {activeChallenges.map((ch) => {
+          const percent = Math.min(100, Math.round((ch.userCurrent / ch.goal) * 100));
           const isCompleted = percent >= 100;
+          const isClaimed = claimedIds.includes(ch.id);
+          const Icon = ch.icon;
 
           return (
             <div
               key={ch.id}
-              className="bg-neutral-900 border border-neutral-800 rounded-3xl p-5 sm:p-7 hover:border-emerald-500/40 transition-all shadow-xl space-y-5"
+              className={`bg-[#121214] border rounded-3xl p-5 sm:p-7 shadow-xl space-y-4 transition-all ${
+                isClaimed
+                  ? 'border-emerald-500/40 bg-emerald-950/[0.04]'
+                  : isCompleted
+                  ? 'border-cyan-500/60 ring-1 ring-cyan-500/30 shadow-[0_0_25px_rgba(6,182,212,0.15)]'
+                  : 'border-white/10 hover:border-white/20'
+              }`}
             >
-              {/* Top Row: Title, Category, Reward & Days Left */}
+              {/* Top Row: Info, Category, Reward & Status */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-black uppercase px-2.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
-                      {ch.category.toUpperCase()}
-                    </span>
-                    <span className="text-xs font-bold text-neutral-400 flex items-center gap-1">
-                      <Clock className="w-3.5 h-3.5 text-emerald-400" />
-                      {ch.daysRemaining} {t.daysLeft}
-                    </span>
-                    <span className="text-xs font-bold text-neutral-400 flex items-center gap-1">
-                      <Users className="w-3.5 h-3.5 text-cyan-400" />
-                      {ch.participantsCount.toLocaleString()} atletas
-                    </span>
+                <div className="flex items-start gap-3.5">
+                  <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${ch.color} flex items-center justify-center text-neutral-950 shrink-0 shadow-lg`}>
+                    <Icon className="w-6 h-6 stroke-[2.5]" />
                   </div>
-                  <h3 className="font-display font-extrabold text-xl sm:text-2xl text-white">
-                    {ch.title}
-                  </h3>
-                  <p className="text-xs sm:text-sm text-neutral-300 max-w-2xl leading-relaxed">
-                    {ch.description}
-                  </p>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[9px] font-mono font-black uppercase px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+                        {ch.category}
+                      </span>
+                      <span className="text-xs font-mono text-neutral-400">
+                        Objetivo: {ch.goal.toLocaleString()} {ch.unit}
+                      </span>
+                    </div>
+                    <h3 className="font-display font-black text-lg sm:text-xl text-white mt-1">
+                      {ch.title}
+                    </h3>
+                    <p className="text-xs text-neutral-300 max-w-xl leading-relaxed mt-0.5">
+                      {ch.description}
+                    </p>
+                  </div>
                 </div>
 
-                {/* Reward XP Badge & Join/Claim Action */}
-                <div className="flex items-center gap-3 shrink-0">
+                {/* Reward & Action Button */}
+                <div className="flex items-center gap-3 self-end sm:self-center shrink-0">
                   <div className="text-right">
-                    <span className="text-[11px] font-bold text-neutral-400 block">Recompensa</span>
-                    <span className="font-mono font-extrabold text-lg text-yellow-400">
+                    <span className="text-[10px] font-mono text-neutral-400 block uppercase font-bold">Recompensa</span>
+                    <span className="font-mono font-black text-base sm:text-lg text-yellow-400">
                       +{ch.rewardXp} XP
                     </span>
                   </div>
 
-                  {isCompleted ? (
+                  {isClaimed ? (
+                    <div className="px-4 py-2 rounded-2xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 text-xs font-mono font-bold flex items-center gap-1.5 shadow-inner">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                      <span>Reclamado</span>
+                    </div>
+                  ) : isCompleted ? (
                     <button
                       id={`btn-claim-ch-${ch.id}`}
-                      onClick={() => handleClaim(ch)}
-                      className="px-5 py-2.5 rounded-2xl bg-gradient-to-r from-amber-400 to-yellow-500 text-black font-extrabold text-xs shadow-lg shadow-amber-500/30 flex items-center gap-1.5 animate-bounce"
+                      onClick={() => handleClaim(ch.id, ch.rewardXp)}
+                      className="px-5 py-2.5 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-neutral-950 font-mono font-black text-xs shadow-lg shadow-cyan-500/30 flex items-center gap-1.5 animate-bounce transition-all hover:scale-105"
                     >
                       <Sparkles className="w-4 h-4 fill-current" />
-                      <span>{t.claimReward}</span>
+                      <span>Reclamar XP</span>
                     </button>
-                  ) : ch.joined ? (
-                    <span className="px-3.5 py-2 rounded-xl bg-emerald-950/40 text-emerald-400 border border-emerald-500/30 text-xs font-bold flex items-center gap-1.5">
-                      <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                      <span>{t.joined}</span>
-                    </span>
                   ) : (
-                    <button
-                      id={`btn-join-ch-${ch.id}`}
-                      onClick={() => {
-                        sound.playAchievement();
-                        onJoinChallenge(ch.id);
-                      }}
-                      className="px-5 py-2.5 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-black font-extrabold text-xs shadow-md transition-all hover:scale-105"
-                    >
-                      {t.joinChallenge}
-                    </button>
+                    <div className="px-3.5 py-1.5 rounded-2xl bg-white/5 border border-white/10 text-neutral-400 text-xs font-mono font-bold">
+                      <span>{percent}%</span>
+                    </div>
                   )}
                 </div>
               </div>
 
-              {/* Progress Bar & Goal stats */}
+              {/* Real Progress Bar */}
               <div>
-                <div className="flex justify-between text-xs font-bold text-neutral-300 mb-1.5">
-                  <span>
-                    {ch.currentProgress.toLocaleString()} / {ch.goalTarget.toLocaleString()} {ch.unit}
+                <div className="flex justify-between text-xs font-mono font-bold mb-1.5">
+                  <span className="text-neutral-300">
+                    Tu avance: <span className="text-white font-black">{ch.userCurrent.toLocaleString()}</span> / {ch.goal.toLocaleString()} {ch.unit}
                   </span>
-                  <span className="font-mono text-emerald-400 font-extrabold">{percent}%</span>
+                  <span className={`font-mono font-black ${isCompleted ? 'text-cyan-400' : 'text-neutral-400'}`}>
+                    {percent}%
+                  </span>
                 </div>
-                <div className="h-3 bg-neutral-800 rounded-full overflow-hidden p-0.5 border border-neutral-700/50">
+                <div className="h-2.5 bg-neutral-900 rounded-full overflow-hidden p-0.5 border border-white/5">
                   <div
-                    className="h-full bg-gradient-to-r from-emerald-500 via-teal-400 to-cyan-400 rounded-full transition-all duration-700 shadow"
+                    className={`h-full rounded-full transition-all duration-700 ${
+                      isCompleted
+                        ? 'bg-gradient-to-r from-cyan-500 to-blue-500 shadow-[0_0_12px_rgba(6,182,212,0.6)]'
+                        : 'bg-gradient-to-r from-cyan-500/80 to-blue-600/80'
+                    }`}
                     style={{ width: `${percent}%` }}
                   />
                 </div>
               </div>
 
-              {/* Contribute Action Row & Top Contributors */}
-              {ch.joined && (
-                <div className="pt-4 border-t border-neutral-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                  {/* Personal Logger */}
-                  <div className="flex items-center gap-2 w-full sm:w-auto">
-                    <span className="text-xs font-bold text-neutral-300 shrink-0">
-                      Registrar mi aporte:
-                    </span>
-                    <input
-                      type="number"
-                      placeholder="Ej. 25"
-                      value={contributeAmount[ch.id] ?? ''}
-                      onChange={(e) =>
-                        setContributeAmount({
-                          ...contributeAmount,
-                          [ch.id]: parseInt(e.target.value) || 0,
-                        })
-                      }
-                      className="w-20 px-3 py-1.5 bg-neutral-800 border border-neutral-700 rounded-xl text-xs text-white font-mono focus:border-emerald-500 focus:outline-none"
-                    />
-                    <button
-                      id={`btn-contribute-${ch.id}`}
-                      onClick={() => handleContributeSubmit(ch.id)}
-                      className="px-3 py-1.5 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-emerald-400 border border-neutral-700 text-xs font-bold flex items-center gap-1 transition-colors"
-                    >
-                      <Plus className="w-3.5 h-3.5" /> Sumar {ch.unit}
-                    </button>
-                  </div>
-
-                  {/* Leaderboard snippet of top contributors */}
-                  <div className="flex items-center gap-2">
-                    <span className="text-[11px] font-bold text-neutral-400">{t.topContributors}:</span>
-                    <div className="flex -space-x-2">
-                      {ch.leaderboardTop.map((leader, i) => (
-                        <img
-                          key={leader.userId}
-                          src={leader.avatar}
-                          alt={leader.name}
-                          title={`${leader.name}: ${leader.score.toLocaleString()} ${ch.unit}`}
-                          className="w-7 h-7 rounded-full object-cover border-2 border-neutral-900"
-                        />
-                      ))}
-                    </div>
-                  </div>
+              {/* Automatic sync badge footer */}
+              <div className="pt-2 border-t border-white/5 flex items-center justify-between text-[11px] font-mono text-neutral-400">
+                <div className="flex items-center gap-1.5 text-cyan-400/80">
+                  <Activity className="w-3.5 h-3.5" />
+                  <span>Sincronizado automáticamente con tus entrenamientos de esta semana</span>
                 </div>
-              )}
+                <span className="text-neutral-500">
+                  {ch.userCurrent >= ch.goal ? '¡Completado!' : `Faltan ${(ch.goal - ch.userCurrent).toLocaleString()} ${ch.unit}`}
+                </span>
+              </div>
             </div>
           );
         })}

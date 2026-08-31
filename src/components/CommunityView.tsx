@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { Target, Trophy, Sparkles } from 'lucide-react';
 import { CommunityChallenge, LeaderboardUser, Achievement, UserProfile, Language, WorkoutHistoryEntry } from '../types';
 import { WeeklyChallengesView } from './WeeklyChallengesView';
@@ -82,9 +82,9 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
       {subTab === 'challenges' && (
         <WeeklyChallengesView
           challenges={challenges}
+          user={user}
+          history={history}
           lang={lang}
-          onJoinChallenge={onJoinChallenge}
-          onContribute={onContribute}
           onClaimReward={onClaimReward}
         />
       )}
