@@ -265,7 +265,17 @@ export default function App() {
     FitStorage.saveChallenges(updatedChallenges);
     setChallenges(updatedChallenges);
 
-    // 5. Close active routine modal & show analytics
+    // 5. Update program progress if this routine was part of a multi-day plan
+    const allPrograms = FitStorage.getPrograms();
+    allPrograms.forEach((prog) => {
+      prog.days.forEach((d) => {
+        if (d.routine.id === entry.routineId || d.routine.title === entry.routineTitle) {
+          FitStorage.setProgramDayCompleted(prog.id, d.dayNumber);
+        }
+      });
+    });
+
+    // 6. Close active routine modal & show analytics
     setActiveRoutine(null);
     setActiveTab('analytics');
   };

@@ -80,6 +80,26 @@ export interface WorkoutRoutine {
   isCustom?: boolean;
 }
 
+export interface ProgramDay {
+  dayNumber: number;
+  title: string;
+  focus: string;
+  routine: WorkoutRoutine;
+  completed?: boolean;
+}
+
+export interface WorkoutProgram {
+  id: string;
+  title: string;
+  description: string;
+  daysPerWeek: number;
+  difficulty: 'Beginner' | 'Intermediate' | 'Advanced' | 'Elite';
+  category: 'Strength' | 'Hypertrophy' | 'HIIT' | 'Calisthenics';
+  targetMuscles: string[];
+  xpReward: number;
+  days: ProgramDay[];
+}
+
 export interface ActiveWorkoutState {
   routineId: string;
   routineTitle: string;

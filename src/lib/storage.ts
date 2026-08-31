@@ -1,6 +1,7 @@
 import {
   UserProfile,
   WorkoutRoutine,
+  WorkoutProgram,
   CommunityChallenge,
   Achievement,
   LeaderboardUser,
@@ -15,6 +16,7 @@ import {
   createFreshUser,
   createFreshAchievements,
   defaultRoutines,
+  defaultPrograms,
   defaultChallenges,
   defaultLeaderboard,
   defaultSmartwatch,
@@ -149,7 +151,10 @@ export class FitStorage {
   public static getRoutines(): WorkoutRoutine[] {
     try {
       const data = localStorage.getItem(KEYS.ROUTINES);
-      return data ? JSON.parse(data) : defaultRoutines;
+      if (!data) return defaultRoutines;
+      const parsed: WorkoutRoutine[] = JSON.parse(data);
+      const custom = parsed.filter((r) => r.isCustom);
+      return [...defaultRoutines, ...custom];
     } catch {
       return defaultRoutines;
     }
@@ -160,6 +165,29 @@ export class FitStorage {
       localStorage.setItem(KEYS.ROUTINES, JSON.stringify(routines));
     } catch (e) {
       console.error('Failed to save routines', e);
+    }
+  }
+
+  public static getPrograms(): WorkoutProgram[] {
+    return defaultPrograms;
+  }
+
+  public static getProgramProgress(): { [progId: string]: number } {
+    try {
+      const data = localStorage.getItem('fitquest_program_progress');
+      return data ? JSON.parse(data) : {};
+    } catch {
+      return {};
+    }
+  }
+
+  public static setProgramDayCompleted(progId: string, dayNumber: number) {
+    try {
+      const current = this.getProgramProgress();
+      current[progId] = Math.max(current[progId] || 0, dayNumber);
+      localStorage.setItem('fitquest_program_progress', JSON.stringify(current));
+    } catch (e) {
+      console.error(e);
     }
   }
 
