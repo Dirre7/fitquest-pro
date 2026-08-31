@@ -8,6 +8,7 @@ import {
   LeaderboardUser,
   SmartwatchDevice,
   PushReminder,
+  ActiveWorkoutState,
   Language,
   ThemeMode,
 } from './types';
@@ -22,6 +23,7 @@ import { Navbar } from './components/Navbar';
 import { DashboardView } from './components/DashboardView';
 import { WorkoutCatalogView } from './components/WorkoutCatalogView';
 import { ActiveWorkoutTracker } from './components/ActiveWorkoutTracker';
+import { ActiveWorkoutMiniBar } from './components/ActiveWorkoutMiniBar';
 import { LeaderboardView } from './components/LeaderboardView';
 import { WeeklyChallengesView } from './components/WeeklyChallengesView';
 import { AchievementsView } from './components/AchievementsView';
@@ -43,9 +45,10 @@ export default function App() {
   const [smartwatch, setSmartwatch] = useState<SmartwatchDevice>(FitStorage.getSmartwatch());
   const [reminders, setReminders] = useState<PushReminder[]>(FitStorage.getReminders());
 
-  // App Settings
+  // App Settings & Active Session
   const [activeTab, setActiveTab] = useState<string>('dashboard');
   const [activeRoutine, setActiveRoutine] = useState<WorkoutRoutine | null>(null);
+  const [activeSession, setActiveSession] = useState<ActiveWorkoutState | null>(() => FitStorage.getActiveSession());
   const [lang, setLang] = useState<Language>(FitStorage.getLanguage());
   const [theme, setTheme] = useState<ThemeMode>(FitStorage.getTheme());
   const [isSoundMuted, setIsSoundMuted] = useState<boolean>(sound.getMuted());
@@ -128,10 +131,66 @@ export default function App() {
   // Handle Routine Start
   const handleStartRoutine = (routine: WorkoutRoutine) => {
     setActiveRoutine(routine);
+    if (!activeSession || activeSession.routineId !== routine.id) {
+      const initialSession: ActiveWorkoutState = {
+        routineId: routine.id,
+        routineTitle: routine.title,
+        routineCategory: routine.category,
+        startTime: Date.now(),
+        elapsedSeconds: 0,
+        currentExerciseIndex: 0,
+        exercises: JSON.parse(JSON.stringify(routine.exercises)),
+        isResting: false,
+        restTimeRemaining: 0,
+        totalRestTime: 60,
+        isPaused: false,
+        liveHeartRate: smartwatch.liveHeartRate || 135,
+        activeCalories: 0,
+        notes: '',
+      };
+      setActiveSession(initialSession);
+      FitStorage.saveActiveSession(initialSession);
+    }
+  };
+
+  // Handle Minimize to floating background bar
+  const handleMinimizeWorkout = (state: ActiveWorkoutState) => {
+    setActiveSession(state);
+    FitStorage.saveActiveSession(state);
+    setActiveRoutine(null);
+  };
+
+  // Handle Resume from floating mini bar
+  const handleResumeWorkout = () => {
+    if (!activeSession) return;
+    const foundRoutine = routines.find((r) => r.id === activeSession.routineId) || {
+      id: activeSession.routineId,
+      title: activeSession.routineTitle,
+      description: 'Sesión activa en curso',
+      category: (activeSession.routineCategory as any) || 'Strength',
+      difficulty: 'Intermediate',
+      durationMinutes: 45,
+      estimatedCalories: 400,
+      xpReward: 300,
+      exercises: activeSession.exercises,
+      targetMuscles: ['Full Body'],
+      tags: ['Custom'],
+    };
+    setActiveRoutine(foundRoutine);
+  };
+
+  // Handle Discard Workout
+  const handleDiscardWorkout = () => {
+    FitStorage.clearActiveSession();
+    setActiveSession(null);
+    setActiveRoutine(null);
   };
 
   // Handle Workout Complete from ActiveWorkoutTracker
   const handleCompleteWorkout = (entry: WorkoutHistoryEntry, xpGained: number) => {
+    FitStorage.clearActiveSession();
+    setActiveSession(null);
+
     // 1. Add history entry (persists to Firestore if logged in)
     FitStorage.addHistoryEntry(entry, user);
     const updatedHistory = FitStorage.getHistory();
@@ -479,12 +538,25 @@ export default function App() {
         )}
       </main>
 
+      {/* Floating Active Workout Mini Bar (when workout is minimized in background) */}
+      {!activeRoutine && activeSession && (
+        <ActiveWorkoutMiniBar
+          session={activeSession}
+          onMaximize={handleResumeWorkout}
+          onDiscard={handleDiscardWorkout}
+        />
+      )}
+
       {/* Active Workout Tracker Fullscreen Overlay */}
       {activeRoutine && (
         <ActiveWorkoutTracker
           routine={activeRoutine}
+          user={user}
           smartwatch={smartwatch}
           lang={lang}
+          initialState={activeSession}
+          onMinimize={handleMinimizeWorkout}
+          onDiscard={handleDiscardWorkout}
           onClose={() => setActiveRoutine(null)}
           onComplete={handleCompleteWorkout}
         />

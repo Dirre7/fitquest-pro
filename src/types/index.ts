@@ -83,6 +83,7 @@ export interface WorkoutRoutine {
 export interface ActiveWorkoutState {
   routineId: string;
   routineTitle: string;
+  routineCategory?: string;
   startTime: number;
   elapsedSeconds: number;
   currentExerciseIndex: number;

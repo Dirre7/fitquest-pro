@@ -7,6 +7,7 @@ import {
   SmartwatchDevice,
   PushReminder,
   WorkoutHistoryEntry,
+  ActiveWorkoutState,
   ThemeMode,
   Language,
 } from '../types';
@@ -39,6 +40,7 @@ const KEYS = {
   TEXT_SIZE: 'fitquest_text_size',
   LAST_CLOUD_SYNC: 'fitquest_last_cloud_sync',
   IS_OFFLINE: 'fitquest_is_offline',
+  ACTIVE_SESSION: 'fitquest_active_session',
 };
 
 export class FitStorage {
@@ -267,6 +269,35 @@ export class FitStorage {
       localStorage.setItem(KEYS.HISTORY, JSON.stringify(history));
     } catch (e) {
       console.error('Failed to save history', e);
+    }
+  }
+
+  public static getActiveSession(): ActiveWorkoutState | null {
+    try {
+      const data = localStorage.getItem(KEYS.ACTIVE_SESSION);
+      return data ? JSON.parse(data) : null;
+    } catch {
+      return null;
+    }
+  }
+
+  public static saveActiveSession(session: ActiveWorkoutState | null) {
+    try {
+      if (session) {
+        localStorage.setItem(KEYS.ACTIVE_SESSION, JSON.stringify(session));
+      } else {
+        localStorage.removeItem(KEYS.ACTIVE_SESSION);
+      }
+    } catch (e) {
+      console.error('Failed to save active session', e);
+    }
+  }
+
+  public static clearActiveSession() {
+    try {
+      localStorage.removeItem(KEYS.ACTIVE_SESSION);
+    } catch (e) {
+      console.error('Failed to clear active session', e);
     }
   }
 

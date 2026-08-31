@@ -20,6 +20,9 @@ import {
   CheckCircle2,
   Trophy,
   Calculator,
+  Minimize2,
+  Trash2,
+  AlertTriangle,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import {
@@ -29,16 +32,20 @@ import {
   UserProfile,
   SmartwatchDevice,
   WorkoutHistoryEntry,
+  ActiveWorkoutState,
   Language,
 } from '../types';
 import { translations } from '../lib/i18n';
 import { sound } from '../lib/soundFx';
+import { FitStorage } from '../lib/storage';
 
 interface ActiveWorkoutTrackerProps {
   routine: WorkoutRoutine;
   user?: UserProfile;
   smartwatch: SmartwatchDevice;
   lang: Language;
+  initialState?: ActiveWorkoutState | null;
+  onMinimize?: (state: ActiveWorkoutState) => void;
   onFinishWorkout?: (
     completedRoutine: WorkoutRoutine,
     historyEntry: WorkoutHistoryEntry,
@@ -47,6 +54,7 @@ interface ActiveWorkoutTrackerProps {
   ) => void;
   onComplete?: (historyEntry: WorkoutHistoryEntry, xpGained: number) => void;
   onClose: () => void;
+  onDiscard?: () => void;
 }
 
 export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
@@ -54,40 +62,108 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
   user,
   smartwatch,
   lang,
+  initialState,
+  onMinimize,
   onFinishWorkout,
   onComplete,
   onClose,
+  onDiscard,
 }) => {
   const t = translations[lang];
 
-  // Clone routine for active state
+  // Clone routine or resume from initialState
   const [exercises, setExercises] = useState<Exercise[]>(() => {
+    if (initialState && initialState.exercises && initialState.exercises.length > 0) {
+      return initialState.exercises;
+    }
     return JSON.parse(JSON.stringify(routine.exercises));
   });
 
-  const [currentExerciseIndex, setCurrentExerciseIndex] = useState<number>(0);
-  const [elapsedSeconds, setElapsedSeconds] = useState<number>(0);
-  const [isPaused, setIsPaused] = useState<boolean>(false);
+  const [currentExerciseIndex, setCurrentExerciseIndex] = useState<number>(() => {
+    return initialState ? initialState.currentExerciseIndex : 0;
+  });
+  const [elapsedSeconds, setElapsedSeconds] = useState<number>(() => {
+    return initialState ? initialState.elapsedSeconds : 0;
+  });
+  const [isPaused, setIsPaused] = useState<boolean>(() => {
+    return initialState ? initialState.isPaused : false;
+  });
 
   // Rest timer
-  const [isResting, setIsResting] = useState<boolean>(false);
-  const [restRemaining, setRestRemaining] = useState<number>(0);
-  const [totalRestTime, setTotalRestTime] = useState<number>(60);
+  const [isResting, setIsResting] = useState<boolean>(() => {
+    return initialState ? initialState.isResting : false;
+  });
+  const [restRemaining, setRestRemaining] = useState<number>(() => {
+    return initialState ? initialState.restTimeRemaining : 0;
+  });
+  const [totalRestTime, setTotalRestTime] = useState<number>(() => {
+    return initialState ? initialState.totalRestTime : 60;
+  });
 
-  // Summary modal
+  // Summary and confirmation modals
   const [showSummaryModal, setShowSummaryModal] = useState<boolean>(false);
+  const [showDiscardConfirm, setShowDiscardConfirm] = useState<boolean>(false);
   const [rating, setRating] = useState<number>(5);
-  const [notes, setNotes] = useState<string>('');
+  const [notes, setNotes] = useState<string>(() => initialState?.notes || '');
   const [unlockedPrs, setUnlockedPrs] = useState<string[]>([]);
   const [showPrNotification, setShowPrNotification] = useState<string | null>(null);
 
   // Active biometrics
-  const [liveCalories, setLiveCalories] = useState<number>(0);
+  const [liveCalories, setLiveCalories] = useState<number>(() => initialState?.activeCalories || 0);
 
   // 1RM Strength Calculator Modal
   const [show1rmModal, setShow1rmModal] = useState<boolean>(false);
   const [calcWeight, setCalcWeight] = useState<number>(80);
   const [calcReps, setCalcReps] = useState<number>(8);
+
+  // Sync state continuously to FitStorage for safe background persistence
+  useEffect(() => {
+    const currentState: ActiveWorkoutState = {
+      routineId: routine.id,
+      routineTitle: routine.title,
+      routineCategory: routine.category,
+      startTime: initialState?.startTime || (Date.now() - elapsedSeconds * 1000),
+      elapsedSeconds,
+      currentExerciseIndex,
+      exercises,
+      isResting,
+      restTimeRemaining: restRemaining,
+      totalRestTime,
+      isPaused,
+      liveHeartRate: smartwatch.liveHeartRate || 135,
+      activeCalories: liveCalories,
+      notes,
+    };
+    FitStorage.saveActiveSession(currentState);
+  }, [elapsedSeconds, currentExerciseIndex, exercises, isResting, restRemaining, totalRestTime, isPaused, liveCalories, notes, routine, smartwatch.liveHeartRate, initialState]);
+
+  const handleMinimize = () => {
+    const currentState: ActiveWorkoutState = {
+      routineId: routine.id,
+      routineTitle: routine.title,
+      routineCategory: routine.category,
+      startTime: initialState?.startTime || (Date.now() - elapsedSeconds * 1000),
+      elapsedSeconds,
+      currentExerciseIndex,
+      exercises,
+      isResting,
+      restTimeRemaining: restRemaining,
+      totalRestTime,
+      isPaused,
+      liveHeartRate: smartwatch.liveHeartRate || 135,
+      activeCalories: liveCalories,
+      notes,
+    };
+    FitStorage.saveActiveSession(currentState);
+    if (onMinimize) onMinimize(currentState);
+    onClose();
+  };
+
+  const handleConfirmDiscard = () => {
+    FitStorage.clearActiveSession();
+    if (onDiscard) onDiscard();
+    onClose();
+  };
 
   // Active workout timer loop
   useEffect(() => {
@@ -272,6 +348,8 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
       notes,
     };
 
+    FitStorage.clearActiveSession();
+
     if (onComplete) {
       onComplete(historyEntry, xpGained);
     }
@@ -347,6 +425,17 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
             <Calculator className="w-4 h-4" />
           </button>
 
+          {/* Minimize / Exit to Home while keeping workout active */}
+          <button
+            id="btn-workout-minimize"
+            onClick={handleMinimize}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-400 text-xs font-mono font-bold transition-all hover:scale-105"
+            title="Minimizar y volver al menú principal"
+          >
+            <Minimize2 className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Minimizar</span>
+          </button>
+
           {/* Pause / Play Toggle */}
           <button
             id="btn-workout-pause"
@@ -361,19 +450,19 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
           <button
             id="btn-workout-finish"
             onClick={handleOpenFinish}
-            className="px-4 py-2 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-neutral-950 font-mono font-bold text-xs shadow-lg shadow-cyan-500/25 transition-all hover:scale-105 active:scale-95"
+            className="px-3.5 sm:px-4 py-2 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-neutral-950 font-mono font-bold text-xs shadow-lg shadow-cyan-500/25 transition-all hover:scale-105 active:scale-95"
           >
             {t.finishWorkout}
           </button>
 
-          {/* Close/Cancel session */}
+          {/* Discard session */}
           <button
-            id="btn-workout-close"
-            onClick={onClose}
-            className="p-2.5 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/5 text-neutral-400 hover:text-white transition-colors"
-            title={t.cancelWorkout}
+            id="btn-workout-discard"
+            onClick={() => setShowDiscardConfirm(true)}
+            className="p-2.5 rounded-2xl bg-white/5 hover:bg-red-500/20 border border-white/5 text-neutral-400 hover:text-red-400 transition-colors"
+            title="Descartar entrenamiento"
           >
-            <X className="w-4 h-4" />
+            <Trash2 className="w-4 h-4" />
           </button>
         </div>
       </div>
@@ -874,6 +963,36 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
             >
               Entendido
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Discard Workout Confirmation Modal */}
+      {showDiscardConfirm && (
+        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-xl flex items-center justify-center p-4">
+          <div className="bg-[#121214] border border-red-500/30 rounded-3xl p-6 max-w-sm w-full shadow-2xl text-center animate-in zoom-in-95">
+            <div className="w-12 h-12 rounded-2xl bg-red-500/20 text-red-400 flex items-center justify-center mx-auto mb-3 shadow-[0_0_15px_rgba(239,68,68,0.3)]">
+              <AlertTriangle className="w-6 h-6" />
+            </div>
+            <h3 className="font-display font-bold text-white text-lg">¿Descartar entrenamiento?</h3>
+            <p className="text-xs text-neutral-400 mt-1.5 mb-5 leading-relaxed">
+              Se cancelará la sesión actual y no se guardarán las series ni la XP de hoy.
+            </p>
+            <div className="flex gap-2.5">
+              <button
+                onClick={() => setShowDiscardConfirm(false)}
+                className="flex-1 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-neutral-300 font-mono font-bold text-xs border border-white/5 transition-colors"
+              >
+                Continuar Sesión
+              </button>
+              <button
+                id="btn-confirm-discard-workout"
+                onClick={handleConfirmDiscard}
+                className="flex-1 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 text-white font-mono font-bold text-xs shadow-lg shadow-red-500/25 transition-all"
+              >
+                Sí, Descartar
+              </button>
+            </div>
           </div>
         </div>
       )}
