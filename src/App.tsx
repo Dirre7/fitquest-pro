@@ -24,6 +24,7 @@ import { ActiveWorkoutTracker } from './components/ActiveWorkoutTracker';
 import { LeaderboardView } from './components/LeaderboardView';
 import { WeeklyChallengesView } from './components/WeeklyChallengesView';
 import { AchievementsView } from './components/AchievementsView';
+import { CommunityView } from './components/CommunityView';
 import { AnalyticsView } from './components/AnalyticsView';
 import { SmartwatchView } from './components/SmartwatchView';
 import { CloudAndSettingsView } from './components/CloudAndSettingsView';
@@ -406,30 +407,18 @@ export default function App() {
           />
         )}
 
-        {activeTab === 'challenges' && (
-          <WeeklyChallengesView
+        {(activeTab === 'community' || activeTab === 'challenges' || activeTab === 'leaderboard' || activeTab === 'achievements') && (
+          <CommunityView
             challenges={challenges}
-            lang={lang}
-            onJoinChallenge={handleJoinChallenge}
-            onContribute={handleContributeChallenge}
-            onClaimReward={handleClaimChallengeReward}
-          />
-        )}
-
-        {activeTab === 'leaderboard' && (
-          <LeaderboardView
-            users={leaderboard}
-            currentLeague={user.league}
-            lang={lang}
-          />
-        )}
-
-        {activeTab === 'achievements' && (
-          <AchievementsView
+            leaderboard={leaderboard}
             achievements={achievements}
             user={user}
             lang={lang}
-            onClaimXp={handleClaimAchievementXp}
+            initialSubTab={activeTab === 'leaderboard' ? 'leaderboard' : activeTab === 'achievements' ? 'achievements' : 'challenges'}
+            onJoinChallenge={handleJoinChallenge}
+            onContribute={handleContributeChallenge}
+            onClaimReward={handleClaimChallengeReward}
+            onClaimAchievementXp={handleClaimAchievementXp}
           />
         )}
 
