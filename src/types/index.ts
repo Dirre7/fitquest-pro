@@ -86,6 +86,8 @@ export interface WorkoutRoutine {
   targetMuscles: string[];
   tags: string[];
   isCustom?: boolean;
+  programId?: string;
+  programDayNumber?: number;
 }
 
 export interface ProgramDay {

@@ -254,8 +254,14 @@ export default function App() {
 
   // Handle Workout Complete from ActiveWorkoutTracker
   const handleCompleteWorkout = (entry: WorkoutHistoryEntry, xpGained: number) => {
+    // If completed workout belonged to a multi-day program, unlock the next day!
+    if (activeRoutine?.programId && activeRoutine?.programDayNumber) {
+      FitStorage.setProgramDayCompleted(activeRoutine.programId, activeRoutine.programDayNumber);
+    }
+
     FitStorage.clearActiveSession();
     setActiveSession(null);
+    setActiveRoutine(null);
 
     // 1. Add history entry (persists to Firestore if logged in)
     FitStorage.addHistoryEntry(entry, user);
