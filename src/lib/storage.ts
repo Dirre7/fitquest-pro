@@ -110,6 +110,19 @@ export class FitStorage {
       if (userSnap.exists()) {
         const cloudData = userSnap.data() as Partial<UserProfile>;
         const defaults = createFreshUser(uid, displayName || (email ? email.split('@')[0] : 'Atleta FitQuest'), email);
+        const existingLocalUser = this.getUser();
+        let existingLocalClaimed: string[] = [];
+        try {
+          const raw = localStorage.getItem('fitquest_claimed_challenges');
+          existingLocalClaimed = raw ? JSON.parse(raw) : [];
+        } catch {}
+
+        const mergedClaimed = Array.from(new Set([
+          ...(cloudData.claimedChallenges || []),
+          ...(existingLocalUser.claimedChallenges || []),
+          ...existingLocalClaimed,
+        ]));
+
         userProfile = {
           ...defaults,
           ...cloudData,
@@ -119,11 +132,11 @@ export class FitStorage {
           rankTitle: cloudData.rankTitle || defaults.rankTitle,
           weightKg: cloudData.weightKg ?? defaults.weightKg,
           targetWeightKg: cloudData.targetWeightKg ?? defaults.targetWeightKg,
-          claimedChallenges: cloudData.claimedChallenges || [],
+          claimedChallenges: mergedClaimed,
           claimedChallengesWeek: cloudData.claimedChallengesWeek,
         };
         try {
-          localStorage.setItem('fitquest_claimed_challenges', JSON.stringify(userProfile.claimedChallenges || []));
+          localStorage.setItem('fitquest_claimed_challenges', JSON.stringify(mergedClaimed));
         } catch {}
       } else {
         // Brand-new user: initialize from zero

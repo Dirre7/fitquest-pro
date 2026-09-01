@@ -212,7 +212,17 @@ export const WeeklyChallengesView: React.FC<WeeklyChallengesViewProps> = ({
         {activeChallenges.map((ch) => {
           const percent = Math.min(100, Math.round((ch.userCurrent / ch.goal) * 100));
           const isCompleted = percent >= 100;
-          const isClaimed = claimedList.includes(ch.id);
+          const isClaimed = 
+            claimedList.includes(ch.id) || 
+            (user?.claimedChallenges || []).includes(ch.id) ||
+            (() => {
+              try {
+                const stored = localStorage.getItem('fitquest_claimed_challenges');
+                return stored ? JSON.parse(stored).includes(ch.id) : false;
+              } catch {
+                return false;
+              }
+            })();
           const Icon = ch.icon;
 
           return (
