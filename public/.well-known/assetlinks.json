@@ -1,1 +1,8 @@
-[{"relation":["delegate_permission/common.handle_all_urls"],"target":{"namespace":"android_app","package_name":"app.vercel.fitquest_pro_eta.twa","sha256_cert_fingerprints":["9E:F2:F2:78:E5:6D:77:4F:9E:C0:0C:6D:76:73:C0:7E:6D:0F:78:2D:33:6C:5B:EC:3E:91:0F:4C:E6:89:D2:C3"]}}]
+[{
+  "relation": ["delegate_permission/common.handle_all_urls"],
+  "target": {
+    "namespace": "android_app",
+    "package_name": "app.vercel.fitquest_pro_eta.twa",
+    "sha256_cert_fingerprints": ["F5:15:1A:AD:C3:49:34:8A:ED:E9:F1:21:A3:91:47:9A:C6:49:13:A5:9B:F0:36:95:D7:22:05:F2:86:22:F5:CF"]
+  }
+}]
