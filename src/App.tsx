@@ -34,6 +34,7 @@ import { CloudAndSettingsView } from './components/CloudAndSettingsView';
 import { AuthModal } from './components/AuthModal';
 import { AuthScreen } from './components/AuthScreen';
 import { ProfileEditModal } from './components/ProfileEditModal';
+import { QuickStartModal } from './components/QuickStartModal';
 
 export default function App() {
   // Global States loaded from FitStorage
@@ -63,6 +64,7 @@ export default function App() {
   const [isGuestMode, setIsGuestMode] = useState<boolean>(false);
   const [authModalOpen, setAuthModalOpen] = useState<boolean>(false);
   const [authLoading, setAuthLoading] = useState<boolean>(true);
+  const [quickStartModalOpen, setQuickStartModalOpen] = useState<boolean>(false);
 
   const t = translations[lang];
 
@@ -437,13 +439,7 @@ export default function App() {
         unreadNotifications={reminders.filter((r) => r.enabled).length}
         onOpenNotifications={() => setActiveTab('settings')}
         onOpenProfileModal={() => setProfileModalOpen(true)}
-        onOpenQuickStart={() => {
-          if (routines.length > 0) {
-            handleStartRoutine(routines[0]);
-          } else {
-            setActiveTab('routines');
-          }
-        }}
+        onOpenQuickStart={() => setQuickStartModalOpen(true)}
         lang={lang}
         setLang={(l) => {
           setLang(l);
@@ -489,6 +485,7 @@ export default function App() {
             lang={lang}
             onStartRoutine={handleStartRoutine}
             onNavigateTab={setActiveTab}
+            onOpenQuickStart={() => setQuickStartModalOpen(true)}
           />
         )}
 
@@ -612,6 +609,16 @@ export default function App() {
           }}
         />
       )}
+
+      {/* Quick Start Session Selector Modal */}
+      <QuickStartModal
+        isOpen={quickStartModalOpen}
+        onClose={() => setQuickStartModalOpen(false)}
+        routines={routines}
+        lang={lang}
+        onStartRoutine={handleStartRoutine}
+        onNavigateCatalog={() => setActiveTab('routines')}
+      />
     </div>
   );
 }

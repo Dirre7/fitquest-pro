@@ -34,6 +34,7 @@ interface DashboardViewProps {
   lang: Language;
   onStartRoutine: (routine: WorkoutRoutine) => void;
   onNavigateTab: (tab: string) => void;
+  onOpenQuickStart?: () => void;
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
@@ -44,6 +45,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   lang,
   onStartRoutine,
   onNavigateTab,
+  onOpenQuickStart,
 }) => {
   const t = translations[lang];
 
@@ -115,10 +117,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </div>
             </div>
 
-            <div className="bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 px-3.5 py-1.5 rounded-full text-xs font-mono font-bold uppercase tracking-wider shadow-[0_0_12px_rgba(6,182,212,0.15)] flex items-center gap-2 self-start sm:self-center">
-              <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
-              <span>SESIÓN EN VIVO</span>
-            </div>
+            <button
+              id="btn-dashboard-start-workout"
+              onClick={onOpenQuickStart ? onOpenQuickStart : () => onNavigateTab('routines')}
+              className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-neutral-950 px-4 py-2 rounded-2xl text-xs font-mono font-black uppercase tracking-wider shadow-[0_0_20px_rgba(6,182,212,0.4)] flex items-center gap-2 self-start sm:self-center transition-all hover:scale-105 active:scale-95 cursor-pointer"
+            >
+              <Zap className="w-3.5 h-3.5 fill-current animate-pulse" />
+              <span>INICIAR ENTRENAMIENTO</span>
+            </button>
           </div>
 
           {/* Goal Ring + Metrics Grid */}
