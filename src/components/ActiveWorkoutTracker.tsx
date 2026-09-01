@@ -41,6 +41,7 @@ import {
 import { translations } from '../lib/i18n';
 import { sound } from '../lib/soundFx';
 import { FitStorage } from '../lib/storage';
+import { ExerciseSelectorModal } from './ExerciseSelectorModal';
 
 interface ActiveWorkoutTrackerProps {
   routine: WorkoutRoutine;
@@ -120,6 +121,15 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
   const [show1rmModal, setShow1rmModal] = useState<boolean>(false);
   const [calcWeight, setCalcWeight] = useState<number>(80);
   const [calcReps, setCalcReps] = useState<number>(8);
+  const [addExerciseModalOpen, setAddExerciseModalOpen] = useState<boolean>(false);
+
+  const handleAddLiveExercises = (newExercises: Exercise[]) => {
+    sound.playLevelUp();
+    const updated = [...exercises, ...newExercises];
+    setExercises(updated);
+    setCurrentExerciseIndex(exercises.length);
+    setAddExerciseModalOpen(false);
+  };
 
   // Sync state continuously to FitStorage for safe background persistence
   useEffect(() => {
@@ -591,6 +601,17 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
               </button>
             );
           })}
+
+          {/* Add Exercise on the Fly Button */}
+          <button
+            id="btn-workout-add-exercise"
+            onClick={() => setAddExerciseModalOpen(true)}
+            className="flex items-center gap-1.5 px-3.5 py-2 sm:py-2.5 rounded-2xl text-xs font-mono font-bold whitespace-nowrap bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 hover:border-cyan-500/50 transition-all shrink-0 shadow-sm"
+            title="Añadir o crear un nuevo ejercicio en caliente"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>Añadir Ejercicio</span>
+          </button>
         </div>
 
         {/* Current Exercise Detail Card */}
@@ -1154,6 +1175,16 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
           </div>
         </div>
       )}
+
+      {/* Add / Create Exercise Modal while Workout is Active */}
+      <ExerciseSelectorModal
+        isOpen={addExerciseModalOpen}
+        onClose={() => setAddExerciseModalOpen(false)}
+        onSelectExercises={handleAddLiveExercises}
+        title="Añadir Ejercicios al Entrenamiento"
+        buttonLabel="Añadir a la Sesión"
+        allowMultiSelect={true}
+      />
     </div>
   );
 };

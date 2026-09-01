@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Zap,
   Activity,
@@ -12,9 +12,10 @@ import {
   ArrowRight,
   Shield
 } from 'lucide-react';
-import { WorkoutRoutine, Language } from '../types';
+import { WorkoutRoutine, Exercise, Language } from '../types';
 import { translations } from '../lib/i18n';
 import { sound } from '../lib/soundFx';
+import { ExerciseSelectorModal } from './ExerciseSelectorModal';
 
 interface QuickStartModalProps {
   isOpen: boolean;
@@ -33,86 +34,54 @@ export const QuickStartModal: React.FC<QuickStartModalProps> = ({
   onStartRoutine,
   onNavigateCatalog,
 }) => {
+  const [selectorModalOpen, setSelectorModalOpen] = useState<boolean>(false);
+  const [selectorCategory, setSelectorCategory] = useState<string>('all');
+  const [selectorTitle, setSelectorTitle] = useState<string>('Seleccionar Ejercicios');
+  const [selectorMode, setSelectorMode] = useState<'cardio' | 'strength'>('strength');
+
   if (!isOpen) return null;
 
   const t = translations[lang];
 
-  // Start Free Running session
-  const handleStartFreeRun = () => {
-    sound.playLevelUp();
-    const freeRunRoutine: WorkoutRoutine = {
-      id: `quick_run_${Date.now()}`,
-      title: 'Carrera & Cardio Libre',
-      description: 'Sesión aeróbica para registrar distancia (km), tiempo y telemetría cardíaca en vivo.',
-      category: 'Cardio',
-      difficulty: 'Intermediate',
-      durationMinutes: 30,
-      estimatedCalories: 350,
-      xpReward: 250,
-      targetMuscles: ['Cardio', 'Piernas', 'Resistencia'],
-      tags: ['Running', 'Cinta', 'Cardio Libre', 'Zona 2'],
-      isCustom: true,
-      exercises: [
-        {
-          id: 'ex_free_run_1',
-          name: 'Carrera en Cinta o Exterior (GPS)',
-          muscleGroup: 'Cardio',
-          equipment: 'None',
-          restSeconds: 0,
-          instructions: 'Registra los kilómetros recorridos en cada tramo y el tiempo total empleado.',
-          tip: 'Mantén una cadencia estable de 160-180 pasos por minuto para máxima eficiencia.',
-          sets: [
-            {
-              id: 's_run_1',
-              setNumber: 1,
-              targetReps: 1,
-              actualReps: 1,
-              targetWeightKg: 5.0,
-              actualWeightKg: 5.0,
-              completed: false,
-            },
-          ],
-        },
-      ],
-    };
-
-    onStartRoutine(freeRunRoutine);
-    onClose();
+  // Open Cardio exercise picker
+  const handleOpenCardioPicker = () => {
+    sound.playBeep(750, 40);
+    setSelectorCategory('Cardio');
+    setSelectorTitle('Seleccionar Actividad de Cardio / Running');
+    setSelectorMode('cardio');
+    setSelectorModalOpen(true);
   };
 
-  // Start Free Gym session
-  const handleStartFreeGym = () => {
+  // Open Gym exercise picker
+  const handleOpenGymPicker = () => {
+    sound.playBeep(750, 40);
+    setSelectorCategory('all');
+    setSelectorTitle('Elige tus Ejercicios de Gimnasio');
+    setSelectorMode('strength');
+    setSelectorModalOpen(true);
+  };
+
+  // Callback when exercises are chosen or created
+  const handleExercisesSelected = (selectedExercises: Exercise[]) => {
     sound.playLevelUp();
-    const freeGymRoutine: WorkoutRoutine = {
-      id: `quick_gym_${Date.now()}`,
-      title: 'Entrenamiento Libre de Gimnasio',
-      description: 'Sesión abierta para registrar cualquier ejercicio y series libres.',
-      category: 'Strength',
+    const isCardio = selectorMode === 'cardio' || selectedExercises.every(e => e.muscleGroup === 'Cardio' || e.type === 'cardio');
+    const customRoutine: WorkoutRoutine = {
+      id: `custom_${isCardio ? 'cardio' : 'gym'}_${Date.now()}`,
+      title: isCardio ? (selectedExercises.length === 1 ? selectedExercises[0].name : 'Sesión de Cardio Libre') : 'Entrenamiento Libre de Gimnasio',
+      description: isCardio ? 'Sesión personalizada de cardio con medición de distancia y ritmo.' : 'Sesión personalizada con ejercicios seleccionados por el atleta.',
+      category: isCardio ? 'Cardio' : 'Strength',
       difficulty: 'Intermediate',
-      durationMinutes: 45,
-      estimatedCalories: 400,
-      xpReward: 300,
-      targetMuscles: ['Full Body'],
-      tags: ['Sesión Libre', 'Pesas', 'Gimnasio'],
+      durationMinutes: isCardio ? 35 : 50,
+      estimatedCalories: isCardio ? 380 : 420,
+      xpReward: isCardio ? 260 : 320,
+      targetMuscles: Array.from(new Set(selectedExercises.map(e => e.muscleGroup))),
+      tags: ['Sesión Personalizada', isCardio ? 'Cardio' : 'Fuerza'],
       isCustom: true,
-      exercises: [
-        {
-          id: 'ex_free_gym_1',
-          name: 'Press de Banca Plano con Barra',
-          muscleGroup: 'Chest',
-          equipment: 'Barbell',
-          restSeconds: 90,
-          instructions: 'Ejercicio inicial libre. Puedes agregar más series o cambiar de ejercicio.',
-          sets: [
-            { id: 's_gym_1', setNumber: 1, targetReps: 10, actualReps: 10, targetWeightKg: 60, actualWeightKg: 60, completed: false },
-            { id: 's_gym_2', setNumber: 2, targetReps: 10, actualReps: 10, targetWeightKg: 70, actualWeightKg: 70, completed: false },
-            { id: 's_gym_3', setNumber: 3, targetReps: 8, actualReps: 8, targetWeightKg: 80, actualWeightKg: 80, completed: false },
-          ],
-        },
-      ],
+      exercises: selectedExercises,
     };
 
-    onStartRoutine(freeGymRoutine);
+    onStartRoutine(customRoutine);
+    setSelectorModalOpen(false);
     onClose();
   };
 
@@ -158,7 +127,7 @@ export const QuickStartModal: React.FC<QuickStartModalProps> = ({
             {/* Action 1: Free Running */}
             <button
               id="btn-quick-free-run"
-              onClick={handleStartFreeRun}
+              onClick={handleOpenCardioPicker}
               className="p-4 rounded-2xl bg-gradient-to-br from-purple-900/40 to-indigo-900/40 border border-purple-500/40 hover:border-purple-400 flex flex-col text-left group transition-all hover:scale-[1.02] shadow-lg shadow-purple-900/20"
             >
               <div className="flex items-center justify-between mb-3">
@@ -173,14 +142,14 @@ export const QuickStartModal: React.FC<QuickStartModalProps> = ({
                 Carrera / Cardio Libre
               </h4>
               <p className="text-xs text-neutral-400 mt-1">
-                Running, cinta, elíptica o exterior con registro de distancia en km.
+                Elige correr en cinta, exterior, elíptica, bici o remo con medición en km.
               </p>
             </button>
 
             {/* Action 2: Free Gym Session */}
             <button
               id="btn-quick-free-gym"
-              onClick={handleStartFreeGym}
+              onClick={handleOpenGymPicker}
               className="p-4 rounded-2xl bg-gradient-to-br from-cyan-900/40 to-blue-900/40 border border-cyan-500/40 hover:border-cyan-400 flex flex-col text-left group transition-all hover:scale-[1.02] shadow-lg shadow-cyan-900/20"
             >
               <div className="flex items-center justify-between mb-3">
@@ -195,7 +164,7 @@ export const QuickStartModal: React.FC<QuickStartModalProps> = ({
                 Sesión Libre de Gimnasio
               </h4>
               <p className="text-xs text-neutral-400 mt-1">
-                Entrena por tu cuenta y registra tus ejercicios y pesos favoritos.
+                Selecciona de la biblioteca o escribe cualquier ejercicio nuevo al instante.
               </p>
             </button>
           </div>
@@ -265,6 +234,17 @@ export const QuickStartModal: React.FC<QuickStartModalProps> = ({
           </button>
         </div>
       </div>
+
+      {/* Dynamic Exercise Selector & Custom Creator Modal */}
+      <ExerciseSelectorModal
+        isOpen={selectorModalOpen}
+        onClose={() => setSelectorModalOpen(false)}
+        onSelectExercises={handleExercisesSelected}
+        initialCategory={selectorCategory}
+        title={selectorTitle}
+        buttonLabel="Comenzar Entrenamiento"
+        allowMultiSelect={true}
+      />
     </div>
   );
 };
