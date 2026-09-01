@@ -18,6 +18,7 @@ import { sound } from './lib/soundFx';
 import { auth, onAuthStateChanged, signOut as fbSignOut } from './lib/firebase';
 import { evaluateWeeklyLeagueReset, calculateRealStreak, calculateAthleteAttributes } from './lib/leagueEngine';
 import { evaluateAllAchievements } from './lib/achievementEngine';
+import { Smartphone } from 'lucide-react';
 
 // Components
 import { Navbar } from './components/Navbar';
@@ -66,8 +67,34 @@ export default function App() {
   const [authModalOpen, setAuthModalOpen] = useState<boolean>(false);
   const [authLoading, setAuthLoading] = useState<boolean>(true);
   const [quickStartModalOpen, setQuickStartModalOpen] = useState<boolean>(false);
+  const [isMobileLandscape, setIsMobileLandscape] = useState<boolean>(false);
 
   const t = translations[lang];
+
+  // Screen Orientation Lock & Landscape Detection for Mobile
+  useEffect(() => {
+    try {
+      if ('orientation' in window.screen && (window.screen.orientation as any)?.lock) {
+        (window.screen.orientation as any).lock('portrait-primary').catch(() => {});
+      }
+    } catch {}
+
+    const handleCheckOrientation = () => {
+      const isLandscape = window.innerWidth > window.innerHeight;
+      const isShortScreen = window.innerHeight < 520;
+      // Triggers strictly on smartphone-height landscape rotations
+      setIsMobileLandscape(isLandscape && isShortScreen);
+    };
+
+    handleCheckOrientation();
+    window.addEventListener('resize', handleCheckOrientation);
+    window.addEventListener('orientationchange', handleCheckOrientation);
+
+    return () => {
+      window.removeEventListener('resize', handleCheckOrientation);
+      window.removeEventListener('orientationchange', handleCheckOrientation);
+    };
+  }, []);
 
   // Listen to Firebase Auth state
   useEffect(() => {
@@ -656,6 +683,25 @@ export default function App() {
         onStartRoutine={handleStartRoutine}
         onNavigateCatalog={() => setActiveTab('routines')}
       />
+
+      {/* Mobile Landscape Orientation Guard Overlay */}
+      {isMobileLandscape && (
+        <div className="fixed inset-0 z-[99999] bg-[#09090b]/98 backdrop-blur-2xl flex flex-col items-center justify-center p-6 text-center animate-in fade-in">
+          <div className="w-14 h-14 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400 mb-3 shadow-[0_0_25px_rgba(6,182,212,0.3)] animate-pulse">
+            <Smartphone className="w-7 h-7 rotate-90 animate-bounce" />
+          </div>
+          <h3 className="font-display font-black text-lg text-white tracking-tight">
+            Modo Vertical Requerido
+          </h3>
+          <p className="text-xs text-neutral-400 mt-1 max-w-xs leading-relaxed">
+            Gira tu dispositivo a vertical para registrar tus series, cronómetro y cargas de entrenamiento con total comodidad.
+          </p>
+          <div className="mt-3 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-[10px] font-mono text-cyan-400 flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-ping" />
+            <span>FITQUEST PRO • EXPERIENCIA MÓVIL EN VERTICAL</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
