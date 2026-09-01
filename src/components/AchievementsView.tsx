@@ -43,10 +43,10 @@ export const AchievementsView: React.FC<AchievementsViewProps> = ({
 
   const categories = [
     { id: 'all', label: 'Todos' },
-    { id: 'strength', label: t.strength },
-    { id: 'consistency', label: 'Constancia' },
-    { id: 'speed', label: 'Velocidad & Watch' },
-    { id: 'social', label: 'Social & Duelos' },
+    { id: 'strength', label: '🏋️ Fuerza & Tonelaje' },
+    { id: 'consistency', label: '🔥 Constancia & Rachas' },
+    { id: 'speed', label: '🏃 Cardio & Running' },
+    { id: 'social', label: '👑 Retos & Maestría' },
   ];
 
   const getTierBadge = (tier: Achievement['tier']) => {

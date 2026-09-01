@@ -228,8 +228,22 @@ export class FitStorage {
 
   public static getAchievements(): Achievement[] {
     try {
+      const fresh = createFreshAchievements();
       const data = localStorage.getItem(KEYS.ACHIEVEMENTS);
-      return data ? JSON.parse(data) : createFreshAchievements();
+      if (!data) return fresh;
+      const parsed: Achievement[] = JSON.parse(data);
+      const parsedMap = new Map(parsed.map((a) => [a.id, a]));
+      // Merge with fresh list so all 35 achievements are present and updated
+      return fresh.map((base) => {
+        const stored = parsedMap.get(base.id);
+        if (!stored) return base;
+        return {
+          ...base,
+          currentProgress: stored.currentProgress || 0,
+          unlocked: stored.unlocked || false,
+          unlockedAt: stored.unlockedAt,
+        };
+      });
     } catch {
       return createFreshAchievements();
     }

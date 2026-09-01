@@ -17,6 +17,7 @@ import { translations } from './lib/i18n';
 import { sound } from './lib/soundFx';
 import { auth, onAuthStateChanged, signOut as fbSignOut } from './lib/firebase';
 import { evaluateWeeklyLeagueReset } from './lib/leagueEngine';
+import { evaluateAllAchievements } from './lib/achievementEngine';
 
 // Components
 import { Navbar } from './components/Navbar';
@@ -80,9 +81,15 @@ export default function App() {
           firebaseUser.displayName || undefined
         );
         const evaluated = evaluateWeeklyLeagueReset(cloudData.user, cloudData.history);
+        const evaluatedAch = evaluateAllAchievements(
+          evaluated.updatedUser,
+          cloudData.history,
+          cloudData.achievements || FitStorage.getAchievements(),
+          (cloudData.routines || []).filter((r) => r.isCustom).length
+        );
         setUser(evaluated.updatedUser);
         setHistory(cloudData.history);
-        setAchievements(cloudData.achievements);
+        setAchievements(evaluatedAch);
         setChallenges(cloudData.challenges);
         setRoutines(cloudData.routines);
       } else {
@@ -90,7 +97,14 @@ export default function App() {
         const localUser = FitStorage.getUser();
         const localHistory = FitStorage.getHistory();
         const evaluated = evaluateWeeklyLeagueReset(localUser, localHistory);
+        const evaluatedAch = evaluateAllAchievements(
+          evaluated.updatedUser,
+          localHistory,
+          FitStorage.getAchievements(),
+          FitStorage.getRoutines().filter((r) => r.isCustom).length
+        );
         setUser(evaluated.updatedUser);
+        setAchievements(evaluatedAch);
       }
       setAuthLoading(false);
     });
@@ -246,24 +260,13 @@ export default function App() {
 
     // 3. Check and unlock achievements
     const allAchievements = FitStorage.getAchievements();
-    const updatedAchievements = allAchievements.map((ach) => {
-      if (ach.id === 'ach_first_workout') {
-        return { ...ach, unlocked: true, currentProgress: 1 };
-      }
-      if (ach.id === 'ach_streak_3') {
-        const prog = Math.min(3, newStreak);
-        return { ...ach, currentProgress: prog, unlocked: prog >= 3 };
-      }
-      if (ach.id === 'ach_streak_7') {
-        const prog = Math.min(7, newStreak);
-        return { ...ach, currentProgress: prog, unlocked: prog >= 7 };
-      }
-      if (ach.id === 'ach_tonnage_10k') {
-        const nextProg = Math.min(10000, newTotalVolume);
-        return { ...ach, currentProgress: nextProg, unlocked: nextProg >= 10000 };
-      }
-      return ach;
-    });
+    const updatedAchievements = evaluateAllAchievements(
+      finalUser,
+      updatedHistory,
+      allAchievements,
+      routines.filter((r) => r.isCustom).length,
+      challenges.filter((c) => c.joined && c.currentProgress >= c.goalTarget).length
+    );
     FitStorage.saveAchievements(updatedAchievements);
     setAchievements(updatedAchievements);
 
