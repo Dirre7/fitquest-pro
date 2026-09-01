@@ -95,16 +95,34 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
-  // Sync theme to document body
+  // Sync theme to document root
   useEffect(() => {
     const root = document.documentElement;
-    if (theme === 'dark') {
-      root.classList.add('dark');
+    if (theme === 'oled') {
+      root.classList.add('oled-mode');
     } else {
-      root.classList.remove('dark');
+      root.classList.remove('oled-mode');
     }
     FitStorage.saveTheme(theme);
   }, [theme]);
+
+  // Sync High Contrast to document root (without CSS filter that breaks fixed position)
+  useEffect(() => {
+    const root = document.documentElement;
+    if (highContrast) {
+      root.classList.add('high-contrast');
+    } else {
+      root.classList.remove('high-contrast');
+    }
+    FitStorage.saveHighContrast(highContrast);
+  }, [highContrast]);
+
+  // Sync Text Size dynamically to document root
+  useEffect(() => {
+    const root = document.documentElement;
+    root.setAttribute('data-text-size', textSize);
+    FitStorage.saveTextSize(textSize);
+  }, [textSize]);
 
   // Auth Success Callback
   const handleAuthSuccess = async (userId: string, name: string, email?: string) => {
@@ -408,9 +426,7 @@ export default function App() {
 
   return (
     <div
-      className={`min-h-screen bg-neutral-950 text-neutral-100 font-sans selection:bg-cyan-500 selection:text-black pb-24 sm:pb-28 transition-colors ${
-        highContrast ? 'contrast-125 border-neutral-600' : ''
-      } ${textSizeClass}`}
+      className="min-h-screen bg-neutral-950 text-neutral-100 font-sans selection:bg-cyan-500 selection:text-black pb-24 sm:pb-28 transition-colors"
     >
       {/* Top Main Navigation */}
       <Navbar

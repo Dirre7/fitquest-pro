@@ -1,6 +1,6 @@
 export type Language = 'es' | 'en' | 'pt' | 'fr' | 'de';
 
-export type ThemeMode = 'dark' | 'light' | 'auto';
+export type ThemeMode = 'cyberpunk' | 'oled' | 'dark' | 'light';
 
 export type League = 'Bronze' | 'Silver' | 'Gold' | 'Diamond' | 'Titan';
 

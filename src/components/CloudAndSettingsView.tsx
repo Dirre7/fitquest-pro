@@ -380,25 +380,37 @@ export const CloudAndSettingsView: React.FC<CloudAndSettingsViewProps> = ({
           
           {/* Visual Theme */}
           <div className="p-4 rounded-2xl bg-neutral-800/60 border border-neutral-700/60 space-y-2">
-            <label className="text-xs font-bold text-neutral-300 block">{t.theme}</label>
+            <label className="text-xs font-bold text-neutral-300 block">Tema Visual</label>
             <div className="grid grid-cols-2 gap-2">
               <button
-                onClick={() => setTheme('dark')}
-                className={`py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 border ${
-                  theme === 'dark' ? 'bg-emerald-500 text-black border-emerald-400' : 'bg-neutral-700 text-neutral-300 border-neutral-600'
+                id="btn-theme-cyberpunk"
+                onClick={() => {
+                  setTheme('cyberpunk');
+                  sound.playAchievement();
+                }}
+                className={`py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 border transition-all ${
+                  theme === 'cyberpunk' || theme === 'dark'
+                    ? 'bg-cyan-500 text-neutral-950 border-cyan-400 shadow-[0_0_12px_rgba(6,182,212,0.4)]'
+                    : 'bg-neutral-700 text-neutral-300 border-neutral-600 hover:bg-neutral-600'
+                }`}
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>Cyberpunk</span>
+              </button>
+              <button
+                id="btn-theme-oled"
+                onClick={() => {
+                  setTheme('oled');
+                  sound.playAchievement();
+                }}
+                className={`py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 border transition-all ${
+                  theme === 'oled'
+                    ? 'bg-cyan-500 text-neutral-950 border-cyan-400 shadow-[0_0_12px_rgba(6,182,212,0.4)]'
+                    : 'bg-neutral-700 text-neutral-300 border-neutral-600 hover:bg-neutral-600'
                 }`}
               >
                 <Moon className="w-3.5 h-3.5" />
-                <span>{t.themeDark}</span>
-              </button>
-              <button
-                onClick={() => setTheme('light')}
-                className={`py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 border ${
-                  theme === 'light' ? 'bg-emerald-500 text-black border-emerald-400' : 'bg-neutral-700 text-neutral-300 border-neutral-600'
-                }`}
-              >
-                <Sun className="w-3.5 h-3.5" />
-                <span>{t.themeLight}</span>
+                <span>OLED Black</span>
               </button>
             </div>
           </div>

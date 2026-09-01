@@ -83,3 +83,37 @@
 .shadow-amber-glow {
   box-shadow: 0 0 12px rgba(245, 158, 11, 0.4);
 }
+
+/* Dynamic Text Size Scaling across the whole app */
+html[data-text-size="normal"] {
+  font-size: 16px;
+}
+html[data-text-size="large"] {
+  font-size: 18px;
+}
+html[data-text-size="xlarge"] {
+  font-size: 20px;
+}
+
+/* OLED Pure Black Mode */
+html.oled-mode, html.oled-mode body {
+  background-color: #000000 !important;
+}
+html.oled-mode .bg-\[\#09090b\],
+html.oled-mode .bg-\[\#121214\],
+html.oled-mode .bg-neutral-950,
+html.oled-mode .bg-neutral-900 {
+  background-color: #000000 !important;
+}
+
+/* High Contrast Mode (Pure contrast WITHOUT breaking fixed positioning) */
+html.high-contrast {
+  --tw-border-opacity: 0.8;
+}
+html.high-contrast .border-white\/5,
+html.high-contrast .border-white\/10 {
+  border-color: rgba(6, 182, 212, 0.5) !important;
+}
+html.high-contrast .text-neutral-400 {
+  color: #f4f4f5 !important;
+}
