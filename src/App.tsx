@@ -431,8 +431,18 @@ export default function App() {
     setUser(updatedUser);
   };
 
-  // Handle Claim Challenge Reward
+  // Handle Claim Challenge Reward (Cloud Synced to avoid duplicate claims)
   const handleClaimChallengeReward = (challengeId: string, rewardXp: number) => {
+    const existingClaimed = user.claimedChallenges || [];
+    if (existingClaimed.includes(challengeId)) {
+      return; // Already claimed on another device!
+    }
+
+    const updatedClaimed = [...existingClaimed, challengeId];
+    try {
+      localStorage.setItem('fitquest_claimed_challenges', JSON.stringify(updatedClaimed));
+    } catch {}
+
     const updated = challenges.map((c) =>
       c.id === challengeId ? { ...c, rewardClaimed: true } : c
     );
@@ -442,9 +452,10 @@ export default function App() {
     const updatedUser = FitStorage.addXp(rewardXp, user);
     const finalUser: UserProfile = {
       ...updatedUser,
+      claimedChallenges: updatedClaimed,
       stats: {
         ...updatedUser.stats,
-        challengesCompleted: updatedUser.stats.challengesCompleted + 1,
+        challengesCompleted: (updatedUser.stats.challengesCompleted || 0) + 1,
       },
     };
     FitStorage.saveUser(finalUser);

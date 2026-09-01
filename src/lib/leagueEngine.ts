@@ -208,16 +208,19 @@ export function evaluateWeeklyLeagueReset(
     message = `Has descendido a la Liga ${newLeague}. ¡Esta semana es tu oportunidad de remontar!`;
   }
 
-  // Update user with new league and reset league points
+  // Update user with new league, reset league points, and reset claimed weekly challenges
   const updatedUser: UserProfile = {
     ...user,
     league: newLeague,
     leaguePoints: 0,
+    claimedChallenges: [],
+    claimedChallengesWeek: currentWeek,
     xp: user.xp + rewardXp,
   };
 
   FitStorage.saveUser(updatedUser);
   localStorage.setItem('fitquest_last_league_week', currentWeek);
+  localStorage.removeItem('fitquest_claimed_challenges');
 
   return {
     updatedUser,

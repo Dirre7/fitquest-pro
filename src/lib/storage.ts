@@ -119,7 +119,12 @@ export class FitStorage {
           rankTitle: cloudData.rankTitle || defaults.rankTitle,
           weightKg: cloudData.weightKg ?? defaults.weightKg,
           targetWeightKg: cloudData.targetWeightKg ?? defaults.targetWeightKg,
+          claimedChallenges: cloudData.claimedChallenges || [],
+          claimedChallengesWeek: cloudData.claimedChallengesWeek,
         };
+        try {
+          localStorage.setItem('fitquest_claimed_challenges', JSON.stringify(userProfile.claimedChallenges || []));
+        } catch {}
       } else {
         // Brand-new user: initialize from zero
         userProfile = createFreshUser(uid, displayName || (email ? email.split('@')[0] : 'Nuevo Atleta'), email);

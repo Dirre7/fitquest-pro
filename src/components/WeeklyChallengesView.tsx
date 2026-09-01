@@ -83,17 +83,24 @@ export const WeeklyChallengesView: React.FC<WeeklyChallengesViewProps> = ({
   const weeklyCalories = weekEntries.reduce((acc, h) => acc + (h.calories || 0), 0);
   const weeklyDistanceKm = Math.round(weekEntries.reduce((acc, h) => acc + (h.totalDistanceKm || 0), 0) * 10) / 10;
 
-  // Track claimed challenges state locally & persist
-  const [claimedIds, setClaimedIds] = useState<string[]>(() => {
-    try {
-      const data = localStorage.getItem('fitquest_claimed_challenges');
-      return data ? JSON.parse(data) : [];
-    } catch {
-      return [];
-    }
-  });
+  // Cloud-synced claimed challenges from UserProfile + local cache fallback
+  const claimedIds = Array.from(
+    new Set([
+      ...(user.claimedChallenges || []),
+      ...(() => {
+        try {
+          const data = localStorage.getItem('fitquest_claimed_challenges');
+          return data ? JSON.parse(data) : [];
+        } catch {
+          return [];
+        }
+      })(),
+    ])
+  );
 
   const handleClaim = (chId: string, rewardXp: number) => {
+    if (claimedIds.includes(chId)) return;
+
     sound.playLevelUp();
     try {
       confetti({
@@ -104,7 +111,6 @@ export const WeeklyChallengesView: React.FC<WeeklyChallengesViewProps> = ({
     } catch {}
     
     const updated = [...claimedIds, chId];
-    setClaimedIds(updated);
     localStorage.setItem('fitquest_claimed_challenges', JSON.stringify(updated));
     onClaimReward(chId, rewardXp);
   };

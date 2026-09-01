@@ -40,6 +40,8 @@ export interface UserProfile {
   joinedAt: string;
   weightKg: number;
   targetWeightKg: number;
+  claimedChallenges?: string[];
+  claimedChallengesWeek?: string;
 }
 
 export interface ExerciseSet {
