@@ -93,7 +93,13 @@ export const QuickStartModal: React.FC<QuickStartModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-xl flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+    <div 
+      style={{ 
+        paddingTop: 'max(1rem, env(safe-area-inset-top, 0px))', 
+        paddingBottom: 'max(1rem, env(safe-area-inset-bottom, 0px))' 
+      }}
+      className="fixed inset-0 z-50 bg-black/85 backdrop-blur-xl flex items-center justify-center p-3 sm:p-4 overflow-y-auto"
+    >
       <div className="bg-[#121214] border border-cyan-500/30 rounded-3xl max-w-lg w-full shadow-2xl flex flex-col max-h-[90vh] animate-in zoom-in-95 overflow-hidden">
         
         {/* Modal Header */}

@@ -471,8 +471,11 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 bg-[#09090b]/95 backdrop-blur-2xl flex flex-col overflow-y-auto overflow-x-hidden w-full max-w-full">
-      {/* Top Session HUD Bar */}
-      <div className="sticky top-0 z-20 bg-[#121214]/95 backdrop-blur-xl border-b border-white/5 px-2.5 sm:px-6 py-2 sm:py-3 w-full max-w-full shadow-2xl">
+      {/* Top Session HUD Bar with iOS Safe Area */}
+      <div 
+        style={{ paddingTop: 'max(0.6rem, env(safe-area-inset-top, 0px))' }}
+        className="sticky top-0 z-20 bg-[#121214]/95 backdrop-blur-xl border-b border-white/5 px-2.5 sm:px-6 pb-2 sm:pb-3 w-full max-w-full shadow-2xl"
+      >
         <div className="max-w-4xl mx-auto flex items-center justify-between gap-1.5 sm:gap-4">
           
           {/* Left: Minimize / Back + Routine Info & Live Timer */}

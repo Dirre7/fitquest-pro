@@ -508,8 +508,11 @@ export default function App() {
         onSignOut={handleSignOut}
       />
 
-      {/* Main Content Container with bottom padding for the floating Liquid Glass dock */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-28 sm:pb-32">
+      {/* Main Content Container with bottom padding for the floating Liquid Glass dock and iOS Home Indicator */}
+      <main 
+        style={{ paddingBottom: 'calc(7.5rem + env(safe-area-inset-bottom, 0px))' }}
+        className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6"
+      >
         
         {/* Render Tab Views */}
         {activeTab === 'dashboard' && (

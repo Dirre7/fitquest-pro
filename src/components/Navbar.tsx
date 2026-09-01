@@ -117,8 +117,11 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   return (
     <>
-      {/* Top Header Bar */}
-      <header className="sticky top-0 z-40 bg-[#09090b]/95 backdrop-blur-xl border-b border-white/10 px-2.5 sm:px-6 lg:px-8 py-2 sm:py-2.5 transition-all w-full max-w-full overflow-x-hidden">
+      {/* Top Header Bar with iOS Safe Area support */}
+      <header 
+        style={{ paddingTop: 'max(0.6rem, env(safe-area-inset-top, 0px))' }}
+        className="sticky top-0 z-40 bg-[#09090b]/95 backdrop-blur-xl border-b border-white/10 px-2.5 sm:px-6 lg:px-8 pb-2 sm:pb-2.5 transition-all w-full max-w-full overflow-x-hidden"
+      >
         <div className="max-w-7xl mx-auto flex items-center justify-between gap-1.5 sm:gap-4">
           
           {/* Left: Logo & Brand Identity */}
@@ -291,7 +294,10 @@ export const Navbar: React.FC<NavbarProps> = ({
       </header>
 
       {/* Floating Liquid Glass Bottom Navigation Dock - 4 Master Buttons */}
-      <div className="fixed bottom-3 sm:bottom-6 left-0 right-0 mx-auto z-50 w-[92%] sm:w-auto max-w-md pointer-events-auto transform-gpu">
+      <div 
+        style={{ bottom: 'calc(0.75rem + env(safe-area-inset-bottom, 0px))' }}
+        className="fixed left-0 right-0 mx-auto z-50 w-[92%] sm:w-auto max-w-md pointer-events-auto transform-gpu"
+      >
         <nav 
           className="bg-[#121214]/95 backdrop-blur-2xl border border-white/15 rounded-2xl sm:rounded-full p-1.5 sm:p-2 shadow-[0_15px_50px_rgba(0,0,0,0.95),0_0_25px_rgba(6,182,212,0.25)] flex items-center justify-around sm:justify-center sm:gap-3"
           aria-label="Navegación principal inferior"
