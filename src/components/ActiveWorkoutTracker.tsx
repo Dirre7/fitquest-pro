@@ -243,6 +243,16 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
           setTimeout(() => setActiveWarningToast(null), 3000);
           return prevExercises;
         }
+
+        // If we were resting from previous set, stop rest timer
+        if (isResting) {
+          setIsResting(false);
+          setRestRemaining(0);
+        }
+      } else {
+        // If unchecking a set, stop any active rest timer
+        setIsResting(false);
+        setRestRemaining(0);
       }
 
       return prevExercises.map((exercise, exIdx) => {
@@ -805,16 +815,24 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
                         <div className="col-span-3 sm:col-span-3 flex justify-center">
                           <button
                             id={`btn-complete-set-${setIdx}`}
+                            disabled={isLocked}
                             onClick={() => handleToggleSet(set.id)}
                             className={`w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl flex items-center justify-center transition-all ${
                               set.completed
                                 ? 'bg-cyan-500 text-neutral-950 shadow-[0_0_15px_rgba(6,182,212,0.4)] scale-105'
                                 : isCurrentActive
-                                ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/40 hover:bg-cyan-500/30 animate-pulse'
+                                ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/50 hover:bg-cyan-500/30 animate-pulse shadow-[0_0_12px_rgba(6,182,212,0.2)]'
+                                : isLocked
+                                ? 'bg-white/[0.02] text-neutral-600 border border-white/5 cursor-not-allowed opacity-35'
                                 : 'bg-white/5 hover:bg-white/10 text-neutral-400 border border-white/10'
                             }`}
+                            title={isLocked ? "Bloqueada: Completa la serie anterior primero" : set.completed ? "Desmarcar serie" : "Completar serie"}
                           >
-                            <Check className="w-4 h-4 sm:w-5 sm:h-5 stroke-[3]" />
+                            {isLocked ? (
+                              <Lock className="w-3.5 h-3.5 sm:w-4 sm:h-4 opacity-60" />
+                            ) : (
+                              <Check className="w-4 h-4 sm:w-5 sm:h-5 stroke-[3]" />
+                            )}
                           </button>
                         </div>
                         </div>
