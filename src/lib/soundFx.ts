@@ -123,6 +123,11 @@ class SoundManager {
     this.vibrate([100, 60, 150]);
   }
 
+  public playWarning() {
+    this.playBeep(240, 300, 'sawtooth');
+    this.vibrate([150, 100, 150]);
+  }
+
   public vibrate(pattern: number | number[]) {
     if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
       try {

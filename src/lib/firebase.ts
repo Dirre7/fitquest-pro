@@ -3,9 +3,11 @@ import {
   getAuth, 
   signInWithPopup, 
   GoogleAuthProvider, 
+  OAuthProvider,
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword,
   signOut,
+  deleteUser,
   updateProfile,
   onAuthStateChanged,
   User
@@ -15,6 +17,7 @@ import {
   doc, 
   setDoc, 
   getDoc, 
+  deleteDoc,
   collection, 
   getDocs, 
   addDoc, 
@@ -47,16 +50,22 @@ export const db = config.firestoreDatabaseId
 export const googleProvider = new GoogleAuthProvider();
 googleProvider.setCustomParameters({ prompt: 'select_account' });
 
+export const appleProvider = new OAuthProvider('apple.com');
+appleProvider.addScope('email');
+appleProvider.addScope('name');
+
 export {
   signInWithPopup,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signOut,
+  deleteUser,
   updateProfile,
   onAuthStateChanged,
   doc,
   setDoc,
   getDoc,
+  deleteDoc,
   collection,
   getDocs,
   addDoc,

@@ -21,6 +21,10 @@ import {
   Sparkles,
   ShieldCheck,
   Send,
+  Trash2,
+  AlertTriangle,
+  LogOut,
+  ShieldAlert,
 } from 'lucide-react';
 import {
   PushReminder,
@@ -31,6 +35,7 @@ import {
 import { translations } from '../lib/i18n';
 import { FitStorage } from '../lib/storage';
 import { sound } from '../lib/soundFx';
+import { auth, signOut } from '../lib/firebase';
 
 interface CloudAndSettingsViewProps {
   user: UserProfile;
@@ -77,6 +82,23 @@ export const CloudAndSettingsView: React.FC<CloudAndSettingsViewProps> = ({
     typeof Notification !== 'undefined' ? Notification.permission : 'default'
   );
   const [testNotificationSent, setTestNotificationSent] = useState<boolean>(false);
+  const [showDeleteAccountModal, setShowDeleteAccountModal] = useState<boolean>(false);
+  const [isDeletingAccount, setIsDeletingAccount] = useState<boolean>(false);
+
+  // Sign out handler
+  const handleSignOut = async () => {
+    sound.playBeep(400, 100);
+    await signOut(auth);
+    window.location.reload();
+  };
+
+  // Delete account and data handler (Apple & GDPR compliance)
+  const handleDeleteAccount = async () => {
+    setIsDeletingAccount(true);
+    sound.playWarning();
+    await FitStorage.deleteUserAccountAndData();
+    window.location.reload();
+  };
 
   // Sync now action
   const handleCloudSync = () => {
@@ -423,6 +445,108 @@ export const CloudAndSettingsView: React.FC<CloudAndSettingsViewProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Account Security & Privacy Zone (App Store & GDPR Mandatory Compliance) */}
+      <div className="bg-[#121214] border border-red-500/20 rounded-3xl p-6 sm:p-8 space-y-6 shadow-xl relative overflow-hidden">
+        <div className="flex items-center justify-between gap-4 border-b border-white/5 pb-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-red-500/10 border border-red-500/30 flex items-center justify-center text-red-400 shadow-[0_0_15px_rgba(239,68,68,0.2)]">
+              <ShieldAlert className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="font-display font-black text-lg text-white">
+                Cuenta, Privacidad & Zona de Peligro
+              </h3>
+              <p className="text-xs text-neutral-400">
+                Gestión de sesión, control de privacidad y eliminación permanente de datos en la nube.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {/* Sign Out Action */}
+          <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 flex flex-col justify-between gap-3">
+            <div>
+              <h5 className="font-bold text-white text-xs">Cerrar Sesión Activa</h5>
+              <p className="text-[11px] text-neutral-400 mt-0.5">
+                Desconecta tu cuenta de este dispositivo. Tus entrenamientos seguirán guardados en la nube.
+              </p>
+            </div>
+            <button
+              onClick={handleSignOut}
+              className="w-full py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-neutral-200 border border-white/10 text-xs font-mono font-bold flex items-center justify-center gap-2 transition-colors"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              <span>Cerrar Sesión</span>
+            </button>
+          </div>
+
+          {/* Delete Account Action */}
+          <div className="p-4 rounded-2xl bg-red-950/20 border border-red-500/30 flex flex-col justify-between gap-3">
+            <div>
+              <h5 className="font-bold text-red-300 text-xs">Eliminar Cuenta y Todos los Datos</h5>
+              <p className="text-[11px] text-neutral-400 mt-0.5">
+                Borrado irreversible de tu usuario, historial en Firestore y registros en el servidor (GDPR / Apple Compliance).
+              </p>
+            </div>
+            <button
+              id="btn-delete-account"
+              onClick={() => setShowDeleteAccountModal(true)}
+              className="w-full py-2.5 rounded-xl bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-500/40 text-xs font-mono font-bold flex items-center justify-center gap-2 transition-colors"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>Eliminar Cuenta</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Delete Account Confirmation Modal */}
+      {showDeleteAccountModal && (
+        <div 
+          style={{ 
+            paddingTop: 'max(1rem, env(safe-area-inset-top, 0px))', 
+            paddingBottom: 'max(1rem, env(safe-area-inset-bottom, 0px))' 
+          }}
+          className="fixed inset-0 z-50 bg-black/85 backdrop-blur-xl flex items-center justify-center p-4 overflow-y-auto"
+        >
+          <div className="bg-[#121214] border border-red-500/40 rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl text-center animate-in zoom-in-95 relative overflow-hidden">
+            <div className="w-14 h-14 rounded-2xl bg-red-500/20 text-red-400 flex items-center justify-center mx-auto mb-4 shadow-[0_0_20px_rgba(239,68,68,0.3)]">
+              <AlertTriangle className="w-7 h-7" />
+            </div>
+            <h3 className="font-display font-black text-xl text-white">
+              ¿Eliminar cuenta definitivamente?
+            </h3>
+            <p className="text-xs text-neutral-300 mt-2 leading-relaxed">
+              Esta acción eliminará de forma **permanente e irreversible** tu cuenta de atleta, todas tus series registradas, estadísticas, niveles y logros en la base de datos de la nube.
+            </p>
+            <div className="mt-6 flex flex-col gap-2.5">
+              <button
+                disabled={isDeletingAccount}
+                onClick={handleDeleteAccount}
+                className="w-full py-3 rounded-2xl bg-red-600 hover:bg-red-500 text-white font-mono font-bold text-xs shadow-xl shadow-red-600/30 flex items-center justify-center gap-2 transition-all disabled:opacity-50"
+              >
+                {isDeletingAccount ? (
+                  <span className="animate-pulse">Borrando datos del servidor...</span>
+                ) : (
+                  <>
+                    <Trash2 className="w-4 h-4" />
+                    <span>Sí, Eliminar Cuenta y Datos</span>
+                  </>
+                )}
+              </button>
+              <button
+                disabled={isDeletingAccount}
+                onClick={() => setShowDeleteAccountModal(false)}
+                className="w-full py-3 rounded-2xl bg-white/5 hover:bg-white/10 text-neutral-300 font-mono font-bold text-xs border border-white/5 transition-colors"
+              >
+                Cancelar y Volver
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

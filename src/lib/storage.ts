@@ -23,8 +23,8 @@ import {
   defaultPushReminders,
   defaultWorkoutHistory,
 } from './initialData';
-import { db, auth } from './firebase';
-import { doc, getDoc, setDoc, collection, getDocs, addDoc, query, orderBy } from 'firebase/firestore';
+import { db, auth, deleteUser } from './firebase';
+import { doc, getDoc, setDoc, deleteDoc, collection, getDocs, addDoc, query, orderBy } from 'firebase/firestore';
 
 const KEYS = {
   USER: 'fitquest_user_profile',
@@ -550,6 +550,30 @@ export class FitStorage {
       return true;
     } catch (e) {
       console.error('Import failed', e);
+      return false;
+    }
+  }
+
+  public static async deleteUserAccountAndData(): Promise<boolean> {
+    try {
+      const currentUser = auth.currentUser;
+      if (currentUser) {
+        // 1. Delete Firestore user document
+        try {
+          const userDocRef = doc(db, 'users', currentUser.uid);
+          await deleteDoc(userDocRef);
+        } catch (dbErr) {
+          console.warn('Firestore doc deletion warning:', dbErr);
+        }
+        // 2. Delete Firebase Auth account
+        await deleteUser(currentUser);
+      }
+      // 3. Clear all Local Storage keys
+      localStorage.clear();
+      return true;
+    } catch (err) {
+      console.error('Failed to fully delete account from auth:', err);
+      localStorage.clear();
       return false;
     }
   }
