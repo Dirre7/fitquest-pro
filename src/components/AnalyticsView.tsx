@@ -104,36 +104,47 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
     { muscle: 'Core', value: 65 },
   ];
 
-  // Export JSON backup
+  // Export JSON backup (Full app restoration)
   const handleExportJson = () => {
     sound.playAchievement();
     const dataStr = FitStorage.exportAllData();
-    const blob = new Blob([dataStr], { type: 'application/json' });
+    const blob = new Blob([dataStr], { type: 'application/json;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `fitquest-pro-backup-${new Date().toISOString().split('T')[0]}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
-  // Export CSV for Excel
-  const handleExportCsv = () => {
-    sound.playAchievement();
-    let csvContent = 'data:text/csv;charset=utf-8,';
-    csvContent += 'Fecha,Rutina,Duracion (min),Volumen Total (kg),Calorias,FC Promedio (BPM),XP Ganada,Valoracion,Notas\n';
-    
-    history.forEach((h) => {
-      csvContent += `${h.date},"${h.routineTitle}",${h.durationMinutes},${h.totalVolumeKg},${h.calories},${h.avgHeartRate},${h.xpEarned},${h.rating},"${h.notes || ''}"\n`;
-    });
-
-    const encodedUri = encodeURI(csvContent);
     const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `fitquest-entrenamientos-${new Date().toISOString().split('T')[0]}.csv`);
+    link.href = url;
+    link.download = `fitquest-pro-backup-${new Date().toISOString().split('T')[0]}.json`;
+    link.target = '_blank';
     document.body.appendChild(link);
     link.click();
-    document.body.removeChild(link);
+    setTimeout(() => {
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }, 200);
+  };
+
+  // Export CSV for Excel / Google Sheets / Apple Numbers with UTF-8 BOM
+  const handleExportCsv = () => {
+    sound.playAchievement();
+    let csv = '\uFEFFFecha,Rutina,Duracion_Minutos,Volumen_Total_Kg,Calorias,Distancia_Km,XP_Ganada,Valoracion,Notas\n';
+    
+    history.forEach((h) => {
+      const cleanTitle = (h.routineTitle || 'Entrenamiento').replace(/"/g, '""');
+      const cleanNotes = (h.notes || '').replace(/"/g, '""');
+      csv += `"${h.date}","${cleanTitle}",${h.durationMinutes || 0},${h.totalVolumeKg || 0},${h.calories || 0},${(h.totalDistanceKm || 0).toFixed(2)},${h.xpEarned || 0},${h.rating || 5},"${cleanNotes}"\n`;
+    });
+
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `fitquest-entrenamientos-${new Date().toISOString().split('T')[0]}.csv`;
+    link.target = '_blank';
+    document.body.appendChild(link);
+    link.click();
+    setTimeout(() => {
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }, 200);
   };
 
   return (
