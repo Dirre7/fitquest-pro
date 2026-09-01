@@ -57,10 +57,17 @@ export class FitStorage {
 
   public static saveUser(user: UserProfile) {
     try {
-      localStorage.setItem(KEYS.USER, JSON.stringify(user));
+      const currentAuthUser = auth.currentUser;
+      const userToSave: UserProfile = {
+        ...user,
+        ...(currentAuthUser ? { id: currentAuthUser.uid } : {}),
+      };
+      localStorage.setItem(KEYS.USER, JSON.stringify(userToSave));
       // Auto-sync to firestore if logged in
-      if (auth.currentUser && auth.currentUser.uid === user.id) {
-        this.syncUserToCloud(user).catch(console.error);
+      if (currentAuthUser) {
+        this.syncUserToCloud(userToSave).catch((err) => {
+          console.error('Firestore auto-sync error:', err);
+        });
       }
     } catch (e) {
       console.error('Failed to save user', e);
@@ -69,10 +76,12 @@ export class FitStorage {
 
   public static async syncUserToCloud(user: UserProfile) {
     try {
-      if (!auth.currentUser) return;
-      const userRef = doc(db, 'users', auth.currentUser.uid);
+      const currentAuthUser = auth.currentUser;
+      if (!currentAuthUser) return;
+      const userRef = doc(db, 'users', currentAuthUser.uid);
       await setDoc(userRef, {
         ...user,
+        id: currentAuthUser.uid,
         updatedAt: new Date().toISOString(),
       }, { merge: true });
       localStorage.setItem(KEYS.LAST_CLOUD_SYNC, new Date().toISOString());
@@ -99,9 +108,18 @@ export class FitStorage {
       let challengesList = defaultChallenges;
 
       if (userSnap.exists()) {
-        userProfile = userSnap.data() as UserProfile;
-        // Ensure id is synced
-        userProfile.id = uid;
+        const cloudData = userSnap.data() as Partial<UserProfile>;
+        const defaults = createFreshUser(uid, displayName || (email ? email.split('@')[0] : 'Atleta FitQuest'), email);
+        userProfile = {
+          ...defaults,
+          ...cloudData,
+          id: uid,
+          name: cloudData.name || defaults.name,
+          avatar: cloudData.avatar || defaults.avatar,
+          rankTitle: cloudData.rankTitle || defaults.rankTitle,
+          weightKg: cloudData.weightKg ?? defaults.weightKg,
+          targetWeightKg: cloudData.targetWeightKg ?? defaults.targetWeightKg,
+        };
       } else {
         // Brand-new user: initialize from zero
         userProfile = createFreshUser(uid, displayName || (email ? email.split('@')[0] : 'Nuevo Atleta'), email);

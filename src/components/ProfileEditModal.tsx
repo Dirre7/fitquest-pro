@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import {
   User,
   Camera,
@@ -74,19 +74,41 @@ export const ProfileEditModal: React.FC<ProfileEditModalProps> = ({
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Check size (under 3MB)
-    if (file.size > 3 * 1024 * 1024) {
-      alert('La imagen no debe superar los 3 MB.');
-      return;
-    }
-
     const reader = new FileReader();
     reader.onload = (uploadEvent) => {
-      const result = uploadEvent.target?.result as string;
-      if (result) {
-        setAvatar(result);
-        sound.playAchievement();
-      }
+      const rawData = uploadEvent.target?.result as string;
+      if (!rawData) return;
+
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const maxSize = 300;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > maxSize) {
+            height = Math.round((height * maxSize) / width);
+            width = maxSize;
+          }
+        } else {
+          if (height > maxSize) {
+            width = Math.round((width * maxSize) / height);
+            height = maxSize;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+          const compressed = canvas.toDataURL('image/jpeg', 0.85);
+          setAvatar(compressed);
+          sound.playAchievement();
+        }
+      };
+      img.src = rawData;
     };
     reader.readAsDataURL(file);
   };
