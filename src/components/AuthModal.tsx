@@ -114,8 +114,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, lang, onS
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-xl flex items-center justify-center p-4">
-      <div className="bg-[#121214] border border-white/10 rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl relative overflow-hidden animate-in zoom-in-95">
+    <div 
+      style={{ 
+        paddingTop: 'max(1rem, env(safe-area-inset-top, 0px))', 
+        paddingBottom: 'max(1rem, env(safe-area-inset-bottom, 0px))' 
+      }}
+      className="fixed inset-0 z-50 bg-black/85 backdrop-blur-xl flex items-center justify-center p-3 sm:p-4 overflow-y-auto"
+    >
+      <div className="bg-[#121214] border border-white/10 rounded-3xl p-5 sm:p-8 max-w-md w-full shadow-2xl relative overflow-y-auto max-h-[92vh] animate-in zoom-in-95">
         {/* Glow ambient background */}
         <div className="absolute top-0 right-0 w-48 h-48 bg-cyan-500/10 blur-3xl pointer-events-none" />
         <div className="absolute bottom-0 left-0 w-48 h-48 bg-blue-600/10 blur-3xl pointer-events-none" />

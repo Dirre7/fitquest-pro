@@ -899,97 +899,109 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
 
       {/* Finish Workout Summary Modal */}
       {showSummaryModal && (
-        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-xl flex items-center justify-center p-4">
-          <div className="bg-[#121214] border border-white/10 rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl animate-in zoom-in-95 relative overflow-hidden">
+        <div 
+          style={{ 
+            paddingTop: 'max(1rem, env(safe-area-inset-top, 0px))', 
+            paddingBottom: 'max(1rem, env(safe-area-inset-bottom, 0px))' 
+          }}
+          className="fixed inset-0 z-50 bg-black/85 backdrop-blur-xl flex items-center justify-center p-3 sm:p-4 overflow-y-auto"
+        >
+          <div className="bg-[#121214] border border-white/10 rounded-3xl p-5 sm:p-7 max-w-lg w-full shadow-2xl animate-in zoom-in-95 relative overflow-hidden flex flex-col max-h-[90vh]">
             <div className="absolute top-0 right-0 w-48 h-48 bg-cyan-500/10 blur-3xl pointer-events-none" />
             
-            <div className="text-center mb-6 relative z-10">
-              <div className="w-16 h-16 rounded-3xl bg-gradient-to-tr from-cyan-500 to-blue-600 mx-auto flex items-center justify-center text-neutral-950 shadow-xl shadow-cyan-500/30 mb-3.5">
-                <Trophy className="w-8 h-8" />
-              </div>
-              <h3 className="font-display font-extrabold text-2xl text-white">
-                {t.workoutCompleted}
-              </h3>
-              <p className="text-sm text-neutral-400 mt-1">{routine.title}</p>
-            </div>
-
-            {/* Metrics Breakdown Grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6 relative z-10">
-              <div className="bg-white/5 p-3.5 rounded-2xl border border-white/5 text-center">
-                <span className="text-[10px] text-neutral-400 font-mono uppercase">{t.estimatedTime}</span>
-                <p className="text-base font-mono font-extrabold text-white mt-0.5">{formatTime(elapsedSeconds)}</p>
-              </div>
-              <div className="bg-white/5 p-3.5 rounded-2xl border border-white/5 text-center">
-                <span className="text-[10px] text-neutral-400 font-mono uppercase">{t.volumeLifted}</span>
-                <p className="text-base font-mono font-extrabold text-cyan-400 mt-0.5">{totalVolume} kg</p>
-              </div>
-              <div className="bg-white/5 p-3.5 rounded-2xl border border-white/5 text-center">
-                <span className="text-[10px] text-neutral-400 font-mono uppercase">{t.caloriesBurned}</span>
-                <p className="text-base font-mono font-extrabold text-orange-400 mt-0.5">{liveCalories} kcal</p>
-              </div>
-              <div className="bg-white/5 p-3.5 rounded-2xl border border-white/5 text-center">
-                <span className="text-[10px] text-neutral-400 font-mono uppercase">{t.xpEarned}</span>
-                <p className="text-base font-mono font-extrabold text-cyan-400 mt-0.5">
-                  +{Math.round(routine.xpReward * Math.max(0.6, completionPercent / 100))} XP
-                </p>
-              </div>
-            </div>
-
-            {/* PRs achieved */}
-            {unlockedPrs.length > 0 && (
-              <div className="mb-4 p-4 bg-amber-500/10 border border-amber-500/20 rounded-2xl relative z-10">
-                <div className="flex items-center gap-1.5 text-amber-400 font-mono font-bold text-xs mb-1">
-                  <Sparkles className="w-4 h-4" />
-                  <span>{t.personalRecord}</span>
+            {/* Scrollable Summary Body */}
+            <div className="overflow-y-auto pr-1 space-y-4 flex-1">
+              <div className="text-center relative z-10">
+                <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-cyan-500 to-blue-600 mx-auto flex items-center justify-center text-neutral-950 shadow-xl shadow-cyan-500/30 mb-2.5">
+                  <Trophy className="w-7 h-7" />
                 </div>
-                <ul className="text-xs text-neutral-300 space-y-1 font-mono">
-                  {unlockedPrs.map((pr, i) => (
-                    <li key={i}>• {pr}</li>
+                <h3 className="font-display font-extrabold text-xl sm:text-2xl text-white">
+                  {t.workoutCompleted}
+                </h3>
+                <p className="text-xs sm:text-sm text-neutral-400 mt-0.5">{routine.title}</p>
+              </div>
+
+              {/* Metrics Breakdown Grid */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 relative z-10">
+                <div className="bg-white/5 p-3 rounded-2xl border border-white/5 text-center">
+                  <span className="text-[10px] text-neutral-400 font-mono uppercase">{t.estimatedTime}</span>
+                  <p className="text-base font-mono font-extrabold text-white mt-0.5">{formatTime(elapsedSeconds)}</p>
+                </div>
+                <div className="bg-white/5 p-3 rounded-2xl border border-white/5 text-center">
+                  <span className="text-[10px] text-neutral-400 font-mono uppercase">{t.volumeLifted}</span>
+                  <p className="text-base font-mono font-extrabold text-cyan-400 mt-0.5">{totalVolume} kg</p>
+                </div>
+                <div className="bg-white/5 p-3 rounded-2xl border border-white/5 text-center">
+                  <span className="text-[10px] text-neutral-400 font-mono uppercase">{t.caloriesBurned}</span>
+                  <p className="text-base font-mono font-extrabold text-orange-400 mt-0.5">{liveCalories} kcal</p>
+                </div>
+                <div className="bg-white/5 p-3 rounded-2xl border border-white/5 text-center">
+                  <span className="text-[10px] text-neutral-400 font-mono uppercase">{t.xpEarned}</span>
+                  <p className="text-base font-mono font-extrabold text-cyan-400 mt-0.5">
+                    +{Math.round(routine.xpReward * Math.max(0.6, completionPercent / 100))} XP
+                  </p>
+                </div>
+              </div>
+
+              {/* PRs achieved with compact scrollable list */}
+              {unlockedPrs.length > 0 && (
+                <div className="p-3.5 bg-amber-500/10 border border-amber-500/20 rounded-2xl relative z-10">
+                  <div className="flex items-center gap-1.5 text-amber-400 font-mono font-bold text-xs mb-2">
+                    <Sparkles className="w-4 h-4" />
+                    <span>{t.personalRecord} ({unlockedPrs.length})</span>
+                  </div>
+                  <ul className="text-xs text-neutral-300 space-y-1.5 font-mono max-h-36 overflow-y-auto pr-1">
+                    {unlockedPrs.map((pr, i) => (
+                      <li key={i} className="flex items-start gap-1.5">
+                        <span className="text-amber-400">⚡</span>
+                        <span>{pr}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* Session Feeling Rating (1-5 stars) */}
+              <div className="relative z-10">
+                <label className="text-xs font-mono font-bold text-neutral-300 block mb-2 text-center uppercase">
+                  ¿Cómo te has sentido en esta sesión?
+                </label>
+                <div className="flex justify-center gap-2">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <button
+                      key={star}
+                      onClick={() => setRating(star)}
+                      className={`w-10 h-10 rounded-2xl text-base font-bold transition-transform ${
+                        rating >= star
+                          ? 'bg-amber-400 text-neutral-950 scale-110 shadow-lg shadow-amber-400/20'
+                          : 'bg-white/5 text-neutral-600 border border-white/5'
+                      }`}
+                    >
+                      ★
+                    </button>
                   ))}
-                </ul>
+                </div>
               </div>
-            )}
 
-            {/* Session Feeling Rating (1-5 stars) */}
-            <div className="mb-4 relative z-10">
-              <label className="text-xs font-mono font-bold text-neutral-300 block mb-2 text-center uppercase">
-                ¿Cómo te has sentido en esta sesión?
-              </label>
-              <div className="flex justify-center gap-2">
-                {[1, 2, 3, 4, 5].map((star) => (
-                  <button
-                    key={star}
-                    onClick={() => setRating(star)}
-                    className={`w-11 h-11 rounded-2xl text-lg font-bold transition-transform ${
-                      rating >= star
-                        ? 'bg-amber-400 text-neutral-950 scale-110 shadow-lg shadow-amber-400/20'
-                        : 'bg-white/5 text-neutral-600 border border-white/5'
-                    }`}
-                  >
-                    ★
-                  </button>
-                ))}
+              {/* Notes textarea */}
+              <div className="relative z-10">
+                <input
+                  type="text"
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder="Notas de la sesión (ej. 'Excelente congestión en banca...')"
+                  className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-2xl text-xs text-white placeholder-neutral-500 focus:border-cyan-500 focus:outline-none"
+                />
               </div>
             </div>
 
-            {/* Notes textarea */}
-            <div className="mb-6 relative z-10">
-              <input
-                type="text"
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder="Notas de la sesión (ej. 'Excelente congestión en banca...')"
-                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-2xl text-xs text-white placeholder-neutral-500 focus:border-cyan-500 focus:outline-none"
-              />
-            </div>
-
-            {/* Confirm & Save Button */}
-            <div className="flex gap-3 relative z-10">
+            {/* Sticky Bottom Actions */}
+            <div className="flex gap-2.5 pt-3 mt-2 border-t border-white/10 shrink-0 relative z-10">
               <button
                 onClick={() => setShowSummaryModal(false)}
                 className="flex-1 py-3 rounded-2xl bg-white/5 hover:bg-white/10 text-neutral-300 font-mono font-bold text-xs transition-colors border border-white/5"
               >
-                Volver a la Sesión
+                Volver
               </button>
               <button
                 id="btn-confirm-save-workout"
@@ -1005,9 +1017,15 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
 
       {/* 1RM Strength & Load Calculator Modal */}
       {show1rmModal && (
-        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-xl flex items-center justify-center p-4">
-          <div className="bg-[#121214] border border-cyan-500/30 rounded-3xl p-6 max-w-md w-full shadow-2xl relative animate-in zoom-in-95">
-            <div className="flex items-center justify-between pb-3 border-b border-white/10 mb-4">
+        <div 
+          style={{ 
+            paddingTop: 'max(1rem, env(safe-area-inset-top, 0px))', 
+            paddingBottom: 'max(1rem, env(safe-area-inset-bottom, 0px))' 
+          }}
+          className="fixed inset-0 z-50 bg-black/85 backdrop-blur-xl flex items-center justify-center p-3 sm:p-4 overflow-y-auto"
+        >
+          <div className="bg-[#121214] border border-cyan-500/30 rounded-3xl p-5 sm:p-6 max-w-md w-full shadow-2xl relative animate-in zoom-in-95 max-h-[90vh] overflow-y-auto flex flex-col">
+            <div className="flex items-center justify-between pb-3 border-b border-white/10 mb-4 shrink-0">
               <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-xl bg-cyan-500/20 text-cyan-400 flex items-center justify-center">
                   <Calculator className="w-4 h-4" />
@@ -1026,7 +1044,7 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
             </div>
 
             {/* Inputs: Peso y Reps */}
-            <div className="grid grid-cols-2 gap-3 mb-4">
+            <div className="grid grid-cols-2 gap-3 mb-4 shrink-0">
               <div>
                 <label className="block text-[10px] font-mono uppercase font-bold text-neutral-400 mb-1">
                   Peso Levantado (kg)
@@ -1059,7 +1077,7 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
             {(() => {
               const estimated1rm = Math.round(calcWeight * (1 + calcReps / 30));
               return (
-                <div className="space-y-3">
+                <div className="space-y-3 flex-1 overflow-y-auto">
                   <div className="bg-gradient-to-r from-cyan-500/15 via-blue-500/10 to-transparent border border-cyan-500/30 rounded-2xl p-4 text-center">
                     <span className="text-[10px] font-mono font-bold text-cyan-400 uppercase tracking-wider">
                       1RM Estimado (Fuerza Máxima)
@@ -1103,7 +1121,7 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
 
             <button
               onClick={() => setShow1rmModal(false)}
-              className="w-full mt-4 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-neutral-950 font-mono font-bold text-xs shadow-md transition-all"
+              className="w-full mt-4 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-neutral-950 font-mono font-bold text-xs shadow-md transition-all shrink-0"
             >
               Entendido
             </button>
@@ -1113,8 +1131,14 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
 
       {/* Skip Exercise Warning Modal */}
       {showSkipWarningModal !== null && currentExercise && (
-        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-xl flex items-center justify-center p-4">
-          <div className="bg-[#121214] border border-amber-500/30 rounded-3xl p-6 max-w-sm w-full shadow-2xl text-center animate-in zoom-in-95">
+        <div 
+          style={{ 
+            paddingTop: 'max(1rem, env(safe-area-inset-top, 0px))', 
+            paddingBottom: 'max(1rem, env(safe-area-inset-bottom, 0px))' 
+          }}
+          className="fixed inset-0 z-50 bg-black/85 backdrop-blur-xl flex items-center justify-center p-3 sm:p-4 overflow-y-auto"
+        >
+          <div className="bg-[#121214] border border-amber-500/30 rounded-3xl p-5 sm:p-6 max-w-sm w-full shadow-2xl text-center animate-in zoom-in-95 max-h-[90vh] overflow-y-auto">
             <div className="w-12 h-12 rounded-2xl bg-amber-500/20 text-amber-400 flex items-center justify-center mx-auto mb-3 shadow-[0_0_15px_rgba(245,158,11,0.25)]">
               <AlertTriangle className="w-6 h-6" />
             </div>
@@ -1147,8 +1171,14 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
 
       {/* Discard Workout Confirmation Modal */}
       {showDiscardConfirm && (
-        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-xl flex items-center justify-center p-4">
-          <div className="bg-[#121214] border border-red-500/30 rounded-3xl p-6 max-w-sm w-full shadow-2xl text-center animate-in zoom-in-95">
+        <div 
+          style={{ 
+            paddingTop: 'max(1rem, env(safe-area-inset-top, 0px))', 
+            paddingBottom: 'max(1rem, env(safe-area-inset-bottom, 0px))' 
+          }}
+          className="fixed inset-0 z-50 bg-black/85 backdrop-blur-xl flex items-center justify-center p-3 sm:p-4 overflow-y-auto"
+        >
+          <div className="bg-[#121214] border border-red-500/30 rounded-3xl p-5 sm:p-6 max-w-sm w-full shadow-2xl text-center animate-in zoom-in-95 max-h-[90vh] overflow-y-auto">
             <div className="w-12 h-12 rounded-2xl bg-red-500/20 text-red-400 flex items-center justify-center mx-auto mb-3 shadow-[0_0_15px_rgba(239,68,68,0.3)]">
               <AlertTriangle className="w-6 h-6" />
             </div>
