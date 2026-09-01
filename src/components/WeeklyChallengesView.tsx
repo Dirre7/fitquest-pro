@@ -83,23 +83,26 @@ export const WeeklyChallengesView: React.FC<WeeklyChallengesViewProps> = ({
   const weeklyCalories = weekEntries.reduce((acc, h) => acc + (h.calories || 0), 0);
   const weeklyDistanceKm = Math.round(weekEntries.reduce((acc, h) => acc + (h.totalDistanceKm || 0), 0) * 10) / 10;
 
-  // Cloud-synced claimed challenges from UserProfile + local cache fallback
-  const claimedIds = Array.from(
-    new Set([
-      ...(user.claimedChallenges || []),
-      ...(() => {
-        try {
-          const data = localStorage.getItem('fitquest_claimed_challenges');
-          return data ? JSON.parse(data) : [];
-        } catch {
-          return [];
-        }
-      })(),
-    ])
-  );
+  // Reactive State for claimed challenges (UserProfile cloud sync + localStorage fallback)
+  const [claimedList, setClaimedList] = useState<string[]>(() => {
+    const userClaimed = user.claimedChallenges || [];
+    let localClaimed: string[] = [];
+    try {
+      const data = localStorage.getItem('fitquest_claimed_challenges');
+      localClaimed = data ? JSON.parse(data) : [];
+    } catch {}
+    return Array.from(new Set([...userClaimed, ...localClaimed]));
+  });
+
+  // Sync if user.claimedChallenges changes from cloud sync
+  useEffect(() => {
+    if (user.claimedChallenges) {
+      setClaimedList((prev) => Array.from(new Set([...prev, ...(user.claimedChallenges || [])])));
+    }
+  }, [user.claimedChallenges]);
 
   const handleClaim = (chId: string, rewardXp: number) => {
-    if (claimedIds.includes(chId)) return;
+    if (claimedList.includes(chId)) return;
 
     sound.playLevelUp();
     try {
@@ -110,8 +113,11 @@ export const WeeklyChallengesView: React.FC<WeeklyChallengesViewProps> = ({
       });
     } catch {}
     
-    const updated = [...claimedIds, chId];
-    localStorage.setItem('fitquest_claimed_challenges', JSON.stringify(updated));
+    const updated = [...claimedList, chId];
+    setClaimedList(updated);
+    try {
+      localStorage.setItem('fitquest_claimed_challenges', JSON.stringify(updated));
+    } catch {}
     onClaimReward(chId, rewardXp);
   };
 
@@ -206,7 +212,7 @@ export const WeeklyChallengesView: React.FC<WeeklyChallengesViewProps> = ({
         {activeChallenges.map((ch) => {
           const percent = Math.min(100, Math.round((ch.userCurrent / ch.goal) * 100));
           const isCompleted = percent >= 100;
-          const isClaimed = claimedIds.includes(ch.id);
+          const isClaimed = claimedList.includes(ch.id);
           const Icon = ch.icon;
 
           return (

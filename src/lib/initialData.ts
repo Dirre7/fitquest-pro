@@ -956,7 +956,7 @@ export const defaultChallenges: CommunityChallenge[] = [
     ],
   },
   {
-    id: 'ch_weekly_volume_50k',
+    id: 'ch_weekly_volume_titan',
     title: 'Levantamiento de Titán Semanal',
     description: 'Levanta más de 20,000 kg acumulados entre todas tus sesiones esta semana.',
     category: 'volume',
@@ -974,7 +974,7 @@ export const defaultChallenges: CommunityChallenge[] = [
     ],
   },
   {
-    id: 'ch_weekly_workouts_4',
+    id: 'ch_weekly_consistency_4',
     title: 'Consistencia 4 Días',
     description: 'Registra y finaliza al menos 4 entrenamientos completos antes del domingo.',
     category: 'workouts',
@@ -992,7 +992,7 @@ export const defaultChallenges: CommunityChallenge[] = [
     ],
   },
   {
-    id: 'ch_weekly_calories_2000',
+    id: 'ch_weekly_calorie_inferno',
     title: 'Infierno Metabólico',
     description: 'Quema 2,000 calorías acumuladas durante tus entrenamientos activos.',
     category: 'calories',
