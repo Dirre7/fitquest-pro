@@ -76,6 +76,9 @@ export const Navbar: React.FC<NavbarProps> = ({
 }) => {
   const currentTab = activeTab || propCurrentTab || 'dashboard';
   const handleSetTab = (tab: string) => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    document.documentElement.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    document.body.scrollTo({ top: 0, left: 0, behavior: 'instant' });
     if (setActiveTab) setActiveTab(tab);
     if (propSetCurrentTab) propSetCurrentTab(tab);
   };
