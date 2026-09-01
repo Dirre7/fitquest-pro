@@ -16,7 +16,7 @@ import { FitStorage } from './lib/storage';
 import { translations } from './lib/i18n';
 import { sound } from './lib/soundFx';
 import { auth, onAuthStateChanged, signOut as fbSignOut } from './lib/firebase';
-import { evaluateWeeklyLeagueReset } from './lib/leagueEngine';
+import { evaluateWeeklyLeagueReset, calculateRealStreak } from './lib/leagueEngine';
 import { evaluateAllAchievements } from './lib/achievementEngine';
 
 // Components
@@ -81,13 +81,26 @@ export default function App() {
           firebaseUser.displayName || undefined
         );
         const evaluated = evaluateWeeklyLeagueReset(cloudData.user, cloudData.history);
+        const realStreak = calculateRealStreak(cloudData.history);
+        const syncedUser: UserProfile = {
+          ...evaluated.updatedUser,
+          stats: {
+            ...evaluated.updatedUser.stats,
+            currentStreak: realStreak.currentStreak,
+            bestStreak: Math.max(evaluated.updatedUser.stats.bestStreak || 0, realStreak.bestStreak),
+            caloriesBurned: cloudData.history.length > 0 ? cloudData.history.reduce((s, h) => s + (h.calories || 0), 0) : evaluated.updatedUser.stats.caloriesBurned,
+            totalMinutes: cloudData.history.length > 0 ? cloudData.history.reduce((s, h) => s + (h.durationMinutes || 0), 0) : evaluated.updatedUser.stats.totalMinutes,
+            totalVolumeKg: cloudData.history.length > 0 ? cloudData.history.reduce((s, h) => s + (h.totalVolumeKg || 0), 0) : evaluated.updatedUser.stats.totalVolumeKg,
+            totalWorkouts: cloudData.history.length > 0 ? cloudData.history.length : evaluated.updatedUser.stats.totalWorkouts,
+          },
+        };
         const evaluatedAch = evaluateAllAchievements(
-          evaluated.updatedUser,
+          syncedUser,
           cloudData.history,
           cloudData.achievements || FitStorage.getAchievements(),
           (cloudData.routines || []).filter((r) => r.isCustom).length
         );
-        setUser(evaluated.updatedUser);
+        setUser(syncedUser);
         setHistory(cloudData.history);
         setAchievements(evaluatedAch);
         setChallenges(cloudData.challenges);
@@ -97,13 +110,26 @@ export default function App() {
         const localUser = FitStorage.getUser();
         const localHistory = FitStorage.getHistory();
         const evaluated = evaluateWeeklyLeagueReset(localUser, localHistory);
+        const realStreak = calculateRealStreak(localHistory);
+        const syncedLocalUser: UserProfile = {
+          ...evaluated.updatedUser,
+          stats: {
+            ...evaluated.updatedUser.stats,
+            currentStreak: realStreak.currentStreak,
+            bestStreak: Math.max(evaluated.updatedUser.stats.bestStreak || 0, realStreak.bestStreak),
+            caloriesBurned: localHistory.length > 0 ? localHistory.reduce((s, h) => s + (h.calories || 0), 0) : evaluated.updatedUser.stats.caloriesBurned,
+            totalMinutes: localHistory.length > 0 ? localHistory.reduce((s, h) => s + (h.durationMinutes || 0), 0) : evaluated.updatedUser.stats.totalMinutes,
+            totalVolumeKg: localHistory.length > 0 ? localHistory.reduce((s, h) => s + (h.totalVolumeKg || 0), 0) : evaluated.updatedUser.stats.totalVolumeKg,
+            totalWorkouts: localHistory.length > 0 ? localHistory.length : evaluated.updatedUser.stats.totalWorkouts,
+          },
+        };
         const evaluatedAch = evaluateAllAchievements(
-          evaluated.updatedUser,
+          syncedLocalUser,
           localHistory,
           FitStorage.getAchievements(),
           FitStorage.getRoutines().filter((r) => r.isCustom).length
         );
-        setUser(evaluated.updatedUser);
+        setUser(syncedLocalUser);
         setAchievements(evaluatedAch);
       }
       setAuthLoading(false);
@@ -235,23 +261,24 @@ export default function App() {
     // 2. Add XP to User Profile
     const updatedUser = FitStorage.addXp(xpGained, user);
 
-    // Increment workout count and volume
-    const newTotalWorkouts = updatedUser.stats.totalWorkouts + 1;
-    const newTotalVolume = updatedUser.stats.totalVolumeKg + entry.totalVolumeKg;
-    const newTotalMinutes = updatedUser.stats.totalMinutes + entry.durationMinutes;
-    const newCalories = updatedUser.stats.caloriesBurned + entry.calories;
-    const newStreak = Math.max(1, updatedUser.stats.currentStreak + 1);
+    // Calculate real streak and exact cumulative stats from complete history
+    const realStreak = calculateRealStreak(updatedHistory);
+    const calculatedVolume = updatedHistory.reduce((sum, h) => sum + (h.totalVolumeKg || 0), 0);
+    const calculatedMinutes = updatedHistory.reduce((sum, h) => sum + (h.durationMinutes || 0), 0);
+    const calculatedCalories = updatedHistory.reduce((sum, h) => sum + (h.calories || 0), 0);
+    const calculatedDistance = updatedHistory.reduce((sum, h) => sum + (h.totalDistanceKm || 0), 0);
 
     const finalUser: UserProfile = {
       ...updatedUser,
       stats: {
         ...updatedUser.stats,
-        totalWorkouts: newTotalWorkouts,
-        totalVolumeKg: newTotalVolume,
-        totalMinutes: newTotalMinutes,
-        caloriesBurned: newCalories,
-        currentStreak: newStreak,
-        bestStreak: Math.max(updatedUser.stats.bestStreak, newStreak),
+        totalWorkouts: updatedHistory.length,
+        totalVolumeKg: calculatedVolume,
+        totalDistanceKm: calculatedDistance,
+        totalMinutes: calculatedMinutes,
+        caloriesBurned: calculatedCalories,
+        currentStreak: realStreak.currentStreak,
+        bestStreak: Math.max(updatedUser.stats.bestStreak || 0, realStreak.bestStreak),
       },
     };
 

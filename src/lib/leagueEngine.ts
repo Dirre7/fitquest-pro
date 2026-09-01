@@ -1,4 +1,4 @@
-﻿import { UserProfile, LeaderboardUser, League, WorkoutHistoryEntry } from '../types';
+import { UserProfile, LeaderboardUser, League, WorkoutHistoryEntry } from '../types';
 import { FitStorage } from './storage';
 
 export const LEAGUE_HIERARCHY: League[] = ['Bronze', 'Silver', 'Gold', 'Diamond', 'Titan'];
@@ -230,4 +230,68 @@ export function evaluateWeeklyLeagueReset(
       message,
     },
   };
+}
+
+/**
+ * Calculates real calendar daily streak based on unique workout dates in history.
+ */
+export function calculateRealStreak(history: WorkoutHistoryEntry[]): { currentStreak: number; bestStreak: number } {
+  if (!history || history.length === 0) {
+    return { currentStreak: 0, bestStreak: 0 };
+  }
+
+  // Get unique sorted dates in descending order (YYYY-MM-DD)
+  const uniqueDates = Array.from(
+    new Set(
+      history
+        .map((h) => (h.date ? h.date.split('T')[0] : ''))
+        .filter((d) => Boolean(d))
+    )
+  ).sort().reverse();
+
+  if (uniqueDates.length === 0) {
+    return { currentStreak: 0, bestStreak: 0 };
+  }
+
+  const todayStr = new Date().toISOString().split('T')[0];
+  const yesterdayDate = new Date();
+  yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+  const yesterdayStr = yesterdayDate.toISOString().split('T')[0];
+
+  const mostRecentDate = uniqueDates[0];
+  const isStreakActive = mostRecentDate === todayStr || mostRecentDate === yesterdayStr;
+
+  let currentStreak = 0;
+  if (isStreakActive) {
+    currentStreak = 1;
+    let checkDate = new Date(mostRecentDate);
+    for (let i = 1; i < uniqueDates.length; i++) {
+      const prevDate = new Date(checkDate);
+      prevDate.setDate(prevDate.getDate() - 1);
+      const expectedPrevStr = prevDate.toISOString().split('T')[0];
+      if (uniqueDates[i] === expectedPrevStr) {
+        currentStreak++;
+        checkDate = prevDate;
+      } else {
+        break;
+      }
+    }
+  }
+
+  // Calculate best streak historically across all date chains
+  let bestStreak = currentStreak;
+  let runningChain = 1;
+  for (let i = 0; i < uniqueDates.length - 1; i++) {
+    const current = new Date(uniqueDates[i]);
+    const next = new Date(uniqueDates[i + 1]);
+    const diffDays = Math.round((current.getTime() - next.getTime()) / (1000 * 3600 * 24));
+    if (diffDays === 1) {
+      runningChain++;
+      if (runningChain > bestStreak) bestStreak = runningChain;
+    } else {
+      runningChain = 1;
+    }
+  }
+
+  return { currentStreak, bestStreak: Math.max(1, bestStreak) };
 }

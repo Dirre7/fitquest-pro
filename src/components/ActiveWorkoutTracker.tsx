@@ -421,16 +421,23 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
 
     const xpGained = Math.round(routine.xpReward * Math.max(0.6, completionPercent / 100));
 
+    const calculatedMinutes = Math.max(1, Math.round(elapsedSeconds / 60));
+    // Accurate calorie expenditure: active duration + heavy volume lifted + cardio distance
+    const baseCal = Math.round(calculatedMinutes * 8.5);
+    const volumeCal = Math.round((totalVolume / 1000) * 12);
+    const distanceCal = Math.round(totalDistanceKm * 65);
+    const estimatedBurn = Math.max(liveCalories, baseCal + volumeCal + distanceCal, 35);
+
     const historyEntry: WorkoutHistoryEntry = {
       id: `hist_${Date.now()}`,
       routineId: routine.id,
       routineTitle: routine.title,
       date: new Date().toISOString().split('T')[0],
-      durationMinutes: Math.max(1, Math.round(elapsedSeconds / 60)),
+      durationMinutes: calculatedMinutes,
       totalVolumeKg: totalVolume,
       totalDistanceKm,
-      cardioMinutes: Math.max(1, Math.round(elapsedSeconds / 60)),
-      calories: liveCalories,
+      cardioMinutes: totalDistanceKm > 0 ? calculatedMinutes : 0,
+      calories: estimatedBurn,
       avgHeartRate: smartwatch.liveHeartRate || 140,
       maxHeartRate: (smartwatch.liveHeartRate || 140) + 18,
       xpEarned: xpGained,

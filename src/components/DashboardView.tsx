@@ -345,26 +345,54 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <span className="text-[11px] text-neutral-400 font-mono">{user.stats.totalVolumeKg.toLocaleString()} kg total</span>
         </div>
 
+        {/* Calories Burned Card */}
         <div className="bg-[#121214] border border-white/5 hover:border-orange-500/30 rounded-3xl p-5 shadow-xl transition-all">
           <div className="flex items-center justify-between text-neutral-400 mb-2">
             <span className="text-xs font-mono font-bold uppercase tracking-wider">{t.caloriesBurned}</span>
             <Flame className="w-4 h-4 text-orange-400" />
           </div>
           <p className="font-mono font-extrabold text-3xl text-white">
-            {(user.stats.caloriesBurned / 1000).toFixed(1)}k <span className="text-sm font-sans font-normal text-neutral-400">kcal</span>
+            {user.stats.caloriesBurned >= 1000 ? (
+              <>
+                {(user.stats.caloriesBurned / 1000).toFixed(1)}k{' '}
+                <span className="text-sm font-sans font-normal text-neutral-400">kcal</span>
+              </>
+            ) : (
+              <>
+                {Math.round(user.stats.caloriesBurned)}{' '}
+                <span className="text-sm font-sans font-normal text-neutral-400">kcal</span>
+              </>
+            )}
           </p>
-          <span className="text-[11px] text-orange-400 font-mono font-medium">~512 kcal / sesión</span>
+          <span className="text-[11px] text-orange-400 font-mono font-medium">
+            ~{user.stats.totalWorkouts > 0 ? Math.round(user.stats.caloriesBurned / user.stats.totalWorkouts) : 0} kcal / sesión
+          </span>
         </div>
 
+        {/* Minutes Trained Card */}
         <div className="bg-[#121214] border border-white/5 hover:border-cyan-500/30 rounded-3xl p-5 shadow-xl transition-all">
           <div className="flex items-center justify-between text-neutral-400 mb-2">
             <span className="text-xs font-mono font-bold uppercase tracking-wider">{t.minutesTrained}</span>
             <Clock className="w-4 h-4 text-cyan-400" />
           </div>
           <p className="font-mono font-extrabold text-3xl text-white">
-            {Math.round(user.stats.totalMinutes / 60)} <span className="text-sm font-sans font-normal text-neutral-400">horas</span>
+            {user.stats.totalMinutes < 60 ? (
+              <>
+                {user.stats.totalMinutes}{' '}
+                <span className="text-sm font-sans font-normal text-neutral-400">min</span>
+              </>
+            ) : (
+              <>
+                {(user.stats.totalMinutes / 60).toFixed(1)}{' '}
+                <span className="text-sm font-sans font-normal text-neutral-400">horas</span>
+              </>
+            )}
           </p>
-          <span className="text-[11px] text-neutral-400 font-mono">{user.stats.totalMinutes} min acumulados</span>
+          <span className="text-[11px] text-neutral-400 font-mono">
+            {user.stats.totalMinutes < 60
+              ? `${(user.stats.totalMinutes / 60).toFixed(1)} h totales`
+              : `${user.stats.totalMinutes} min acumulados`}
+          </span>
         </div>
       </div>
 
