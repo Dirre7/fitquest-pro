@@ -127,18 +127,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
             {/* Live Telemetry Inner Cards */}
             <div className="md:col-span-8 space-y-3.5">
-              <div className="bg-white/5 border border-white/5 p-4 rounded-2xl flex justify-between items-center hover:border-white/10 transition-colors">
+              <div className="bg-white/5 border border-white/5 p-4 rounded-2xl flex justify-between items-center hover:border-cyan-500/30 transition-colors">
                 <div>
-                  <p className="text-xs text-neutral-400 font-medium">Frecuencia Cardíaca Promedio</p>
+                  <p className="text-xs text-neutral-400 font-medium">Distancia Recorrida (Cardio & Running)</p>
                   <p className="text-2xl font-mono font-bold text-white mt-0.5">
-                    {smartwatch?.liveHeartRate || 135} <span className="text-xs text-red-400 font-semibold">BPM</span>
+                    {(user.stats.totalDistanceKm || 0).toFixed(1)} <span className="text-xs text-cyan-400 font-semibold">KM</span>
                   </p>
                 </div>
-                <div className="w-16 h-8 flex items-end gap-1 px-1">
-                  <div className="w-2 h-3 bg-red-400/40 rounded-full"></div>
-                  <div className="w-2 h-5 bg-red-400/60 rounded-full"></div>
-                  <div className="w-2 h-7 bg-red-400 rounded-full shadow-[0_0_8px_#ef4444]"></div>
-                  <div className="w-2 h-4 bg-red-400/50 rounded-full"></div>
+                <div className="w-11 h-11 rounded-2xl border border-cyan-500/30 bg-cyan-500/10 flex items-center justify-center shadow-[0_0_12px_rgba(6,182,212,0.2)]">
+                  <Activity className="w-5 h-5 text-cyan-400" />
                 </div>
               </div>
 
