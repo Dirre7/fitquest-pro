@@ -316,9 +316,9 @@ export const Navbar: React.FC<NavbarProps> = ({
       </header>
 
       {/* Floating Liquid Glass Bottom Navigation Dock - 4 Master Buttons */}
-      <div className="fixed bottom-3 sm:bottom-6 left-1/2 -translate-x-1/2 z-50 w-[88%] sm:w-auto max-w-md pointer-events-auto">
+      <div className="fixed bottom-3 sm:bottom-6 left-0 right-0 mx-auto z-50 w-[92%] sm:w-auto max-w-md pointer-events-auto transform-gpu">
         <nav 
-          className="bg-[#121214]/90 backdrop-blur-2xl border border-white/15 rounded-3xl sm:rounded-full p-1.5 sm:p-2 shadow-[0_15px_50px_rgba(0,0,0,0.9),0_0_20px_rgba(6,182,212,0.2)] flex items-center justify-around sm:justify-center sm:gap-3"
+          className="bg-[#121214]/95 backdrop-blur-2xl border border-white/15 rounded-2xl sm:rounded-full p-1.5 sm:p-2 shadow-[0_15px_50px_rgba(0,0,0,0.95),0_0_25px_rgba(6,182,212,0.25)] flex items-center justify-around sm:justify-center sm:gap-3"
           aria-label="Navegación principal inferior"
         >
           {dockItems.map((item) => {

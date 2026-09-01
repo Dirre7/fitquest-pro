@@ -408,7 +408,7 @@ export default function App() {
 
   return (
     <div
-      className={`min-h-screen bg-neutral-950 text-neutral-100 font-sans selection:bg-cyan-500 selection:text-black pb-20 sm:pb-8 transition-colors ${
+      className={`min-h-screen bg-neutral-950 text-neutral-100 font-sans selection:bg-cyan-500 selection:text-black pb-24 sm:pb-28 transition-colors ${
         highContrast ? 'contrast-125 border-neutral-600' : ''
       } ${textSizeClass}`}
     >
