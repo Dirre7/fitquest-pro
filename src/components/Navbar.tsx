@@ -301,16 +301,6 @@ export const Navbar: React.FC<NavbarProps> = ({
             >
               <Settings className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </button>
-
-            {/* Quick Start Workout Action Button (Desktop only) */}
-            <button
-              id="btn-nav-quick-start"
-              onClick={onOpenQuickStart}
-              className="hidden sm:flex items-center gap-1.5 px-3.5 py-1.5 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-neutral-950 font-bold text-xs shadow-lg shadow-cyan-500/25 transition-all hover:scale-105 active:scale-95"
-            >
-              <Zap className="w-3.5 h-3.5 fill-current" />
-              <span>{t.quickStart}</span>
-            </button>
           </div>
         </div>
       </header>

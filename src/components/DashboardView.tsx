@@ -54,28 +54,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
-      
-      {/* Immersive UI Command Center Header */}
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 pb-2 border-b border-white/5">
-        <div>
-          <p className="text-cyan-500 font-mono text-xs tracking-widest uppercase mb-1 flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_8px_#06b6d4] inline-block animate-ping" />
-            <span>ESTADO DEL SISTEMA: ENTRENAMIENTO ACTIVO</span>
-          </p>
-          <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-white font-display">
-            VIRTUAL COMMAND
-          </h1>
-        </div>
-        <div className="flex items-center gap-3">
-          <div className="bg-white/5 border border-white/10 rounded-2xl px-4 py-2 flex items-center gap-3 shadow-inner">
-            <div className={`w-2.5 h-2.5 rounded-full ${smartwatch?.status === 'connected' ? 'bg-red-500 shadow-[0_0_8px_#ef4444] animate-pulse' : 'bg-neutral-600'}`} />
-            <span className="text-xs font-mono font-semibold tracking-tight text-neutral-200 uppercase">
-              {smartwatch?.status === 'connected' ? `SMARTWATCH: ${smartwatch?.name || 'VINCULADO'}` : 'SMARTWATCH STANDBY'}
-            </span>
-          </div>
-        </div>
-      </div>
-
       {/* Top Hero Banner: Gamification Level, Rank & Metrics */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         
@@ -106,6 +84,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   <span className="text-[10px] font-mono font-black px-2.5 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 uppercase tracking-wider">
                     LIGA {user.league}
                   </span>
+                  {smartwatch?.status === 'connected' && (
+                    <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-red-500/10 text-red-400 border border-red-500/20 flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+                      <span>{smartwatch.name || 'Smartwatch'}</span>
+                    </span>
+                  )}
                 </div>
                 <p className="text-xs sm:text-sm font-semibold text-cyan-400 mt-1 flex items-center gap-1.5 font-mono">
                   <Shield className="w-3.5 h-3.5" />
