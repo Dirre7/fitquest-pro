@@ -153,47 +153,47 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </div>
           </div>
 
-          {/* RPG Attribute Gauges */}
+          {/* RPG Athlete Attributes */}
           <div className="mt-6 pt-5 border-t border-white/5 relative z-10">
             <p className="text-[10px] font-mono font-bold uppercase tracking-widest text-neutral-400 mb-3">ATRIBUTOS DEL ATLETA</p>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <div className="bg-white/5 p-3 rounded-2xl border border-white/5">
-                <div className="flex justify-between text-xs font-bold text-neutral-300 font-mono">
-                  <span>FUERZA</span>
-                  <span className="text-red-400">{user.attributes.strength}/100</span>
+              <div className="bg-white/5 hover:bg-white/[0.07] p-3.5 rounded-2xl border border-white/5 hover:border-red-500/30 transition-all flex items-center justify-between">
+                <div>
+                  <span className="text-[11px] font-bold text-neutral-400 font-mono tracking-wider">FUERZA</span>
+                  <p className="text-xl font-mono font-extrabold text-white mt-0.5">{user.attributes.strength}</p>
                 </div>
-                <div className="h-1.5 bg-neutral-800 rounded-full mt-2 overflow-hidden">
-                  <div className="h-full bg-red-500 rounded-full shadow-[0_0_8px_#ef4444]" style={{ width: `${user.attributes.strength}%` }} />
-                </div>
-              </div>
-
-              <div className="bg-white/5 p-3 rounded-2xl border border-white/5">
-                <div className="flex justify-between text-xs font-bold text-neutral-300 font-mono">
-                  <span>RESISTENCIA</span>
-                  <span className="text-cyan-400">{user.attributes.endurance}/100</span>
-                </div>
-                <div className="h-1.5 bg-neutral-800 rounded-full mt-2 overflow-hidden">
-                  <div className="h-full bg-cyan-500 rounded-full shadow-[0_0_8px_#06b6d4]" style={{ width: `${user.attributes.endurance}%` }} />
+                <div className="w-8 h-8 rounded-xl bg-red-500/10 border border-red-500/25 flex items-center justify-center text-red-400 font-mono font-black text-xs shadow-[0_0_8px_rgba(239,68,68,0.2)]">
+                  PWR
                 </div>
               </div>
 
-              <div className="bg-white/5 p-3 rounded-2xl border border-white/5">
-                <div className="flex justify-between text-xs font-bold text-neutral-300 font-mono">
-                  <span>AGILIDAD</span>
-                  <span className="text-amber-400">{user.attributes.agility}/100</span>
+              <div className="bg-white/5 hover:bg-white/[0.07] p-3.5 rounded-2xl border border-white/5 hover:border-cyan-500/30 transition-all flex items-center justify-between">
+                <div>
+                  <span className="text-[11px] font-bold text-neutral-400 font-mono tracking-wider">RESISTENCIA</span>
+                  <p className="text-xl font-mono font-extrabold text-white mt-0.5">{user.attributes.endurance}</p>
                 </div>
-                <div className="h-1.5 bg-neutral-800 rounded-full mt-2 overflow-hidden">
-                  <div className="h-full bg-amber-500 rounded-full shadow-[0_0_8px_#f59e0b]" style={{ width: `${user.attributes.agility}%` }} />
+                <div className="w-8 h-8 rounded-xl bg-cyan-500/10 border border-cyan-500/25 flex items-center justify-center text-cyan-400 font-mono font-black text-xs shadow-[0_0_8px_rgba(6,182,212,0.2)]">
+                  END
                 </div>
               </div>
 
-              <div className="bg-white/5 p-3 rounded-2xl border border-white/5">
-                <div className="flex justify-between text-xs font-bold text-neutral-300 font-mono">
-                  <span>DISCIPLINA</span>
-                  <span className="text-emerald-400">{user.attributes.discipline}/100</span>
+              <div className="bg-white/5 hover:bg-white/[0.07] p-3.5 rounded-2xl border border-white/5 hover:border-amber-500/30 transition-all flex items-center justify-between">
+                <div>
+                  <span className="text-[11px] font-bold text-neutral-400 font-mono tracking-wider">AGILIDAD</span>
+                  <p className="text-xl font-mono font-extrabold text-white mt-0.5">{user.attributes.agility}</p>
                 </div>
-                <div className="h-1.5 bg-neutral-800 rounded-full mt-2 overflow-hidden">
-                  <div className="h-full bg-emerald-500 rounded-full shadow-[0_0_8px_#10b981]" style={{ width: `${user.attributes.discipline}%` }} />
+                <div className="w-8 h-8 rounded-xl bg-amber-500/10 border border-amber-500/25 flex items-center justify-center text-amber-400 font-mono font-black text-xs shadow-[0_0_8px_rgba(245,158,11,0.2)]">
+                  AGI
+                </div>
+              </div>
+
+              <div className="bg-white/5 hover:bg-white/[0.07] p-3.5 rounded-2xl border border-white/5 hover:border-emerald-500/30 transition-all flex items-center justify-between">
+                <div>
+                  <span className="text-[11px] font-bold text-neutral-400 font-mono tracking-wider">DISCIPLINA</span>
+                  <p className="text-xl font-mono font-extrabold text-white mt-0.5">{user.attributes.discipline}</p>
+                </div>
+                <div className="w-8 h-8 rounded-xl bg-emerald-500/10 border border-emerald-500/25 flex items-center justify-center text-emerald-400 font-mono font-black text-xs shadow-[0_0_8px_rgba(16,185,129,0.2)]">
+                  DIS
                 </div>
               </div>
             </div>

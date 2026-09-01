@@ -324,21 +324,21 @@ export function calculateAthleteAttributes(
       h.routineTitle?.toLowerCase().includes('shred')
   ).length;
 
-  // 1. FUERZA: Volume lifted + heavy strength sessions
+  // 1. FUERZA: Volume lifted + heavy strength sessions (infinite scaling)
   const strengthPoints = Math.floor(totalVolumeKg / 600 + strengthWorkouts * 2.5);
-  const strength = Math.min(100, Math.max(baseAttr, baseAttr + strengthPoints));
+  const strength = Math.max(baseAttr, baseAttr + strengthPoints);
 
-  // 2. RESISTENCIA: Total distance (km) + cardio minutes
+  // 2. RESISTENCIA: Total distance (km) + cardio minutes (infinite scaling)
   const endurancePoints = Math.floor(totalDistanceKm * 3.5 + totalMinutes / 12 + cardioWorkouts * 2);
-  const endurance = Math.min(100, Math.max(baseAttr, baseAttr + endurancePoints));
+  const endurance = Math.max(baseAttr, baseAttr + endurancePoints);
 
-  // 3. AGILIDAD: HIIT sessions, calisthenics & fast reps
+  // 3. AGILIDAD: HIIT sessions, calisthenics & fast reps (infinite scaling)
   const agilityPoints = Math.floor(hiitWorkouts * 5 + history.length * 1.2);
-  const agility = Math.min(100, Math.max(baseAttr, baseAttr + agilityPoints));
+  const agility = Math.max(baseAttr, baseAttr + agilityPoints);
 
-  // 4. DISCIPLINA: Real streak days + total workouts completed
+  // 4. DISCIPLINA: Real streak days + total workouts completed (infinite scaling)
   const disciplinePoints = Math.floor(currentStreak * 4.5 + history.length * 2.5);
-  const discipline = Math.min(100, Math.max(baseAttr, baseAttr + disciplinePoints));
+  const discipline = Math.max(baseAttr, baseAttr + disciplinePoints);
 
   return { strength, endurance, agility, discipline };
 }
