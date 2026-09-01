@@ -84,12 +84,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   <span className="text-[10px] font-mono font-black px-2.5 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 uppercase tracking-wider">
                     LIGA {user.league}
                   </span>
-                  {smartwatch?.status === 'connected' && (
-                    <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-red-500/10 text-red-400 border border-red-500/20 flex items-center gap-1">
-                      <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
-                      <span>{smartwatch.name || 'Smartwatch'}</span>
-                    </span>
-                  )}
                 </div>
                 <p className="text-xs sm:text-sm font-semibold text-cyan-400 mt-1 flex items-center gap-1.5 font-mono">
                   <Shield className="w-3.5 h-3.5" />

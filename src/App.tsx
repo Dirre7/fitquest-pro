@@ -552,14 +552,6 @@ export default function App() {
           />
         )}
 
-        {activeTab === 'smartwatch' && (
-          <SmartwatchView
-            smartwatch={smartwatch}
-            lang={lang}
-            onUpdateDevice={handleUpdateSmartwatch}
-          />
-        )}
-
         {activeTab === 'settings' && (
           <CloudAndSettingsView
             user={user}

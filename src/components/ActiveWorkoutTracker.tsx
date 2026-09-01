@@ -503,19 +503,8 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
             </div>
           </div>
 
-          {/* Right Action Tools: BPM + 1RM + Pause + Finish + Discard */}
+          {/* Right Action Tools: 1RM + Pause + Finish + Discard */}
           <div className="flex items-center gap-1 sm:gap-2 shrink-0">
-            {/* Live Heart Rate */}
-            <div
-              className={`flex items-center gap-1 px-1.5 sm:px-2.5 py-1 rounded-xl sm:rounded-2xl border text-[11px] font-mono font-bold ${getHrZoneColor(
-                smartwatch.liveHeartRate
-              )}`}
-              title={`Zona: ${smartwatch.activeZone}`}
-            >
-              <Heart className="w-3 h-3 sm:w-3.5 sm:h-3.5 fill-current animate-heart-beat" />
-              <span>{smartwatch.liveHeartRate}</span>
-              <span className="text-[8px] opacity-75 font-sans hidden sm:inline">BPM</span>
-            </div>
 
             {/* 1RM Strength Calculator */}
             <button

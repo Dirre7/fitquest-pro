@@ -210,45 +210,7 @@ export const CloudAndSettingsView: React.FC<CloudAndSettingsViewProps> = ({
           </div>
         )}
 
-        {/* Multi-device Status Preview */}
-        <div>
-          <h4 className="text-xs font-extrabold uppercase text-neutral-300 tracking-wider mb-3">
-            {t.multiDevice}
-          </h4>
-          <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-            <div className="p-3.5 rounded-2xl bg-neutral-800/60 border border-neutral-700/60 flex items-center gap-3">
-              <Smartphone className="w-5 h-5 text-emerald-400" />
-              <div>
-                <h5 className="font-bold text-white text-xs">iPhone 16 Pro</h5>
-                <span className="text-[10px] text-emerald-400 font-medium">● Activo ahora (este dispositivo)</span>
-              </div>
-            </div>
 
-            <div className="p-3.5 rounded-2xl bg-neutral-800/60 border border-neutral-700/60 flex items-center gap-3">
-              <Watch className="w-5 h-5 text-teal-400" />
-              <div>
-                <h5 className="font-bold text-white text-xs">Apple Watch Ultra</h5>
-                <span className="text-[10px] text-neutral-400 font-medium">Sincronizado</span>
-              </div>
-            </div>
-
-            <div className="p-3.5 rounded-2xl bg-neutral-800/60 border border-neutral-700/60 flex items-center gap-3">
-              <Tablet className="w-5 h-5 text-cyan-400" />
-              <div>
-                <h5 className="font-bold text-white text-xs">iPad Pro M4</h5>
-                <span className="text-[10px] text-neutral-400 font-medium">Hace 2 horas</span>
-              </div>
-            </div>
-
-            <div className="p-3.5 rounded-2xl bg-neutral-800/60 border border-neutral-700/60 flex items-center gap-3">
-              <Laptop className="w-5 h-5 text-amber-400" />
-              <div>
-                <h5 className="font-bold text-white text-xs">MacBook Pro</h5>
-                <span className="text-[10px] text-neutral-400 font-medium">Hace 1 día</span>
-              </div>
-            </div>
-          </div>
-        </div>
 
         {/* Data Portability: Backup Export & Restore */}
         <div className="pt-4 border-t border-neutral-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">

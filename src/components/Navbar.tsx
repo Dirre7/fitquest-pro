@@ -183,21 +183,6 @@ export const Navbar: React.FC<NavbarProps> = ({
               <span className="font-mono">{user?.stats?.currentStreak ?? 0}d</span>
             </div>
 
-            {/* Smartwatch BPM Telemetry Badge */}
-            <button
-              id="btn-nav-smartwatch"
-              onClick={() => handleSetTab('settings')}
-              className={`flex items-center gap-1 px-2 sm:px-2.5 py-1 rounded-xl sm:rounded-2xl text-[11px] sm:text-xs font-mono font-medium border transition-all shrink-0 ${
-                isWatchConnected
-                  ? 'bg-red-500/10 border-red-500/25 text-neutral-200 hover:border-red-500/40'
-                  : 'bg-white/5 border-white/5 text-neutral-400 hover:text-white'
-              }`}
-              title={isWatchConnected ? `${watchName} - ${liveHeartRate} BPM (Clic para configurar)` : 'Vincular Smartwatch'}
-            >
-              <Heart className={`w-3 h-3 sm:w-3.5 sm:h-3.5 ${isWatchConnected ? 'text-red-500 fill-red-500 animate-pulse' : 'text-neutral-500'}`} />
-              <span className="font-bold text-neutral-100">{liveHeartRate} <span className="text-[8px] text-neutral-400 hidden xs:inline">BPM</span></span>
-            </button>
-
             {/* Desktop Only Tools: Cloud Sync, Sound, Lang */}
             <div className="hidden md:flex items-center gap-1.5">
               {/* Cloud Sync Toggle */}
