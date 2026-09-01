@@ -16,7 +16,7 @@ import { FitStorage } from './lib/storage';
 import { translations } from './lib/i18n';
 import { sound } from './lib/soundFx';
 import { auth, onAuthStateChanged, signOut as fbSignOut } from './lib/firebase';
-import { evaluateWeeklyLeagueReset, calculateRealStreak } from './lib/leagueEngine';
+import { evaluateWeeklyLeagueReset, calculateRealStreak, calculateAthleteAttributes } from './lib/leagueEngine';
 import { evaluateAllAchievements } from './lib/achievementEngine';
 
 // Components
@@ -82,8 +82,10 @@ export default function App() {
         );
         const evaluated = evaluateWeeklyLeagueReset(cloudData.user, cloudData.history);
         const realStreak = calculateRealStreak(cloudData.history);
+        const dynamicAttributes = calculateAthleteAttributes(cloudData.history, realStreak.currentStreak);
         const syncedUser: UserProfile = {
           ...evaluated.updatedUser,
+          attributes: dynamicAttributes,
           stats: {
             ...evaluated.updatedUser.stats,
             currentStreak: realStreak.currentStreak,
@@ -111,8 +113,10 @@ export default function App() {
         const localHistory = FitStorage.getHistory();
         const evaluated = evaluateWeeklyLeagueReset(localUser, localHistory);
         const realStreak = calculateRealStreak(localHistory);
+        const dynamicAttributes = calculateAthleteAttributes(localHistory, realStreak.currentStreak);
         const syncedLocalUser: UserProfile = {
           ...evaluated.updatedUser,
+          attributes: dynamicAttributes,
           stats: {
             ...evaluated.updatedUser.stats,
             currentStreak: realStreak.currentStreak,
@@ -263,6 +267,7 @@ export default function App() {
 
     // Calculate real streak and exact cumulative stats from complete history
     const realStreak = calculateRealStreak(updatedHistory);
+    const dynamicAttributes = calculateAthleteAttributes(updatedHistory, realStreak.currentStreak);
     const calculatedVolume = updatedHistory.reduce((sum, h) => sum + (h.totalVolumeKg || 0), 0);
     const calculatedMinutes = updatedHistory.reduce((sum, h) => sum + (h.durationMinutes || 0), 0);
     const calculatedCalories = updatedHistory.reduce((sum, h) => sum + (h.calories || 0), 0);
@@ -270,6 +275,7 @@ export default function App() {
 
     const finalUser: UserProfile = {
       ...updatedUser,
+      attributes: dynamicAttributes,
       stats: {
         ...updatedUser.stats,
         totalWorkouts: updatedHistory.length,

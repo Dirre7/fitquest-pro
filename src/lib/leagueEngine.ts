@@ -295,3 +295,50 @@ export function calculateRealStreak(history: WorkoutHistoryEntry[]): { currentSt
 
   return { currentStreak, bestStreak: Math.max(1, bestStreak) };
 }
+
+/**
+ * Calculates specialized athlete attributes (0-100) based on biomechanical training history.
+ */
+export function calculateAthleteAttributes(
+  history: WorkoutHistoryEntry[],
+  currentStreak: number
+): { strength: number; endurance: number; agility: number; discipline: number } {
+  const baseAttr = 10;
+  if (!history || history.length === 0) {
+    return { strength: baseAttr, endurance: baseAttr, agility: baseAttr, discipline: baseAttr };
+  }
+
+  const totalVolumeKg = history.reduce((sum, h) => sum + (h.totalVolumeKg || 0), 0);
+  const totalDistanceKm = history.reduce((sum, h) => sum + (h.totalDistanceKm || 0), 0);
+  const totalMinutes = history.reduce((sum, h) => sum + (h.durationMinutes || 0), 0);
+
+  const strengthWorkouts = history.filter((h) => (h.totalVolumeKg || 0) > 300).length;
+  const cardioWorkouts = history.filter(
+    (h) => (h.totalDistanceKm || 0) > 0.5 || h.routineTitle?.toLowerCase().includes('cardio') || h.routineTitle?.toLowerCase().includes('runner')
+  ).length;
+  const hiitWorkouts = history.filter(
+    (h) =>
+      h.routineTitle?.toLowerCase().includes('hiit') ||
+      h.routineTitle?.toLowerCase().includes('tabata') ||
+      h.routineTitle?.toLowerCase().includes('calistenia') ||
+      h.routineTitle?.toLowerCase().includes('shred')
+  ).length;
+
+  // 1. FUERZA: Volume lifted + heavy strength sessions
+  const strengthPoints = Math.floor(totalVolumeKg / 600 + strengthWorkouts * 2.5);
+  const strength = Math.min(100, Math.max(baseAttr, baseAttr + strengthPoints));
+
+  // 2. RESISTENCIA: Total distance (km) + cardio minutes
+  const endurancePoints = Math.floor(totalDistanceKm * 3.5 + totalMinutes / 12 + cardioWorkouts * 2);
+  const endurance = Math.min(100, Math.max(baseAttr, baseAttr + endurancePoints));
+
+  // 3. AGILIDAD: HIIT sessions, calisthenics & fast reps
+  const agilityPoints = Math.floor(hiitWorkouts * 5 + history.length * 1.2);
+  const agility = Math.min(100, Math.max(baseAttr, baseAttr + agilityPoints));
+
+  // 4. DISCIPLINA: Real streak days + total workouts completed
+  const disciplinePoints = Math.floor(currentStreak * 4.5 + history.length * 2.5);
+  const discipline = Math.min(100, Math.max(baseAttr, baseAttr + disciplinePoints));
+
+  return { strength, endurance, agility, discipline };
+}

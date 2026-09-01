@@ -158,7 +158,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
           {/* RPG Attribute Gauges */}
           <div className="mt-6 pt-5 border-t border-white/5 relative z-10">
-            <p className="text-[10px] font-mono font-bold uppercase tracking-widest text-neutral-400 mb-3">ATRIBUTOS DE GUERRERO</p>
+            <p className="text-[10px] font-mono font-bold uppercase tracking-widest text-neutral-400 mb-3">ATRIBUTOS DEL ATLETA</p>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <div className="bg-white/5 p-3 rounded-2xl border border-white/5">
                 <div className="flex justify-between text-xs font-bold text-neutral-300 font-mono">
