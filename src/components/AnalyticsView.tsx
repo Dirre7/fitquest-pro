@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import {
   BarChart,
   Bar,
@@ -52,6 +52,8 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
   const t = translations[lang];
   const [expandedSessionId, setExpandedSessionId] = useState<string | null>(null);
 
+  const totalDistance = history.reduce((acc, h) => acc + (h.totalDistanceKm || 0), 0);
+
   // Volume progression over time chart data
   const volumeData = history.length > 0 
     ? [...history].reverse().map((h) => ({
@@ -66,6 +68,21 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
         { date: 'Mie', vol: 2400, calories: 480, bpm: 142, duration: 55 },
         { date: 'Vie', vol: 3100, calories: 520, bpm: 145, duration: 60 },
         { date: 'Dom', vol: 1800, calories: 390, bpm: 135, duration: 40 },
+      ];
+
+  // Cardio progression over time chart data
+  const cardioData = history.length > 0
+    ? [...history].reverse().map((h) => ({
+        date: h.date.slice(5),
+        km: h.totalDistanceKm || (h.routineTitle?.toLowerCase().includes('cardio') ? 4.5 : 0),
+        bpm: h.avgHeartRate || 135,
+        duration: h.durationMinutes,
+      }))
+    : [
+        { date: 'Lun', km: 3.5, bpm: 132, duration: 25 },
+        { date: 'Mie', km: 5.0, bpm: 144, duration: 32 },
+        { date: 'Vie', km: 7.2, bpm: 148, duration: 45 },
+        { date: 'Dom', km: 10.0, bpm: 155, duration: 58 },
       ];
 
   // Estimated 1RM Progression data
@@ -227,6 +244,41 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
                 <Line type="monotone" dataKey="Squat" stroke="#10b981" strokeWidth={2} name="Sentadilla" />
                 <Line type="monotone" dataKey="Deadlift" stroke="#f59e0b" strokeWidth={2} name="Peso Muerto" />
               </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* Cardio & Running Distance Evolution */}
+        <div className="bg-[#121214] border border-white/10 rounded-3xl p-5 sm:p-6 shadow-xl space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Activity className="w-5 h-5 text-purple-400" />
+              <h3 className="font-display font-bold text-lg text-white">
+                Rendimiento Cardio & Running (km)
+              </h3>
+            </div>
+            <span className="text-xs font-mono font-bold text-purple-400">
+              {totalDistance.toFixed(1)} km Acumulados
+            </span>
+          </div>
+
+          <div className="h-64 w-full pt-4">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={cardioData}>
+                <defs>
+                  <linearGradient id="cardioGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#a855f7" stopOpacity={0.4} />
+                    <stop offset="95%" stopColor="#a855f7" stopOpacity={0.0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#262626" />
+                <XAxis dataKey="date" stroke="#737373" fontSize={11} />
+                <YAxis stroke="#737373" fontSize={11} />
+                <Tooltip
+                  contentStyle={{ backgroundColor: '#121214', borderColor: '#333', borderRadius: '16px', fontSize: '12px' }}
+                />
+                <Area type="monotone" dataKey="km" stroke="#a855f7" strokeWidth={2.5} fillOpacity={1} fill="url(#cardioGrad)" name="Distancia (km)" />
+              </AreaChart>
             </ResponsiveContainer>
           </div>
         </div>

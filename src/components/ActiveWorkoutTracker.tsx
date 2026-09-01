@@ -386,6 +386,29 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
   };
 
   const handleConfirmFinish = () => {
+    const totalDistanceKm = Math.round(
+      exercises.reduce((acc, ex) => {
+        const isCardio =
+          ex.muscleGroup === 'Cardio' ||
+          ex.type === 'cardio' ||
+          ex.name.toLowerCase().includes('carrera') ||
+          ex.name.toLowerCase().includes('cinta') ||
+          ex.name.toLowerCase().includes('running') ||
+          ex.name.toLowerCase().includes('remo') ||
+          ex.name.toLowerCase().includes('sprint');
+        return (
+          acc +
+          ex.sets
+            .filter((s) => s.completed)
+            .reduce((sAcc, s) => {
+              if (s.actualDistanceKm) return sAcc + s.actualDistanceKm;
+              if (isCardio && s.actualWeightKg > 0) return sAcc + s.actualWeightKg;
+              return sAcc;
+            }, 0)
+        );
+      }, 0) * 10
+    ) / 10;
+
     const xpGained = Math.round(routine.xpReward * Math.max(0.6, completionPercent / 100));
 
     const historyEntry: WorkoutHistoryEntry = {
@@ -395,6 +418,8 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
       date: new Date().toISOString().split('T')[0],
       durationMinutes: Math.max(1, Math.round(elapsedSeconds / 60)),
       totalVolumeKg: totalVolume,
+      totalDistanceKm,
+      cardioMinutes: Math.max(1, Math.round(elapsedSeconds / 60)),
       calories: liveCalories,
       avgHeartRate: smartwatch.liveHeartRate || 140,
       maxHeartRate: (smartwatch.liveHeartRate || 140) + 18,
@@ -634,84 +659,102 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
 
             {/* Sets Logging Table */}
             <div className="mt-4 sm:mt-6 relative z-10 w-full max-w-full">
-              <div className="grid grid-cols-12 gap-1 sm:gap-2 text-[10px] sm:text-[11px] font-mono font-bold text-neutral-400 uppercase tracking-wider px-2 sm:px-3 pb-2 text-center">
-                <div className="col-span-2 sm:col-span-2 text-left">{t.set}</div>
-                <div className="col-span-4 sm:col-span-4">{t.weight}</div>
-                <div className="col-span-3 sm:col-span-3">{t.reps}</div>
-                <div className="col-span-3 sm:col-span-3">{t.completedSet}</div>
-              </div>
+              {(() => {
+                const isCardio =
+                  currentExercise.muscleGroup === 'Cardio' ||
+                  currentExercise.type === 'cardio' ||
+                  currentExercise.name.toLowerCase().includes('carrera') ||
+                  currentExercise.name.toLowerCase().includes('cinta') ||
+                  currentExercise.name.toLowerCase().includes('running') ||
+                  currentExercise.name.toLowerCase().includes('remo') ||
+                  currentExercise.name.toLowerCase().includes('sprint') ||
+                  currentExercise.name.toLowerCase().includes('elíptica') ||
+                  currentExercise.name.toLowerCase().includes('cuerda');
 
-              <div className="space-y-2.5 sm:space-y-3">
-                {(() => {
-                  const activeSetIdx = currentExercise.sets.findIndex((s) => !s.completed);
+                const activeSetIdx = currentExercise.sets.findIndex((s) => !s.completed);
 
-                  return currentExercise.sets.map((set, setIdx) => {
-                    const estimated1rm = Math.round(
-                      set.actualWeightKg / (1.0278 - 0.0278 * Math.min(10, set.actualReps || 1))
-                    );
-                    const isCurrentActive = setIdx === activeSetIdx;
-                    const isLocked = !set.completed && activeSetIdx !== -1 && setIdx > activeSetIdx;
+                return (
+                  <>
+                    <div className="grid grid-cols-12 gap-1 sm:gap-2 text-[10px] sm:text-[11px] font-mono font-bold text-neutral-400 uppercase tracking-wider px-2 sm:px-3 pb-2 text-center">
+                      <div className="col-span-2 sm:col-span-2 text-left">{t.set}</div>
+                      <div className="col-span-4 sm:col-span-4">{isCardio ? 'Distancia (km)' : t.weight}</div>
+                      <div className="col-span-3 sm:col-span-3">{isCardio ? 'Minutos / Reps' : t.reps}</div>
+                      <div className="col-span-3 sm:col-span-3">{t.completedSet}</div>
+                    </div>
 
-                    return (
-                      <div
-                        key={set.id}
-                        className={`grid grid-cols-12 gap-1 sm:gap-2 items-center p-2.5 sm:p-3.5 rounded-2xl border transition-all ${
-                          set.completed
-                            ? 'bg-cyan-500/10 border-cyan-500/30 text-cyan-100 shadow-[0_0_15px_rgba(6,182,212,0.1)]'
-                            : isCurrentActive
-                            ? 'bg-cyan-500/[0.05] border-cyan-500/60 ring-2 ring-cyan-500/30 text-white shadow-[0_0_20px_rgba(6,182,212,0.15)]'
-                            : isLocked
-                            ? 'bg-white/[0.02] border-white/5 text-neutral-400 opacity-70'
-                            : 'bg-white/5 border-white/5 text-white'
-                        }`}
-                      >
-                        {/* Set Number & Badge */}
-                        <div className="col-span-2 sm:col-span-2 flex items-center gap-1 sm:gap-1.5">
-                          <span className={`w-5 h-5 sm:w-6 sm:h-6 rounded-lg font-mono font-bold text-[11px] sm:text-xs flex items-center justify-center ${
-                            isCurrentActive
-                              ? 'bg-cyan-500 text-neutral-950 shadow-md shadow-cyan-500/40'
-                              : 'bg-white/10 text-neutral-200'
-                          }`}>
-                            {setIdx + 1}
-                          </span>
-                          {set.isWarmup && (
-                            <span className="text-[8px] sm:text-[9px] font-mono font-extrabold px-1 sm:px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30">
-                              W
-                            </span>
-                          )}
-                        </div>
+                    <div className="space-y-2.5 sm:space-y-3">
+                      {currentExercise.sets.map((set, setIdx) => {
+                        const estimated1rm = Math.round(
+                          set.actualWeightKg / (1.0278 - 0.0278 * Math.min(10, set.actualReps || 1))
+                        );
+                        const isCurrentActive = setIdx === activeSetIdx;
+                        const isLocked = !set.completed && activeSetIdx !== -1 && setIdx > activeSetIdx;
+                        const stepVal = isCardio ? 0.5 : 2.5;
 
-                        {/* Weight Adjuster (kg) */}
-                        <div className="col-span-4 sm:col-span-4 flex items-center justify-center gap-1 sm:gap-1.5">
-                          <button
-                            onClick={() => handleUpdateSetVal(set.id, 'actualWeightKg', -2.5)}
-                            className="w-6 h-6 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-white/5 hover:bg-white/10 text-white flex items-center justify-center font-bold border border-white/5 shrink-0"
-                            title="-2.5 kg"
+                        return (
+                          <div
+                            key={set.id}
+                            className={`grid grid-cols-12 gap-1 sm:gap-2 items-center p-2.5 sm:p-3.5 rounded-2xl border transition-all ${
+                              set.completed
+                                ? 'bg-cyan-500/10 border-cyan-500/30 text-cyan-100 shadow-[0_0_15px_rgba(6,182,212,0.1)]'
+                                : isCurrentActive
+                                ? 'bg-cyan-500/[0.05] border-cyan-500/60 ring-2 ring-cyan-500/30 text-white shadow-[0_0_20px_rgba(6,182,212,0.15)]'
+                                : isLocked
+                                ? 'bg-white/[0.02] border-white/5 text-neutral-400 opacity-70'
+                                : 'bg-white/5 border-white/5 text-white'
+                            }`}
                           >
-                            <Minus className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
-                          </button>
-                          <div className="w-12 sm:w-18 text-center min-w-0">
-                            <input
-                              type="number"
-                              value={set.actualWeightKg}
-                              onChange={(e) => {
-                                const val = parseFloat(e.target.value) || 0;
-                                handleUpdateSetVal(set.id, 'actualWeightKg', val - set.actualWeightKg);
-                              }}
-                              className="w-full bg-[#09090b] text-center font-mono font-bold text-xs sm:text-sm rounded-lg sm:rounded-xl py-1 sm:py-1.5 border border-white/10 focus:border-cyan-500 focus:outline-none text-white px-0.5"
-                            />
-                            {set.actualWeightKg > 0 && (
-                              <span className="text-[8px] sm:text-[9px] text-neutral-400 block font-mono mt-0.5 hidden xs:block">1RM:{estimated1rm}k</span>
-                            )}
-                          </div>
-                          <button
-                            onClick={() => handleUpdateSetVal(set.id, 'actualWeightKg', 2.5)}
-                            className="w-6 h-6 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-white/5 hover:bg-white/10 text-white flex items-center justify-center font-bold border border-white/5 shrink-0"
-                            title="+2.5 kg"
-                          >
-                            <Plus className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
-                          </button>
-                        </div>
+                            {/* Set Number & Badge */}
+                            <div className="col-span-2 sm:col-span-2 flex items-center gap-1 sm:gap-1.5">
+                              <span className={`w-5 h-5 sm:w-6 sm:h-6 rounded-lg font-mono font-bold text-[11px] sm:text-xs flex items-center justify-center ${
+                                isCurrentActive
+                                  ? 'bg-cyan-500 text-neutral-950 shadow-md shadow-cyan-500/40'
+                                  : 'bg-white/10 text-neutral-200'
+                              }`}>
+                                {setIdx + 1}
+                              </span>
+                              {set.isWarmup && (
+                                <span className="text-[8px] sm:text-[9px] font-mono font-extrabold px-1 sm:px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                                  W
+                                </span>
+                              )}
+                            </div>
+
+                            {/* Weight or Distance Adjuster */}
+                            <div className="col-span-4 sm:col-span-4 flex items-center justify-center gap-1 sm:gap-1.5">
+                              <button
+                                onClick={() => handleUpdateSetVal(set.id, 'actualWeightKg', -stepVal)}
+                                className="w-6 h-6 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-white/5 hover:bg-white/10 text-white flex items-center justify-center font-bold border border-white/5 shrink-0"
+                                title={isCardio ? "-0.5 km" : "-2.5 kg"}
+                              >
+                                <Minus className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
+                              </button>
+                              <div className="w-12 sm:w-18 text-center min-w-0">
+                                <input
+                                  type="number"
+                                  step={isCardio ? "0.1" : "0.5"}
+                                  value={set.actualWeightKg}
+                                  onChange={(e) => {
+                                    const val = parseFloat(e.target.value) || 0;
+                                    handleUpdateSetVal(set.id, 'actualWeightKg', val - set.actualWeightKg);
+                                  }}
+                                  className="w-full bg-[#09090b] text-center font-mono font-bold text-xs sm:text-sm rounded-lg sm:rounded-xl py-1 sm:py-1.5 border border-white/10 focus:border-cyan-500 focus:outline-none text-white px-0.5"
+                                />
+                                {!isCardio && set.actualWeightKg > 0 && (
+                                  <span className="text-[8px] sm:text-[9px] text-neutral-400 block font-mono mt-0.5 hidden xs:block">1RM:{estimated1rm}k</span>
+                                )}
+                                {isCardio && (
+                                  <span className="text-[8px] sm:text-[9px] text-purple-400 block font-mono mt-0.5">km</span>
+                                )}
+                              </div>
+                              <button
+                                onClick={() => handleUpdateSetVal(set.id, 'actualWeightKg', stepVal)}
+                                className="w-6 h-6 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-white/5 hover:bg-white/10 text-white flex items-center justify-center font-bold border border-white/5 shrink-0"
+                                title={isCardio ? "+0.5 km" : "+2.5 kg"}
+                              >
+                                <Plus className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
+                              </button>
+                            </div>
 
                         {/* Reps Adjuster */}
                         <div className="col-span-3 sm:col-span-3 flex items-center justify-center gap-1 sm:gap-1.5">
@@ -754,11 +797,13 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
                             <Check className="w-4 h-4 sm:w-5 sm:h-5 stroke-[3]" />
                           </button>
                         </div>
-                      </div>
-                    );
-                  });
-                })()}
-              </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
+              );
+            })()}
 
               {/* Add Set button */}
               <button

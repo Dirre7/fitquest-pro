@@ -7,6 +7,7 @@ export type League = 'Bronze' | 'Silver' | 'Gold' | 'Diamond' | 'Titan';
 export interface UserStats {
   totalWorkouts: number;
   totalVolumeKg: number;
+  totalDistanceKm: number;
   totalMinutes: number;
   caloriesBurned: number;
   currentStreak: number;
@@ -48,6 +49,11 @@ export interface ExerciseSet {
   actualReps: number;
   targetWeightKg: number;
   actualWeightKg: number;
+  targetDistanceKm?: number;
+  actualDistanceKm?: number;
+  targetDurationSeconds?: number;
+  actualDurationSeconds?: number;
+  paceMinKm?: string;
   completed: boolean;
   rpe?: number; // Rate of Perceived Exertion (1-10)
   isWarmup?: boolean;
@@ -56,11 +62,13 @@ export interface ExerciseSet {
 export interface Exercise {
   id: string;
   name: string;
+  type?: 'strength' | 'cardio' | 'hiit' | 'mobility';
   muscleGroup: 'Chest' | 'Back' | 'Legs' | 'Shoulders' | 'Arms' | 'Core' | 'Full Body' | 'Cardio';
   equipment: 'Barbell' | 'Dumbbell' | 'Bodyweight' | 'Cable' | 'Machine' | 'Kettlebell' | 'None';
   sets: ExerciseSet[];
   restSeconds: number;
   prKg?: number;
+  prDistanceKm?: number;
   instructions?: string;
   tip?: string;
 }
@@ -94,7 +102,7 @@ export interface WorkoutProgram {
   description: string;
   daysPerWeek: number;
   difficulty: 'Beginner' | 'Intermediate' | 'Advanced' | 'Elite';
-  category: 'Strength' | 'Hypertrophy' | 'HIIT' | 'Calisthenics';
+  category: 'Strength' | 'Hypertrophy' | 'HIIT' | 'Calisthenics' | 'Cardio' | 'Hybrid';
   targetMuscles: string[];
   xpReward: number;
   days: ProgramDay[];
@@ -124,6 +132,9 @@ export interface WorkoutHistoryEntry {
   date: string;
   durationMinutes: number;
   totalVolumeKg: number;
+  totalDistanceKm?: number;
+  averagePace?: string;
+  cardioMinutes?: number;
   calories: number;
   avgHeartRate: number;
   maxHeartRate: number;
@@ -151,7 +162,7 @@ export interface CommunityChallenge {
   id: string;
   title: string;
   description: string;
-  category: 'steps' | 'volume' | 'workouts' | 'calories' | 'reps';
+  category: 'steps' | 'volume' | 'workouts' | 'calories' | 'reps' | 'distance';
   goalTarget: number;
   currentProgress: number;
   unit: string;

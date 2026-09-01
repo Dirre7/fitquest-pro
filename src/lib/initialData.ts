@@ -29,6 +29,7 @@ export const createFreshUser = (id: string, name: string, email?: string): UserP
     stats: {
       totalWorkouts: 0,
       totalVolumeKg: 0,
+      totalDistanceKm: 0,
       totalMinutes: 0,
       caloriesBurned: 0,
       currentStreak: 0,
@@ -169,6 +170,45 @@ export const createFreshAchievements = (): Achievement[] => [
     unlocked: false,
     xpReward: 800,
     rewardTitle: 'Héroe Comunitario',
+  },
+  {
+    id: 'ach_cardio_5k',
+    title: 'Primeros 5 Kilómetros',
+    description: 'Acumula al menos 5 km de carrera o cardio en tus entrenamientos.',
+    icon: 'Flame',
+    category: 'speed',
+    tier: 'Bronze',
+    currentProgress: 0,
+    maxProgress: 5,
+    unlocked: false,
+    xpReward: 200,
+    rewardTitle: 'Corredor Incansable',
+  },
+  {
+    id: 'ach_cardio_half_marathon',
+    title: 'Medio Maratón Acumulado',
+    description: 'Acumula más de 21 km de carrera y cardio en tu historial.',
+    icon: 'Trophy',
+    category: 'speed',
+    tier: 'Gold',
+    currentProgress: 0,
+    maxProgress: 21,
+    unlocked: false,
+    xpReward: 600,
+    rewardTitle: 'Fondista de Acero',
+  },
+  {
+    id: 'ach_hiit_master',
+    title: 'Motor Inagotable',
+    description: 'Completa 5 sesiones de entrenamiento HIIT de alta intensidad.',
+    icon: 'Zap',
+    category: 'speed',
+    tier: 'Silver',
+    currentProgress: 0,
+    maxProgress: 5,
+    unlocked: false,
+    xpReward: 350,
+    rewardTitle: 'Rey del HIIT',
   },
 ];
 
@@ -952,9 +992,123 @@ export const defaultPrograms: WorkoutProgram[] = [
       },
     ],
   },
+  {
+    id: 'prog_runner_matrix',
+    title: 'Plan Runner 5K a 10K Matrix (3 Días)',
+    description: 'Estructura profesional de carrera: Fartlek anaeróbico, tirada continua en Zona 2 y tempo run de competición.',
+    daysPerWeek: 3,
+    difficulty: 'Intermediate',
+    category: 'Cardio',
+    targetMuscles: ['Cardio', 'Piernas', 'Capacidad Aeróbica'],
+    xpReward: 1300,
+    days: [
+      {
+        dayNumber: 1,
+        title: 'Día 1: Intervalos Fartlek & Sprints',
+        focus: 'Aceleración, cadencia y potencia anaeróbica',
+        routine: defaultRoutines[9], // rt_cardio_vo2max
+      },
+      {
+        dayNumber: 2,
+        title: 'Día 2: Tirada Continua Zona 2',
+        focus: 'Quema de grasa, base aeróbica y economía de carrera',
+        routine: defaultRoutines[8], // rt_cardio_zone2
+      },
+      {
+        dayNumber: 3,
+        title: 'Día 3: Simulación de Carrera 5K/10K',
+        focus: 'Ritmo sostenido y prueba de distancia objetivo',
+        routine: defaultRoutines[9], // rt_cardio_vo2max
+      },
+    ],
+  },
+  {
+    id: 'prog_hiit_burn',
+    title: 'Plan HIIT & Fat Burn Apocalypse (3 Días)',
+    description: 'Circuitos metabólicos de alta frecuencia para elevar el VO2 Max y maximizar el gasto calórico post-entreno.',
+    daysPerWeek: 3,
+    difficulty: 'Advanced',
+    category: 'HIIT',
+    targetMuscles: ['Full Body', 'Cardio', 'Core'],
+    xpReward: 1250,
+    days: [
+      {
+        dayNumber: 1,
+        title: 'Día 1: Spartan Metabolic Conditioning',
+        focus: 'Kettlebells, Burpees y Saltos al cajón',
+        routine: defaultRoutines[4], // rt_hiit_spartan
+      },
+      {
+        dayNumber: 2,
+        title: 'Día 2: Tabata Shredder 20/10',
+        focus: 'High knees, Plank jacks y Skaters a máxima velocidad',
+        routine: defaultRoutines[5], // rt_hiit_tabata
+      },
+      {
+        dayNumber: 3,
+        title: 'Día 3: VO2 Max Booster Interval',
+        focus: 'Sprints y Battle Ropes sin tregua',
+        routine: defaultRoutines[9], // rt_cardio_vo2max
+      },
+    ],
+  },
+  {
+    id: 'prog_hybrid_athlete',
+    title: 'Plan Atleta Híbrido: Fuerza + Resistencia (4 Días)',
+    description: 'Combina lo mejor de dos mundos: levantamiento pesado para hipertrofia con sesiones de carrera y acondicionamiento.',
+    daysPerWeek: 4,
+    difficulty: 'Elite',
+    category: 'Hybrid',
+    targetMuscles: ['Fuerza', 'Hipertrofia', 'Cardio', 'Running'],
+    xpReward: 1750,
+    days: [
+      {
+        dayNumber: 1,
+        title: 'Día 1: Torso Pesado (Fuerza)',
+        focus: 'Press de Banca, Remo y Dominadas con peso',
+        routine: defaultRoutines[1], // rt_upper_strength
+      },
+      {
+        dayNumber: 2,
+        title: 'Día 2: Running & Cardio Zone 2 (Resistencia)',
+        focus: 'Tirada aeróbica continua de 5 a 8 km',
+        routine: defaultRoutines[8], // rt_cardio_zone2
+      },
+      {
+        dayNumber: 3,
+        title: 'Día 3: Pierna & Glúteos Hipertrofia (Fuerza)',
+        focus: 'Sentadillas, Prensa 45° y Búlgaras',
+        routine: defaultRoutines[3], // rt_legs_hypertrophy
+      },
+      {
+        dayNumber: 4,
+        title: 'Día 4: HIIT & Sprints VO2 Max (Potencia)',
+        focus: 'Intervalos metabólicos y aceleraciones',
+        routine: defaultRoutines[9], // rt_cardio_vo2max
+      },
+    ],
+  },
 ];
 
 export const defaultChallenges: CommunityChallenge[] = [
+  {
+    id: 'ch_weekly_cardio_15k',
+    title: 'Desafío Fondista: 15 km de Carrera',
+    description: 'Acumula al menos 15 km de carrera o cardio entre tus sesiones esta semana.',
+    category: 'distance',
+    goalTarget: 15,
+    currentProgress: 0,
+    unit: 'km',
+    participantsCount: 489,
+    daysRemaining: 6,
+    rewardXp: 450,
+    rewardBadge: 'badge_cardio_15k',
+    joined: false,
+    leaderboardTop: [
+      { userId: 'u_c1', name: 'Mateo Runner', avatar: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=100', score: 12.8 },
+      { userId: 'u_c2', name: 'Valeria Iron', avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100', score: 10.4 },
+    ],
+  },
   {
     id: 'ch_weekly_volume_50k',
     title: 'Levantamiento de Titán Semanal',

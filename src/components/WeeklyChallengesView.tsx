@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Target,
   Flame,
@@ -81,6 +81,7 @@ export const WeeklyChallengesView: React.FC<WeeklyChallengesViewProps> = ({
   const weeklyVolumeKg = weekEntries.reduce((acc, h) => acc + (h.totalVolumeKg || 0), 0);
   const weeklyWorkoutsCount = weekEntries.length;
   const weeklyCalories = weekEntries.reduce((acc, h) => acc + (h.calories || 0), 0);
+  const weeklyDistanceKm = Math.round(weekEntries.reduce((acc, h) => acc + (h.totalDistanceKm || 0), 0) * 10) / 10;
 
   // Track claimed challenges state locally & persist
   const [claimedIds, setClaimedIds] = useState<string[]>(() => {
@@ -110,6 +111,18 @@ export const WeeklyChallengesView: React.FC<WeeklyChallengesViewProps> = ({
 
   // Predefined real dynamic weekly challenges
   const activeChallenges = [
+    {
+      id: 'ch_weekly_cardio_15k',
+      title: 'Desafío Fondista: 15 km de Carrera',
+      description: 'Acumula al menos 15 km de carrera, cinta o cardio exterior esta semana.',
+      category: 'DISTANCIA',
+      icon: Activity,
+      color: 'from-purple-500 to-indigo-600',
+      unit: 'km',
+      goal: 15,
+      userCurrent: weeklyDistanceKm,
+      rewardXp: 450,
+    },
     {
       id: 'ch_weekly_volume_titan',
       title: 'Levantamiento de Titán Semanal',
