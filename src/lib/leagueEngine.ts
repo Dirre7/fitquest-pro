@@ -178,7 +178,12 @@ export function evaluateWeeklyLeagueReset(
   history: WorkoutHistoryEntry[]
 ): { updatedUser: UserProfile; result: LeagueEvaluationResult | null } {
   const currentWeek = getCurrentWeekIdentifier();
-  const lastProcessed = localStorage.getItem('fitquest_last_league_week') || currentWeek;
+  const lastProcessed = localStorage.getItem('fitquest_last_league_week');
+
+  if (!lastProcessed) {
+    localStorage.setItem('fitquest_last_league_week', currentWeek);
+    return { updatedUser: user, result: null };
+  }
 
   if (lastProcessed === currentWeek) {
     return { updatedUser: user, result: null };

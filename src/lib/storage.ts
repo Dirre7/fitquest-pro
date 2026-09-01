@@ -426,6 +426,61 @@ export class FitStorage {
     return updatedUser;
   }
 
+  public static claimWeeklyChallenge(challengeId: string, rewardXp: number, currentUser?: UserProfile): UserProfile {
+    const user = currentUser || this.getUser();
+    const existing = user.claimedChallenges || [];
+    if (existing.includes(challengeId)) {
+      return user;
+    }
+    const updatedClaimed = [...existing, challengeId];
+
+    let currentXp = user.currentLevelXp + rewardXp;
+    let nextXp = user.nextLevelXp;
+    let level = user.level;
+    let rankTitle = user.rankTitle;
+
+    while (currentXp >= nextXp) {
+      currentXp -= nextXp;
+      level += 1;
+      nextXp = Math.round(nextXp * 1.3);
+
+      if (level >= 30) rankTitle = 'Titán Olímpico Élite';
+      else if (level >= 25) rankTitle = 'Leyenda Inmortal';
+      else if (level >= 20) rankTitle = 'Maestro de la Fuerza';
+      else if (level >= 15) rankTitle = 'Guerrero de Hierro';
+      else if (level >= 10) rankTitle = 'Atleta Vanguardia';
+      else if (level >= 5) rankTitle = 'Gladiador de Bronce';
+      else rankTitle = 'Recluta Inicial';
+    }
+
+    const updatedUser: UserProfile = {
+      ...user,
+      level,
+      xp: user.xp + rewardXp,
+      currentLevelXp: currentXp,
+      nextLevelXp: nextXp,
+      rankTitle,
+      claimedChallenges: updatedClaimed,
+      stats: {
+        ...user.stats,
+        challengesCompleted: (user.stats.challengesCompleted || 0) + 1,
+      },
+      attributes: {
+        strength: Math.min(100, user.attributes.strength + Math.floor(rewardXp / 300)),
+        endurance: Math.min(100, user.attributes.endurance + Math.floor(rewardXp / 350)),
+        agility: Math.min(100, user.attributes.agility + Math.floor(rewardXp / 400)),
+        discipline: Math.min(100, user.attributes.discipline + Math.floor(rewardXp / 250)),
+      },
+    };
+
+    this.saveUser(updatedUser);
+    try {
+      localStorage.setItem('fitquest_claimed_challenges', JSON.stringify(updatedClaimed));
+    } catch {}
+
+    return updatedUser;
+  }
+
   public static saveRoutine(routine: WorkoutRoutine) {
     const routines = this.getRoutines();
     const existingIdx = routines.findIndex((r) => r.id === routine.id);
