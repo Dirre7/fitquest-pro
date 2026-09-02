@@ -407,8 +407,18 @@ export default function App() {
   // Handle Workout Complete from ActiveWorkoutTracker
   const handleCompleteWorkout = (entry: WorkoutHistoryEntry, xpGained: number) => {
     // If completed workout belonged to a multi-day program, unlock the next day!
+    let totalXpToAward = xpGained;
     if (activeRoutine?.programId && activeRoutine?.programDayNumber) {
-      FitStorage.setProgramDayCompleted(activeRoutine.programId, activeRoutine.programDayNumber);
+      const progId = activeRoutine.programId;
+      const dayNum = activeRoutine.programDayNumber;
+      FitStorage.setProgramDayCompleted(progId, dayNum);
+
+      // Check if this completes the entire program cycle
+      const targetProgram = FitStorage.getPrograms().find((p) => p.id === progId);
+      if (targetProgram && dayNum >= targetProgram.days.length) {
+        totalXpToAward += (targetProgram.xpReward || 500);
+        sound.playLevelUp();
+      }
     }
 
     FitStorage.clearActiveSession();
@@ -421,7 +431,7 @@ export default function App() {
     setHistory(updatedHistory);
 
     // 2. Add XP to User Profile
-    const updatedUser = FitStorage.addXp(xpGained, user);
+    const updatedUser = FitStorage.addXp(totalXpToAward, user);
 
     // Calculate real streak and exact cumulative stats from complete history
     const realStreak = calculateRealStreak(updatedHistory);
@@ -481,17 +491,7 @@ export default function App() {
     FitStorage.saveChallenges(updatedChallenges);
     setChallenges(updatedChallenges);
 
-    // 5. Update program progress if this routine was part of a multi-day plan
-    const allPrograms = FitStorage.getPrograms();
-    allPrograms.forEach((prog) => {
-      prog.days.forEach((d) => {
-        if (d.routine.id === entry.routineId || d.routine.title === entry.routineTitle) {
-          FitStorage.setProgramDayCompleted(prog.id, d.dayNumber);
-        }
-      });
-    });
-
-    // 6. Close active routine modal & show analytics
+    // 5. Close active routine modal & show analytics
     setActiveRoutine(null);
     setActiveTab('analytics');
   };

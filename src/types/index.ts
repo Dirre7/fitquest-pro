@@ -130,6 +130,8 @@ export interface ActiveWorkoutState {
   liveHeartRate: number;
   activeCalories: number;
   notes: string;
+  programId?: string;
+  programDayNumber?: number;
 }
 
 export interface WorkoutHistoryEntry {

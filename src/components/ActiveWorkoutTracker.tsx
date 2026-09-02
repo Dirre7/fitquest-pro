@@ -117,6 +117,8 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
   // Active biometrics
   const [liveCalories, setLiveCalories] = useState<number>(() => initialState?.activeCalories || 0);
 
+  const isFinishedRef = React.useRef(false);
+
   // 1RM Strength Calculator Modal
   const [show1rmModal, setShow1rmModal] = useState<boolean>(false);
   const [calcWeight, setCalcWeight] = useState<number>(80);
@@ -133,6 +135,7 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
 
   // Sync state continuously to FitStorage for safe background persistence
   useEffect(() => {
+    if (isFinishedRef.current) return;
     const currentState: ActiveWorkoutState = {
       routineId: routine.id,
       routineTitle: routine.title,
@@ -148,11 +151,14 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
       liveHeartRate: smartwatch.liveHeartRate || 135,
       activeCalories: liveCalories,
       notes,
+      programId: routine.programId,
+      programDayNumber: routine.programDayNumber,
     };
     FitStorage.saveActiveSession(currentState);
   }, [elapsedSeconds, currentExerciseIndex, exercises, isResting, restRemaining, totalRestTime, isPaused, liveCalories, notes, routine, smartwatch.liveHeartRate, initialState]);
 
   const handleMinimize = () => {
+    if (isFinishedRef.current) return;
     const currentState: ActiveWorkoutState = {
       routineId: routine.id,
       routineTitle: routine.title,
@@ -168,6 +174,8 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
       liveHeartRate: smartwatch.liveHeartRate || 135,
       activeCalories: liveCalories,
       notes,
+      programId: routine.programId,
+      programDayNumber: routine.programDayNumber,
     };
     FitStorage.saveActiveSession(currentState);
     if (onMinimize) onMinimize(currentState);
@@ -480,6 +488,7 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
       notes,
     };
 
+    isFinishedRef.current = true;
     FitStorage.clearActiveSession();
 
     if (onComplete) {
