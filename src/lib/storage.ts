@@ -82,7 +82,20 @@ export class FitStorage {
       await setDoc(userRef, {
         ...user,
         id: uid,
+        level: user.level,
+        xp: user.xp,
+        currentLevelXp: user.currentLevelXp,
+        nextLevelXp: user.nextLevelXp,
         rankTitle: user.rankTitle || 'Recluta Inicial',
+        stats: user.stats,
+        attributes: user.attributes,
+        unlockedBadges: user.unlockedBadges || [],
+        claimedChallenges: user.claimedChallenges || [],
+        claimedChallengesWeek: user.claimedChallengesWeek || '',
+        weightKg: user.weightKg,
+        targetWeightKg: user.targetWeightKg,
+        name: user.name,
+        avatar: user.avatar,
         updatedAt: new Date().toISOString(),
       }, { merge: true });
       localStorage.setItem(KEYS.LAST_CLOUD_SYNC, new Date().toISOString());
@@ -130,11 +143,24 @@ export class FitStorage {
           ...(defaults.unlockedBadges || []),
         ]));
 
+        const maxLevel = Math.max(cloudData.level || 1, existingLocalUser.level || 1, defaults.level || 1);
+        const maxTotalXp = Math.max(cloudData.xp || 0, existingLocalUser.xp || 0);
+        const effectiveCurrentLevelXp = (cloudData.xp !== undefined && cloudData.xp >= (existingLocalUser.xp || 0))
+          ? (cloudData.currentLevelXp ?? existingLocalUser.currentLevelXp ?? defaults.currentLevelXp)
+          : (existingLocalUser.currentLevelXp ?? defaults.currentLevelXp);
+        const effectiveNextLevelXp = (cloudData.xp !== undefined && cloudData.xp >= (existingLocalUser.xp || 0))
+          ? (cloudData.nextLevelXp || existingLocalUser.nextLevelXp || defaults.nextLevelXp)
+          : (existingLocalUser.nextLevelXp || defaults.nextLevelXp);
+
         userProfile = {
           ...defaults,
           ...existingLocalUser,
           ...cloudData,
           id: uid,
+          level: maxLevel,
+          xp: maxTotalXp,
+          currentLevelXp: effectiveCurrentLevelXp,
+          nextLevelXp: effectiveNextLevelXp,
           name: cloudData.name || existingLocalUser.name || defaults.name,
           avatar: cloudData.avatar || existingLocalUser.avatar || defaults.avatar,
           rankTitle: cloudData.rankTitle || existingLocalUser.rankTitle || defaults.rankTitle,
@@ -148,8 +174,8 @@ export class FitStorage {
           localStorage.setItem('fitquest_claimed_challenges', JSON.stringify(mergedClaimed));
         } catch {}
 
-        // If local had a custom title or badges that cloud lacked, sync them back to cloud immediately
-        if (userProfile.rankTitle !== cloudData.rankTitle || (userProfile.unlockedBadges?.length || 0) > (cloudData.unlockedBadges?.length || 0)) {
+        // If local had a custom title or badges or higher XP, sync them to cloud
+        if (userProfile.rankTitle !== cloudData.rankTitle || userProfile.xp !== cloudData.xp || (userProfile.unlockedBadges?.length || 0) > (cloudData.unlockedBadges?.length || 0)) {
           this.syncUserToCloud(userProfile);
         }
       } else {
