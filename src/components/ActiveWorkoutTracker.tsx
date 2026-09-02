@@ -995,9 +995,11 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
                   <Trophy className="w-7 h-7" />
                 </div>
                 <h3 className="font-display font-extrabold text-xl sm:text-2xl text-white">
-                  {t.workoutCompleted}
+                  {routine.programDayNumber
+                    ? `¡Día ${routine.programDayNumber} Completado!`
+                    : t.workoutCompleted}
                 </h3>
-                <p className="text-xs sm:text-sm text-neutral-400 mt-0.5">{routine.title}</p>
+                <p className="text-xs sm:text-sm text-cyan-400 font-mono font-bold mt-0.5">{routine.title}</p>
               </div>
 
               {/* Metrics Breakdown Grid */}
@@ -1087,7 +1089,7 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
                 onClick={handleConfirmFinish}
                 className="flex-1 py-3 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-neutral-950 font-mono font-bold text-xs shadow-xl shadow-cyan-500/25 transition-transform hover:scale-105"
               >
-                Guardar y Reclamar XP
+                {routine.programDayNumber ? `Desbloquear Día ${routine.programDayNumber + 1}` : 'Guardar y Reclamar XP'}
               </button>
             </div>
           </div>

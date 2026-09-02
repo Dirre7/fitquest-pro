@@ -408,10 +408,15 @@ export default function App() {
   const handleCompleteWorkout = (entry: WorkoutHistoryEntry, xpGained: number) => {
     // If completed workout belonged to a multi-day program, unlock the next day!
     let totalXpToAward = xpGained;
+    const currentProgMap = FitStorage.getProgramProgress();
+    const updatedProgramProgress = { ...currentProgMap, ...(user.programProgress || {}) };
+    const isProgramWorkout = Boolean(activeRoutine?.programId && activeRoutine?.programDayNumber);
+
     if (activeRoutine?.programId && activeRoutine?.programDayNumber) {
       const progId = activeRoutine.programId;
       const dayNum = activeRoutine.programDayNumber;
       FitStorage.setProgramDayCompleted(progId, dayNum);
+      updatedProgramProgress[progId] = Math.max(updatedProgramProgress[progId] || 0, dayNum);
 
       // Check if this completes the entire program cycle
       const targetProgram = FitStorage.getPrograms().find((p) => p.id === progId);
@@ -443,6 +448,8 @@ export default function App() {
 
     const finalUser: UserProfile = {
       ...updatedUser,
+      programProgress: updatedProgramProgress,
+      activeSession: null,
       attributes: dynamicAttributes,
       stats: {
         ...updatedUser.stats,
@@ -491,9 +498,13 @@ export default function App() {
     FitStorage.saveChallenges(updatedChallenges);
     setChallenges(updatedChallenges);
 
-    // 5. Close active routine modal & show analytics
+    // 5. Close active routine modal & show appropriate view
     setActiveRoutine(null);
-    setActiveTab('analytics');
+    if (isProgramWorkout) {
+      setActiveTab('routines');
+    } else {
+      setActiveTab('analytics');
+    }
   };
 
   // Handle Custom Routine Created
