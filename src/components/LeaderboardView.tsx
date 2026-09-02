@@ -14,7 +14,6 @@ import {
   Clock,
   Zap,
   X,
-  Swords,
   Heart,
   Check,
   UserPlus,
@@ -22,16 +21,20 @@ import {
   Dumbbell,
   Target,
   Share2,
+  Edit3,
+  Search,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { LeaderboardUser, League, Language, UserProfile, WorkoutHistoryEntry } from '../types';
 import { translations } from '../lib/i18n';
 import { sound } from '../lib/soundFx';
+import { FitStorage } from '../lib/storage';
 import { 
   getCountdownToSunday, 
   getLeagueLeaderboard, 
   calculateUserWeeklyXp, 
   LEAGUE_HIERARCHY, 
+  LEAGUE_BOTS,
   WeeklyCountdown 
 } from '../lib/leagueEngine';
 
@@ -41,6 +44,7 @@ interface LeaderboardViewProps {
   history?: WorkoutHistoryEntry[];
   currentLeague: League;
   lang: Language;
+  onUpdateUser?: (updated: Partial<UserProfile>) => void;
 }
 
 export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
@@ -48,15 +52,23 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
   history = [],
   currentLeague,
   lang,
+  onUpdateUser,
 }) => {
   const t = translations[lang];
   const [selectedLeague, setSelectedLeague] = useState<League>(currentLeague || user.league || 'Bronze');
   const [filterMode, setFilterMode] = useState<'global' | 'friends'>('global');
   const [countdown, setCountdown] = useState<WeeklyCountdown>(getCountdownToSunday());
   const [selectedAthlete, setSelectedAthlete] = useState<LeaderboardUser | null>(null);
-  const [friendsList, setFriendsList] = useState<Set<string>>(() => new Set(['bot_g1', 'bot_s2']));
+  const [followingSet, setFollowingSet] = useState<Set<string>>(() => new Set(user.following || ['bot_g1', 'bot_s2', 'bot_d1']));
   const [cheeredUserIds, setCheeredUserIds] = useState<Set<string>>(new Set());
-  const [duelChallengedUserIds, setDuelChallengedUserIds] = useState<Set<string>>(new Set());
+  
+  // Social Connections Modal state ('following' | 'followers' | null)
+  const [connectionsModalType, setConnectionsModalType] = useState<'following' | 'followers' | null>(null);
+  const [connectionsSearch, setConnectionsSearch] = useState<string>('');
+
+  // Bio inline edit state for current user
+  const [isEditingBio, setIsEditingBio] = useState<boolean>(false);
+  const [bioInput, setBioInput] = useState<string>(user.bio || 'Entrenando duro en FitQuest Pro para conquistar el podio.');
 
   // Real-time live countdown timer to Sunday 23:59:59
   useEffect(() => {
@@ -73,6 +85,12 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
     }
   }, [user.league]);
 
+  useEffect(() => {
+    if (user.bio) {
+      setBioInput(user.bio);
+    }
+  }, [user.bio]);
+
   const leagues: { id: League; name: string; color: string; border: string; glow: string }[] = [
     { id: 'Bronze', name: 'Liga Bronce', color: 'text-amber-600 border-amber-600/40 bg-amber-600/10', border: 'border-amber-700/50', glow: 'shadow-[0_0_20px_rgba(180,83,9,0.3)]' },
     { id: 'Silver', name: 'Liga Plata', color: 'text-neutral-300 border-neutral-400/40 bg-neutral-400/10', border: 'border-neutral-400/50', glow: 'shadow-[0_0_20px_rgba(200,200,200,0.2)]' },
@@ -85,7 +103,7 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
   const leagueLeaderboard = getLeagueLeaderboard(selectedLeague, user, userWeeklyXp, history);
 
   const filteredUsers = leagueLeaderboard.filter((u) => {
-    if (filterMode === 'friends') return friendsList.has(u.userId) || u.isCurrentUser;
+    if (filterMode === 'friends') return followingSet.has(u.userId) || u.isCurrentUser;
     return true;
   });
 
@@ -95,6 +113,12 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
   const currentLeagueIdx = LEAGUE_HIERARCHY.indexOf(selectedLeague);
   const nextLeague = currentLeagueIdx < LEAGUE_HIERARCHY.length - 1 ? LEAGUE_HIERARCHY[currentLeagueIdx + 1] : null;
   const prevLeague = currentLeagueIdx > 0 ? LEAGUE_HIERARCHY[currentLeagueIdx - 1] : null;
+
+  // Flatten all registered community users for connections list
+  const allCommunityUsers: LeaderboardUser[] = Object.values(LEAGUE_BOTS).flat().map((b, idx) => ({
+    ...b,
+    rank: idx + 1,
+  }));
 
   const handleCheerAthlete = (athlete: LeaderboardUser) => {
     setCheeredUserIds((prev) => new Set(prev).add(athlete.userId));
@@ -108,23 +132,35 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
     } catch {}
   };
 
-  const handleToggleFriend = (athlete: LeaderboardUser) => {
-    setFriendsList((prev) => {
+  const handleToggleFollow = (athleteUserId: string) => {
+    setFollowingSet((prev) => {
       const next = new Set(prev);
-      if (next.has(athlete.userId)) {
-        next.delete(athlete.userId);
+      if (next.has(athleteUserId)) {
+        next.delete(athleteUserId);
         sound.playBeep(400, 80);
       } else {
-        next.add(athlete.userId);
+        next.add(athleteUserId);
         sound.playBeep(750, 80);
+      }
+      const updatedFollowing = Array.from(next);
+      if (onUpdateUser) {
+        onUpdateUser({ following: updatedFollowing });
+      } else {
+        FitStorage.saveUser({ ...user, following: updatedFollowing });
       }
       return next;
     });
   };
 
-  const handleChallengeDuel = (athlete: LeaderboardUser) => {
-    setDuelChallengedUserIds((prev) => new Set(prev).add(athlete.userId));
+  const handleSaveBio = () => {
+    const trimmed = bioInput.trim();
+    setIsEditingBio(false);
     sound.playAchievement();
+    if (onUpdateUser) {
+      onUpdateUser({ bio: trimmed });
+    } else {
+      FitStorage.saveUser({ ...user, bio: trimmed });
+    }
   };
 
   return (
@@ -146,11 +182,11 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
             Clasificación & Ligas
           </h2>
           <p className="text-xs sm:text-sm text-neutral-400 mt-0.5">
-            Pincha sobre cualquier atleta para inspeccionar su carnet de logros y estadísticas.
+            Pincha sobre cualquier atleta para ver sus logros, biografía y seguidores.
           </p>
         </div>
 
-        {/* Global vs Friends Toggle */}
+        {/* Global vs Following Filter Switcher */}
         <div className="flex bg-neutral-900 border border-white/10 rounded-2xl p-1 shadow-inner">
           <button
             onClick={() => setFilterMode('global')}
@@ -172,7 +208,7 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
             }`}
           >
             <Users className="w-3.5 h-3.5" />
-            <span>Amigos ({friendsList.size})</span>
+            <span>Siguiendo ({followingSet.size})</span>
           </button>
         </div>
       </div>
@@ -353,7 +389,7 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
                       isUser ? 'border-cyan-400 shadow-[0_0_8px_#06b6d4]' : 'border-white/10 group-hover:border-white/30'
                     }`}
                   />
-                  {friendsList.has(item.userId) && (
+                  {followingSet.has(item.userId) && (
                     <span className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-cyan-500 border border-neutral-950 flex items-center justify-center text-[9px] text-neutral-950 font-bold">
                       ★
                     </span>
@@ -433,7 +469,10 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
                 <Shield className="w-3.5 h-3.5" /> Carnet de Atleta • Liga {selectedAthlete.league}
               </span>
               <button
-                onClick={() => setSelectedAthlete(null)}
+                onClick={() => {
+                  setSelectedAthlete(null);
+                  setIsEditingBio(false);
+                }}
                 className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 text-neutral-400 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
               >
                 <X className="w-4 h-4" />
@@ -480,12 +519,91 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
               </div>
             </div>
 
-            {/* Bio Quote */}
-            {selectedAthlete.bio && (
-              <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-3 text-xs text-neutral-300 italic leading-relaxed">
-                "{selectedAthlete.bio}"
+            {/* Social Followers / Following Bar */}
+            <div className="bg-neutral-950/80 border border-white/5 rounded-2xl p-3 flex items-center justify-around gap-2 relative z-10 shadow-inner">
+              <button
+                onClick={() => {
+                  setConnectionsModalType('following');
+                  setConnectionsSearch('');
+                }}
+                className="flex items-center gap-2 hover:opacity-80 transition-opacity cursor-pointer text-center"
+              >
+                <Users className="w-4 h-4 text-cyan-400" />
+                <div className="text-left">
+                  <p className="text-sm font-mono font-black text-white leading-none">
+                    {selectedAthlete.isCurrentUser ? followingSet.size : (selectedAthlete.followingCount || 12)}
+                  </p>
+                  <span className="text-[10px] font-mono text-neutral-400 uppercase">Siguiendo</span>
+                </div>
+              </button>
+
+              <div className="w-[1px] h-6 bg-white/10" />
+
+              <button
+                onClick={() => {
+                  setConnectionsModalType('followers');
+                  setConnectionsSearch('');
+                }}
+                className="flex items-center gap-2 hover:opacity-80 transition-opacity cursor-pointer text-center"
+              >
+                <Sparkles className="w-4 h-4 text-amber-400" />
+                <div className="text-left">
+                  <p className="text-sm font-mono font-black text-white leading-none">
+                    {selectedAthlete.isCurrentUser ? (user.followers?.length || 4) : (selectedAthlete.followersCount || 18)}
+                  </p>
+                  <span className="text-[10px] font-mono text-neutral-400 uppercase">Seguidores</span>
+                </div>
+              </button>
+            </div>
+
+            {/* Bio Section with Inline Editing */}
+            <div className="relative z-10 space-y-1.5">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-mono text-neutral-400 uppercase font-bold">Biografía del Atleta:</span>
+                {selectedAthlete.isCurrentUser && !isEditingBio && (
+                  <button
+                    onClick={() => setIsEditingBio(true)}
+                    className="text-[10px] font-mono font-bold text-cyan-400 hover:text-cyan-300 flex items-center gap-1 cursor-pointer"
+                  >
+                    <Edit3 className="w-3 h-3" /> Editar Bio
+                  </button>
+                )}
               </div>
-            )}
+
+              {isEditingBio && selectedAthlete.isCurrentUser ? (
+                <div className="space-y-2">
+                  <textarea
+                    value={bioInput}
+                    onChange={(e) => setBioInput(e.target.value)}
+                    maxLength={140}
+                    placeholder="Escribe tu lema de entrenamiento o metas personales..."
+                    rows={3}
+                    className="w-full bg-neutral-950 border border-cyan-500/50 rounded-2xl p-3 text-xs text-white placeholder-neutral-500 focus:outline-none focus:border-cyan-400 resize-none font-sans"
+                  />
+                  <div className="flex justify-between items-center text-[10px] font-mono">
+                    <span className="text-neutral-500">{bioInput.length} / 140 caracteres</span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setIsEditingBio(false)}
+                        className="px-3 py-1 rounded-xl bg-white/5 hover:bg-white/10 text-neutral-400 text-xs font-mono font-bold cursor-pointer"
+                      >
+                        Cancelar
+                      </button>
+                      <button
+                        onClick={handleSaveBio}
+                        className="px-3 py-1 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-neutral-950 text-xs font-mono font-extrabold cursor-pointer shadow-md shadow-cyan-500/20"
+                      >
+                        Guardar Bio
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-3 text-xs text-neutral-300 italic leading-relaxed">
+                  "{selectedAthlete.isCurrentUser ? (user.bio || bioInput) : (selectedAthlete.bio || 'Entrenando para superarme cada día.')}"
+                </div>
+              )}
+            </div>
 
             {/* 4-Card KPI Grid */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 relative z-10">
@@ -542,15 +660,14 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
             )}
 
             {/* Action Buttons */}
-            <div className="pt-2 border-t border-white/5 flex flex-col sm:flex-row gap-2.5 relative z-10">
-              
+            <div className="pt-2 border-t border-white/5 flex gap-3 relative z-10">
               {/* Cheer button */}
               <button
                 onClick={() => handleCheerAthlete(selectedAthlete)}
-                className={`flex-1 py-2.5 px-4 rounded-2xl text-xs font-mono font-bold flex items-center justify-center gap-2 transition-all border cursor-pointer ${
+                className={`flex-1 py-3 px-4 rounded-2xl text-xs font-mono font-bold flex items-center justify-center gap-2 transition-all border cursor-pointer ${
                   cheeredUserIds.has(selectedAthlete.userId)
                     ? 'bg-amber-500/20 border-amber-500/50 text-amber-300'
-                    : 'bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-neutral-950 border-amber-400 shadow-lg shadow-amber-500/20'
+                    : 'bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-neutral-950 border-amber-400 shadow-lg shadow-amber-500/20 font-black'
                 }`}
               >
                 <Heart className="w-4 h-4 fill-current" />
@@ -558,43 +675,126 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
               </button>
 
               {!selectedAthlete.isCurrentUser && (
-                <>
-                  {/* Friend toggle button */}
-                  <button
-                    onClick={() => handleToggleFriend(selectedAthlete)}
-                    className={`py-2.5 px-4 rounded-2xl text-xs font-mono font-bold flex items-center justify-center gap-1.5 transition-all border cursor-pointer ${
-                      friendsList.has(selectedAthlete.userId)
-                        ? 'bg-cyan-500/20 border-cyan-500/50 text-cyan-300'
-                        : 'bg-white/5 hover:bg-white/10 border-white/10 text-neutral-300 hover:text-white'
-                    }`}
-                  >
-                    {friendsList.has(selectedAthlete.userId) ? (
-                      <>
-                        <UserCheck className="w-4 h-4 text-cyan-400" />
-                        <span>Siguiendo</span>
-                      </>
-                    ) : (
-                      <>
-                        <UserPlus className="w-4 h-4" />
-                        <span>Seguir</span>
-                      </>
-                    )}
-                  </button>
-
-                  {/* Duel Challenge button */}
-                  <button
-                    onClick={() => handleChallengeDuel(selectedAthlete)}
-                    className={`py-2.5 px-4 rounded-2xl text-xs font-mono font-bold flex items-center justify-center gap-1.5 transition-all border cursor-pointer ${
-                      duelChallengedUserIds.has(selectedAthlete.userId)
-                        ? 'bg-red-500/20 border-red-500/50 text-red-300'
-                        : 'bg-white/5 hover:bg-red-500/20 border-white/10 hover:border-red-500/40 text-neutral-300 hover:text-red-300'
-                    }`}
-                  >
-                    <Swords className="w-4 h-4" />
-                    <span>{duelChallengedUserIds.has(selectedAthlete.userId) ? 'Retado ⚔️' : 'Retar'}</span>
-                  </button>
-                </>
+                <button
+                  onClick={() => handleToggleFollow(selectedAthlete.userId)}
+                  className={`flex-1 py-3 px-4 rounded-2xl text-xs font-mono font-bold flex items-center justify-center gap-2 transition-all border cursor-pointer ${
+                    followingSet.has(selectedAthlete.userId)
+                      ? 'bg-cyan-500/20 border-cyan-500/50 text-cyan-300 font-extrabold'
+                      : 'bg-white/5 hover:bg-white/10 border-white/10 text-neutral-200 hover:text-white'
+                  }`}
+                >
+                  {followingSet.has(selectedAthlete.userId) ? (
+                    <>
+                      <UserCheck className="w-4 h-4 text-cyan-400" />
+                      <span>Siguiendo</span>
+                    </>
+                  ) : (
+                    <>
+                      <UserPlus className="w-4 h-4" />
+                      <span>Seguir</span>
+                    </>
+                  )}
+                </button>
               )}
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* SOCIAL CONNECTIONS MODAL (SIGUIENDO / SEGUIDORES) */}
+      {connectionsModalType && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-neutral-950/80 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="bg-gradient-to-b from-neutral-900 to-neutral-950 border border-white/10 rounded-3xl max-w-md w-full p-6 shadow-2xl relative space-y-4">
+            
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b border-white/5 pb-3">
+              <div className="flex items-center gap-2">
+                {connectionsModalType === 'following' ? (
+                  <Users className="w-5 h-5 text-cyan-400" />
+                ) : (
+                  <Sparkles className="w-5 h-5 text-amber-400" />
+                )}
+                <h3 className="text-lg font-display font-black text-white">
+                  {connectionsModalType === 'following' ? `Personas que sigues (${followingSet.size})` : 'Seguidores de la Comunidad'}
+                </h3>
+              </div>
+              <button
+                onClick={() => setConnectionsModalType(null)}
+                className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 text-neutral-400 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Search filter in connections */}
+            <div className="relative">
+              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
+              <input
+                type="text"
+                value={connectionsSearch}
+                onChange={(e) => setConnectionsSearch(e.target.value)}
+                placeholder="Buscar por nombre..."
+                className="w-full bg-neutral-950 border border-white/10 rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder-neutral-500 focus:outline-none focus:border-cyan-500"
+              />
+            </div>
+
+            {/* User List */}
+            <div className="max-h-80 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
+              {allCommunityUsers
+                .filter((u) => {
+                  if (connectionsModalType === 'following') {
+                    return followingSet.has(u.userId);
+                  }
+                  return true;
+                })
+                .filter((u) => {
+                  if (!connectionsSearch.trim()) return true;
+                  return u.name.toLowerCase().includes(connectionsSearch.toLowerCase()) || (u.rankTitle || '').toLowerCase().includes(connectionsSearch.toLowerCase());
+                })
+                .map((athlete) => {
+                  const isFollowing = followingSet.has(athlete.userId);
+
+                  return (
+                    <div
+                      key={athlete.userId}
+                      className="flex items-center justify-between p-3 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-white/15 transition-all"
+                    >
+                      <div
+                        onClick={() => {
+                          setConnectionsModalType(null);
+                          setSelectedAthlete(athlete);
+                        }}
+                        className="flex items-center gap-3 cursor-pointer min-w-0 flex-1 group"
+                      >
+                        <img
+                          src={athlete.avatar}
+                          alt={athlete.name}
+                          className="w-10 h-10 rounded-xl object-cover border border-white/10 group-hover:border-cyan-400 transition-colors shrink-0"
+                        />
+                        <div className="min-w-0">
+                          <p className="text-xs font-bold text-white group-hover:text-cyan-300 truncate">
+                            {athlete.name}
+                          </p>
+                          <p className="text-[10px] font-mono text-neutral-400 truncate">
+                            Nvl {athlete.level} • "{athlete.rankTitle || 'Atleta'}"
+                          </p>
+                        </div>
+                      </div>
+
+                      <button
+                        onClick={() => handleToggleFollow(athlete.userId)}
+                        className={`text-xs font-mono font-bold px-3 py-1.5 rounded-xl border transition-all cursor-pointer shrink-0 ml-2 ${
+                          isFollowing
+                            ? 'bg-cyan-500/20 border-cyan-500/40 text-cyan-300'
+                            : 'bg-white/5 hover:bg-white/10 border-white/10 text-neutral-300 hover:text-white'
+                        }`}
+                      >
+                        {isFollowing ? 'Siguiendo' : '+ Seguir'}
+                      </button>
+                    </div>
+                  );
+                })}
             </div>
 
           </div>

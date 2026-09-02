@@ -50,6 +50,9 @@ export interface UserProfile {
   lastResetAt?: string;
   programProgress?: { [progId: string]: number };
   activeSession?: ActiveWorkoutState | null;
+  bio?: string;
+  following?: string[];
+  followers?: string[];
 }
 
 export interface ExerciseSet {
@@ -232,6 +235,8 @@ export interface LeaderboardUser {
   totalDistanceKm?: number;
   topBadges?: string[];
   bio?: string;
+  followersCount?: number;
+  followingCount?: number;
 }
 
 export interface LiveParticipant {

@@ -18,6 +18,7 @@ interface CommunityViewProps {
   onClaimReward: (challengeId: string, rewardXp: number) => void;
   onClaimAchievementXp: (achievementId: string, xpReward: number) => void;
   onEquipTitle?: (title: string) => void;
+  onUpdateUser?: (updated: Partial<UserProfile>) => void;
 }
 
 export const CommunityView: React.FC<CommunityViewProps> = ({
@@ -33,6 +34,7 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
   onClaimReward,
   onClaimAchievementXp,
   onEquipTitle,
+  onUpdateUser,
 }) => {
   const [subTab, setSubTab] = useState<'challenges' | 'leaderboard' | 'achievements'>(initialSubTab);
 
@@ -97,6 +99,7 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
           history={history}
           currentLeague={user.league}
           lang={lang}
+          onUpdateUser={onUpdateUser}
         />
       )}
 

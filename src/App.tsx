@@ -728,6 +728,15 @@ export default function App() {
               FitStorage.syncUserToCloud(updatedUser);
               sound.playLevelUp();
             }}
+            onUpdateUser={(partial) => {
+              const updatedUser: UserProfile = {
+                ...user,
+                ...partial,
+              };
+              setUser(updatedUser);
+              FitStorage.saveUser(updatedUser);
+              FitStorage.syncUserToCloud(updatedUser);
+            }}
           />
         )}
 
