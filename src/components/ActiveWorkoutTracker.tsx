@@ -287,16 +287,36 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
             if (willBeCompleted) {
               sound.playSetComplete();
 
-              // Check if 1RM is a new PR
-              const estimated1RM = Math.round(
-                set.actualWeightKg / (1.0278 - 0.0278 * Math.min(10, set.actualReps || 1))
-              );
-              if (set.actualWeightKg > 0 && (!exercise.prKg || set.actualWeightKg > exercise.prKg)) {
-                const prMsg = `${exercise.name}: ${set.actualWeightKg} kg (${estimated1RM} kg 1RM)`;
-                setUnlockedPrs((prs) => (prs.includes(prMsg) ? prs : [...prs, prMsg]));
-                setShowPrNotification(prMsg);
-                sound.playAchievement();
-                setTimeout(() => setShowPrNotification(null), 4000);
+              const isCardioExercise =
+                exercise.muscleGroup === 'Cardio' ||
+                exercise.type === 'cardio' ||
+                exercise.name.toLowerCase().includes('carrera') ||
+                exercise.name.toLowerCase().includes('cinta') ||
+                exercise.name.toLowerCase().includes('running') ||
+                exercise.name.toLowerCase().includes('elíptica') ||
+                exercise.name.toLowerCase().includes('sprint');
+
+              if (isCardioExercise) {
+                const runKm = set.actualWeightKg || set.actualDistanceKm || 0;
+                if (runKm > 0 && (!exercise.prDistanceKm || runKm > exercise.prDistanceKm)) {
+                  const prMsg = `${exercise.name}: ${runKm} km (Récord de distancia)`;
+                  setUnlockedPrs((prs) => (prs.includes(prMsg) ? prs : [...prs, prMsg]));
+                  setShowPrNotification(prMsg);
+                  sound.playAchievement();
+                  setTimeout(() => setShowPrNotification(null), 4000);
+                }
+              } else {
+                // Check if 1RM is a new strength PR
+                const estimated1RM = Math.round(
+                  set.actualWeightKg / (1.0278 - 0.0278 * Math.min(10, set.actualReps || 1))
+                );
+                if (set.actualWeightKg > 0 && (!exercise.prKg || set.actualWeightKg > exercise.prKg)) {
+                  const prMsg = `${exercise.name}: ${set.actualWeightKg} kg (${estimated1RM} kg 1RM)`;
+                  setUnlockedPrs((prs) => (prs.includes(prMsg) ? prs : [...prs, prMsg]));
+                  setShowPrNotification(prMsg);
+                  sound.playAchievement();
+                  setTimeout(() => setShowPrNotification(null), 4000);
+                }
               }
 
               // Start auto rest timer
@@ -478,8 +498,30 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
     return `${mins.toString().padStart(2, '0')}:${remainderSecs.toString().padStart(2, '0')}`;
   };
 
+  // Differentiate cardio vs strength exercises
+  const isPureCardio = exercises.every(
+    (ex) =>
+      ex.muscleGroup === 'Cardio' ||
+      ex.type === 'cardio' ||
+      ex.name.toLowerCase().includes('carrera') ||
+      ex.name.toLowerCase().includes('cinta') ||
+      ex.name.toLowerCase().includes('running') ||
+      ex.name.toLowerCase().includes('elíptica') ||
+      ex.name.toLowerCase().includes('cuerda')
+  );
+
   // Calculate workout summary totals
   const totalVolume = exercises.reduce((acc, ex) => {
+    const isCardioEx =
+      ex.muscleGroup === 'Cardio' ||
+      ex.type === 'cardio' ||
+      ex.name.toLowerCase().includes('carrera') ||
+      ex.name.toLowerCase().includes('cinta') ||
+      ex.name.toLowerCase().includes('running') ||
+      ex.name.toLowerCase().includes('elíptica') ||
+      ex.name.toLowerCase().includes('cuerda');
+    if (isCardioEx) return acc; // Cardio has 0 kg volume!
+
     return (
       acc +
       ex.sets.reduce((sAcc, set) => {
@@ -488,6 +530,64 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
     );
   }, 0);
 
+  const totalDistanceKm = Math.round(
+    exercises.reduce((acc, ex) => {
+      const isCardio =
+        ex.muscleGroup === 'Cardio' ||
+        ex.type === 'cardio' ||
+        ex.name.toLowerCase().includes('carrera') ||
+        ex.name.toLowerCase().includes('cinta') ||
+        ex.name.toLowerCase().includes('running') ||
+        ex.name.toLowerCase().includes('ciclismo') ||
+        ex.name.toLowerCase().includes('bicicleta') ||
+        ex.name.toLowerCase().includes('sprint');
+      
+      const isStrengthRow =
+        ex.name.toLowerCase().includes('remo con') ||
+        ex.name.toLowerCase().includes('remo pendlay') ||
+        ex.name.toLowerCase().includes('remo en polea') ||
+        ex.name.toLowerCase().includes('remo con mancuerna') ||
+        ex.name.toLowerCase().includes('remo t');
+
+      if (!isCardio || isStrengthRow) return acc;
+
+      return (
+        acc +
+        ex.sets
+          .filter((s) => s.completed)
+          .reduce((sAcc, s) => {
+            const km = (s.actualDistanceKm && s.actualDistanceKm > 0) ? s.actualDistanceKm : (s.actualWeightKg || 0);
+            return sAcc + km;
+          }, 0)
+      );
+    }, 0) * 10
+  ) / 10;
+
+  const totalCardioMinutesRecorded = exercises.reduce((acc, ex) => {
+    const isCardio =
+      ex.muscleGroup === 'Cardio' ||
+      ex.type === 'cardio' ||
+      ex.name.toLowerCase().includes('carrera') ||
+      ex.name.toLowerCase().includes('cinta') ||
+      ex.name.toLowerCase().includes('running') ||
+      ex.name.toLowerCase().includes('elíptica') ||
+      ex.name.toLowerCase().includes('sprint');
+    if (!isCardio) return acc;
+
+    return (
+      acc +
+      ex.sets
+        .filter((s) => s.completed)
+        .reduce((sAcc, s) => sAcc + (s.actualReps || 0), 0)
+    );
+  }, 0);
+
+  const calculatedMinutes = Math.max(
+    1,
+    Math.round(elapsedSeconds / 60),
+    totalCardioMinutesRecorded
+  );
+
   const completedSetsCount = exercises.reduce((acc, ex) => {
     return acc + ex.sets.filter((s) => s.completed).length;
   }, 0);
@@ -495,6 +595,19 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
   const totalSetsCount = exercises.reduce((acc, ex) => acc + ex.sets.length, 0);
 
   const completionPercent = totalSetsCount > 0 ? Math.round((completedSetsCount / totalSetsCount) * 100) : 0;
+
+  const xpGained = Math.round(routine.xpReward * Math.max(0.6, completionPercent / 100));
+
+  // Accurate biomechanical calorie expenditure: active duration + volume lifted + real cardio distance
+  const baseCal = Math.round(calculatedMinutes * 7.5);
+  const volumeCal = Math.round((totalVolume / 1000) * 8);
+  const distanceCal = Math.round(totalDistanceKm * 65);
+  const rawEstimated = Math.max(liveCalories, baseCal + volumeCal + distanceCal, 35);
+  const estimatedBurn = Math.min(1500, rawEstimated);
+
+  const averagePace = totalDistanceKm > 0
+    ? `${Math.floor(calculatedMinutes / totalDistanceKm)}'${Math.round(((calculatedMinutes / totalDistanceKm) % 1) * 60).toString().padStart(2, '0')}" /km`
+    : undefined;
 
   // Complete workout trigger
   const handleOpenFinish = () => {
@@ -513,56 +626,6 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
   };
 
   const handleConfirmFinish = () => {
-    // Only calculate distance for explicit cardio exercises with actual distance recorded
-    const totalDistanceKm = Math.round(
-      exercises.reduce((acc, ex) => {
-        const isCardio =
-          ex.muscleGroup === 'Cardio' ||
-          ex.type === 'cardio' ||
-          ex.name.toLowerCase().includes('carrera') ||
-          ex.name.toLowerCase().includes('cinta') ||
-          ex.name.toLowerCase().includes('running') ||
-          ex.name.toLowerCase().includes('ciclismo') ||
-          ex.name.toLowerCase().includes('bicicleta') ||
-          ex.name.toLowerCase().includes('sprint');
-        
-        // Strength rowing exercises (Remo con barra, Remo Pendlay, etc.) are strictly strength
-        const isStrengthRow =
-          ex.name.toLowerCase().includes('remo con') ||
-          ex.name.toLowerCase().includes('remo pendlay') ||
-          ex.name.toLowerCase().includes('remo en polea') ||
-          ex.name.toLowerCase().includes('remo con mancuerna') ||
-          ex.name.toLowerCase().includes('remo t');
-
-        if (isStrengthRow) return acc;
-
-        return (
-          acc +
-          ex.sets
-            .filter((s) => s.completed)
-            .reduce((sAcc, s) => {
-              const km = (s.actualDistanceKm && s.actualDistanceKm > 0) ? s.actualDistanceKm : (s.actualWeightKg || 0);
-              return sAcc + km;
-            }, 0)
-        );
-      }, 0) * 10
-    ) / 10;
-
-    const xpGained = Math.round(routine.xpReward * Math.max(0.6, completionPercent / 100));
-
-    const calculatedMinutes = Math.max(1, Math.round(elapsedSeconds / 60));
-    // Accurate biomechanical calorie expenditure: active duration + volume lifted + real cardio distance
-    const baseCal = Math.round(calculatedMinutes * 7.5);
-    const volumeCal = Math.round((totalVolume / 1000) * 8);
-    const distanceCal = Math.round(totalDistanceKm * 60);
-    const rawEstimated = Math.max(liveCalories, baseCal + volumeCal + distanceCal, 35);
-    // Sanity check: standard single workout upper limit around 1500 kcal
-    const estimatedBurn = Math.min(1500, rawEstimated);
-
-    const averagePace = totalDistanceKm > 0
-      ? `${Math.floor(calculatedMinutes / totalDistanceKm)}'${Math.round(((calculatedMinutes / totalDistanceKm) % 1) * 60).toString().padStart(2, '0')}" /km`
-      : undefined;
-
     const historyEntry: WorkoutHistoryEntry = {
       id: `hist_${Date.now()}`,
       routineId: routine.id,
@@ -1245,20 +1308,26 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 relative z-10">
                 <div className="bg-white/5 p-3 rounded-2xl border border-white/5 text-center">
                   <span className="text-[10px] text-neutral-400 font-mono uppercase">{t.estimatedTime}</span>
-                  <p className="text-base font-mono font-extrabold text-white mt-0.5">{formatTime(elapsedSeconds)}</p>
+                  <p className="text-base font-mono font-extrabold text-white mt-0.5">
+                    {elapsedSeconds >= 60 ? formatTime(elapsedSeconds) : `${calculatedMinutes} min`}
+                  </p>
                 </div>
                 <div className="bg-white/5 p-3 rounded-2xl border border-white/5 text-center">
-                  <span className="text-[10px] text-neutral-400 font-mono uppercase">{t.volumeLifted}</span>
-                  <p className="text-base font-mono font-extrabold text-cyan-400 mt-0.5">{totalVolume} kg</p>
+                  <span className="text-[10px] text-neutral-400 font-mono uppercase">
+                    {isPureCardio || totalDistanceKm > 0 ? 'Distancia' : t.volumeLifted}
+                  </span>
+                  <p className="text-base font-mono font-extrabold text-cyan-400 mt-0.5">
+                    {isPureCardio || totalDistanceKm > 0 ? `${totalDistanceKm.toFixed(1)} km` : `${totalVolume} kg`}
+                  </p>
                 </div>
                 <div className="bg-white/5 p-3 rounded-2xl border border-white/5 text-center">
                   <span className="text-[10px] text-neutral-400 font-mono uppercase">{t.caloriesBurned}</span>
-                  <p className="text-base font-mono font-extrabold text-orange-400 mt-0.5">{liveCalories} kcal</p>
+                  <p className="text-base font-mono font-extrabold text-orange-400 mt-0.5">{estimatedBurn} kcal</p>
                 </div>
                 <div className="bg-white/5 p-3 rounded-2xl border border-white/5 text-center">
                   <span className="text-[10px] text-neutral-400 font-mono uppercase">{t.xpEarned}</span>
                   <p className="text-base font-mono font-extrabold text-cyan-400 mt-0.5">
-                    +{Math.round(routine.xpReward * Math.max(0.6, completionPercent / 100))} XP
+                    +{xpGained} XP
                   </p>
                 </div>
               </div>
