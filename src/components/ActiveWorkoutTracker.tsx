@@ -26,6 +26,13 @@ import {
   Lock,
   ArrowRight,
   AlertCircle,
+  Footprints,
+  Gauge,
+  MapPin,
+  Navigation,
+  Mountain,
+  Compass,
+  Wind,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import {
@@ -116,6 +123,13 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
 
   // Active biometrics
   const [liveCalories, setLiveCalories] = useState<number>(() => initialState?.activeCalories || 0);
+  const [cardioSubMode, setCardioSubMode] = useState<'treadmill' | 'outdoor'>('treadmill');
+
+  // GPS Outdoor Running Live Tracking
+  const [gpsActive, setGpsActive] = useState<boolean>(false);
+  const [gpsDistanceKm, setGpsDistanceKm] = useState<number>(0);
+  const [lastCoords, setLastCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const watchIdRef = useRef<number | null>(null);
 
   const isFinishedRef = React.useRef(false);
 
@@ -334,10 +348,85 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
     }
   };
 
-  // Helper to update weight or reps
+  // GPS Haversine distance calculator
+  const calculateHaversineKm = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+    const R = 6371;
+    const dLat = ((lat2 - lat1) * Math.PI) / 180;
+    const dLon = ((lon2 - lon1) * Math.PI) / 180;
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos((lat1 * Math.PI) / 180) *
+        Math.cos((lat2 * Math.PI) / 180) *
+        Math.sin(dLon / 2) *
+        Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+  };
+
+  const handleToggleGps = () => {
+    if (gpsActive) {
+      if (watchIdRef.current !== null && 'geolocation' in navigator) {
+        navigator.geolocation.clearWatch(watchIdRef.current);
+        watchIdRef.current = null;
+      }
+      setGpsActive(false);
+    } else {
+      if ('geolocation' in navigator) {
+        sound.playBeep(880, 120);
+        setGpsActive(true);
+        watchIdRef.current = navigator.geolocation.watchPosition(
+          (pos) => {
+            const { latitude, longitude, accuracy } = pos.coords;
+            if (accuracy && accuracy > 40) return;
+            setLastCoords((prev) => {
+              if (prev) {
+                const distDelta = calculateHaversineKm(prev.lat, prev.lng, latitude, longitude);
+                if (distDelta > 0.002 && distDelta < 0.3) {
+                  setGpsDistanceKm((d) => {
+                    const newTotal = Math.round((d + distDelta) * 1000) / 1000;
+                    // Auto-sync into the active cardio set
+                    setExercises((prevExs) => {
+                      return prevExs.map((ex, exIdx) => {
+                        if (exIdx !== currentExerciseIndex) return ex;
+                        const activeSet = ex.sets.find((s) => !s.completed) || ex.sets[0];
+                        if (!activeSet) return ex;
+                        const updatedSets = ex.sets.map((s) =>
+                          s.id === activeSet.id ? { ...s, actualWeightKg: newTotal } : s
+                        );
+                        return { ...ex, sets: updatedSets };
+                      });
+                    });
+                    return newTotal;
+                  });
+                }
+              }
+              return { lat: latitude, lng: longitude };
+            });
+          },
+          (err) => {
+            console.warn('GPS watch error:', err);
+            setGpsActive(false);
+          },
+          { enableHighAccuracy: true, maximumAge: 1500, timeout: 10000 }
+        );
+      } else {
+        alert('Geolocalización GPS no disponible en este dispositivo');
+      }
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      if (watchIdRef.current !== null && 'geolocation' in navigator) {
+        navigator.geolocation.clearWatch(watchIdRef.current);
+      }
+    };
+  }, []);
+
+  // Helper to update weight, reps, or treadmill incline
   const handleUpdateSetVal = (
     setId: string,
-    field: 'actualReps' | 'actualWeightKg' | 'rpe',
+    field: 'actualReps' | 'actualWeightKg' | 'rpe' | 'inclinePercent' | 'speedKmh',
     delta: number
   ) => {
     setExercises((prevExercises) => {
@@ -346,7 +435,7 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
         const updatedSets = ex.sets.map((set) => {
           if (set.id !== setId) return set;
           const currentVal = (set[field] as number) || 0;
-          const newVal = Math.max(0, currentVal + delta);
+          const newVal = Math.max(0, Math.round((currentVal + delta) * 100) / 100);
           return { ...set, [field]: newVal };
         });
         return { ...ex, sets: updatedSets };
@@ -452,8 +541,8 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
           ex.sets
             .filter((s) => s.completed)
             .reduce((sAcc, s) => {
-              if (s.actualDistanceKm && s.actualDistanceKm > 0) return sAcc + s.actualDistanceKm;
-              return sAcc;
+              const km = (s.actualDistanceKm && s.actualDistanceKm > 0) ? s.actualDistanceKm : (s.actualWeightKg || 0);
+              return sAcc + km;
             }, 0)
         );
       }, 0) * 10
@@ -470,6 +559,10 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
     // Sanity check: standard single workout upper limit around 1500 kcal
     const estimatedBurn = Math.min(1500, rawEstimated);
 
+    const averagePace = totalDistanceKm > 0
+      ? `${Math.floor(calculatedMinutes / totalDistanceKm)}'${Math.round(((calculatedMinutes / totalDistanceKm) % 1) * 60).toString().padStart(2, '0')}" /km`
+      : undefined;
+
     const historyEntry: WorkoutHistoryEntry = {
       id: `hist_${Date.now()}`,
       routineId: routine.id,
@@ -478,6 +571,8 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
       durationMinutes: calculatedMinutes,
       totalVolumeKg: totalVolume,
       totalDistanceKm,
+      averagePace,
+      cardioMode: cardioSubMode,
       cardioMinutes: totalDistanceKm > 0 ? calculatedMinutes : 0,
       calories: estimatedBurn,
       avgHeartRate: smartwatch.liveHeartRate || 140,
@@ -744,13 +839,106 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
                   currentExercise.name.toLowerCase().includes('cuerda');
 
                 const activeSetIdx = currentExercise.sets.findIndex((s) => !s.completed);
+                const currentHr = smartwatch.liveHeartRate || 135;
+
+                // Runner Heart Rate Zone definition
+                let hrZone = 'Z1';
+                let hrZoneLabel = 'Recuperación';
+                let hrZoneColor = 'text-blue-400 bg-blue-500/10 border-blue-500/20';
+                if (currentHr >= 175) {
+                  hrZone = 'Z5';
+                  hrZoneLabel = 'VO2 Max / Esfuerzo Máximo';
+                  hrZoneColor = 'text-red-400 bg-red-500/10 border-red-500/30 animate-pulse';
+                } else if (currentHr >= 160) {
+                  hrZone = 'Z4';
+                  hrZoneLabel = 'Umbral Anaeróbico';
+                  hrZoneColor = 'text-orange-400 bg-orange-500/10 border-orange-500/20';
+                } else if (currentHr >= 140) {
+                  hrZone = 'Z3';
+                  hrZoneLabel = 'Aeróbico / Tempo';
+                  hrZoneColor = 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20';
+                } else if (currentHr >= 120) {
+                  hrZone = 'Z2';
+                  hrZoneLabel = 'Base Aeróbica / Quema Grasa';
+                  hrZoneColor = 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20';
+                }
 
                 return (
                   <>
+                    {/* Runner & Cardio Control Panel */}
+                    {isCardio && (
+                      <div className="mb-4 p-3 sm:p-4 bg-[#18181b] border border-cyan-500/20 rounded-2xl space-y-3 shadow-lg">
+                        {/* Mode Switcher: Treadmill vs Outdoor GPS */}
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <div className="flex items-center gap-1.5 bg-black/40 p-1 rounded-xl border border-white/5">
+                            <button
+                              type="button"
+                              onClick={() => setCardioSubMode('treadmill')}
+                              className={`px-3 py-1.5 rounded-lg text-xs font-mono font-bold flex items-center gap-1.5 transition-all ${
+                                cardioSubMode === 'treadmill'
+                                  ? 'bg-cyan-500 text-neutral-950 shadow-md font-black'
+                                  : 'text-neutral-400 hover:text-white'
+                              }`}
+                            >
+                              <Footprints className="w-3.5 h-3.5" />
+                              <span>Cinta de Correr</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setCardioSubMode('outdoor')}
+                              className={`px-3 py-1.5 rounded-lg text-xs font-mono font-bold flex items-center gap-1.5 transition-all ${
+                                cardioSubMode === 'outdoor'
+                                  ? 'bg-purple-500 text-white shadow-md font-black'
+                                  : 'text-neutral-400 hover:text-white'
+                              }`}
+                            >
+                              <Navigation className="w-3.5 h-3.5" />
+                              <span>Carrera Exterior (GPS)</span>
+                            </button>
+                          </div>
+
+                          {/* Heart Rate Runner Zone Pill */}
+                          <div className={`px-2.5 py-1 rounded-xl border flex items-center gap-2 text-xs font-mono ${hrZoneColor}`}>
+                            <Heart className="w-3.5 h-3.5 fill-current animate-pulse" />
+                            <span className="font-bold">{hrZone}: {currentHr} bpm</span>
+                            <span className="hidden sm:inline text-[11px] opacity-80">({hrZoneLabel})</span>
+                          </div>
+                        </div>
+
+                        {/* Outdoor GPS Live Tracking Trigger */}
+                        {cardioSubMode === 'outdoor' && (
+                          <div className="p-3 bg-purple-950/20 border border-purple-500/30 rounded-xl flex items-center justify-between gap-3 animate-in fade-in">
+                            <div className="flex items-center gap-2.5">
+                              <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${gpsActive ? 'bg-purple-500 text-white animate-pulse' : 'bg-white/5 text-purple-400'}`}>
+                                <MapPin className="w-4 h-4" />
+                              </div>
+                              <div>
+                                <h6 className="text-xs font-bold text-white">Rastreo GPS en Tiempo Real</h6>
+                                <p className="text-[10px] font-mono text-neutral-400">
+                                  {gpsActive ? `📍 GPS Activo • ${gpsDistanceKm.toFixed(2)} km recorridos` : 'Mide distancia y ritmo real con el GPS del móvil'}
+                                </p>
+                              </div>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={handleToggleGps}
+                              className={`px-3.5 py-1.5 rounded-xl font-mono text-xs font-bold transition-transform active:scale-95 ${
+                                gpsActive
+                                  ? 'bg-red-500 hover:bg-red-400 text-white shadow-lg shadow-red-500/30'
+                                  : 'bg-purple-600 hover:bg-purple-500 text-white shadow-lg shadow-purple-500/30'
+                              }`}
+                            >
+                              {gpsActive ? 'Detener GPS' : 'Iniciar GPS'}
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
                     <div className="grid grid-cols-12 gap-1 sm:gap-2 text-[10px] sm:text-[11px] font-mono font-bold text-neutral-400 uppercase tracking-wider px-2 sm:px-3 pb-2 text-center">
                       <div className="col-span-2 sm:col-span-2 text-left">{t.set}</div>
                       <div className="col-span-4 sm:col-span-4">{isCardio ? 'Distancia (km)' : t.weight}</div>
-                      <div className="col-span-3 sm:col-span-3">{isCardio ? 'Minutos / Reps' : t.reps}</div>
+                      <div className="col-span-3 sm:col-span-3">{isCardio ? 'Tiempo (min)' : t.reps}</div>
                       <div className="col-span-3 sm:col-span-3">{t.completedSet}</div>
                     </div>
 
@@ -764,10 +952,18 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
                         const isWaitingRest = !set.completed && isCurrentActive && isResting;
                         const stepVal = isCardio ? 0.5 : 2.5;
 
+                        // Calculate Runner Pace & Speed
+                        const distanceKm = set.actualWeightKg || 0;
+                        const timeMin = set.actualReps || 0;
+                        const paceDec = distanceKm > 0 ? timeMin / distanceKm : 0;
+                        const paceMin = Math.floor(paceDec);
+                        const paceSec = Math.round((paceDec - paceMin) * 60);
+                        const speedKmh = timeMin > 0 ? ((distanceKm / (timeMin / 60)).toFixed(1)) : '0';
+
                         return (
                           <div
                             key={set.id}
-                            className={`grid grid-cols-12 gap-1 sm:gap-2 items-center p-2.5 sm:p-3.5 rounded-2xl border transition-all ${
+                            className={`p-2.5 sm:p-3.5 rounded-2xl border transition-all ${
                               set.completed
                                 ? 'bg-cyan-500/10 border-cyan-500/30 text-cyan-100 shadow-[0_0_15px_rgba(6,182,212,0.1)]'
                                 : isWaitingRest
@@ -779,130 +975,173 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
                                 : 'bg-white/5 border-white/5 text-white'
                             }`}
                           >
-                            {/* Set Number & Badge */}
-                            <div className="col-span-2 sm:col-span-2 flex items-center gap-1 sm:gap-1.5">
-                              <span className={`w-5 h-5 sm:w-6 sm:h-6 rounded-lg font-mono font-bold text-[11px] sm:text-xs flex items-center justify-center ${
-                                isCurrentActive && !isResting
-                                  ? 'bg-cyan-500 text-neutral-950 shadow-md shadow-cyan-500/40'
-                                  : isWaitingRest
-                                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40'
-                                  : 'bg-white/10 text-neutral-200'
-                              }`}>
-                                {setIdx + 1}
-                              </span>
-                              {set.isWarmup && (
-                                <span className="text-[8px] sm:text-[9px] font-mono font-extrabold px-1 sm:px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30">
-                                  W
+                            <div className="grid grid-cols-12 gap-1 sm:gap-2 items-center">
+                              {/* Set Number & Badge */}
+                              <div className="col-span-2 sm:col-span-2 flex items-center gap-1 sm:gap-1.5">
+                                <span className={`w-5 h-5 sm:w-6 sm:h-6 rounded-lg font-mono font-bold text-[11px] sm:text-xs flex items-center justify-center ${
+                                  isCurrentActive && !isResting
+                                    ? 'bg-cyan-500 text-neutral-950 shadow-md shadow-cyan-500/40'
+                                    : isWaitingRest
+                                    ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40'
+                                    : 'bg-white/10 text-neutral-200'
+                                }`}>
+                                  {setIdx + 1}
                                 </span>
-                              )}
-                            </div>
-
-                            {/* Weight or Distance Adjuster */}
-                            <div className="col-span-4 sm:col-span-4 flex items-center justify-center gap-1 sm:gap-1.5">
-                              <button
-                                onClick={() => handleUpdateSetVal(set.id, 'actualWeightKg', -stepVal)}
-                                className="w-6 h-6 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-white/5 hover:bg-white/10 text-white flex items-center justify-center font-bold border border-white/5 shrink-0"
-                                title={isCardio ? "-0.5 km" : "-2.5 kg"}
-                              >
-                                <Minus className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
-                              </button>
-                              <div className="w-12 sm:w-18 text-center min-w-0">
-                                <input
-                                  type="number"
-                                  step={isCardio ? "0.1" : "0.5"}
-                                  value={set.actualWeightKg}
-                                  onChange={(e) => {
-                                    const val = parseFloat(e.target.value) || 0;
-                                    handleUpdateSetVal(set.id, 'actualWeightKg', val - set.actualWeightKg);
-                                  }}
-                                  className="w-full bg-[#09090b] text-center font-mono font-bold text-xs sm:text-sm rounded-lg sm:rounded-xl py-1 sm:py-1.5 border border-white/10 focus:border-cyan-500 focus:outline-none text-white px-0.5"
-                                />
-                                {!isCardio && set.actualWeightKg > 0 && (
-                                  <span className="text-[8px] sm:text-[9px] text-neutral-400 block font-mono mt-0.5 hidden xs:block">1RM:{estimated1rm}k</span>
-                                )}
-                                {isCardio && (
-                                  <span className="text-[8px] sm:text-[9px] text-purple-400 block font-mono mt-0.5">km</span>
+                                {set.isWarmup && (
+                                  <span className="text-[8px] sm:text-[9px] font-mono font-extrabold px-1 sm:px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                                    W
+                                  </span>
                                 )}
                               </div>
-                              <button
-                                onClick={() => handleUpdateSetVal(set.id, 'actualWeightKg', stepVal)}
-                                className="w-6 h-6 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-white/5 hover:bg-white/10 text-white flex items-center justify-center font-bold border border-white/5 shrink-0"
-                                title={isCardio ? "+0.5 km" : "+2.5 kg"}
-                              >
-                                <Plus className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
-                              </button>
+
+                              {/* Weight or Distance Adjuster */}
+                              <div className="col-span-4 sm:col-span-4 flex items-center justify-center gap-1 sm:gap-1.5">
+                                <button
+                                  onClick={() => handleUpdateSetVal(set.id, 'actualWeightKg', -stepVal)}
+                                  className="w-6 h-6 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-white/5 hover:bg-white/10 text-white flex items-center justify-center font-bold border border-white/5 shrink-0"
+                                  title={isCardio ? "-0.5 km" : "-2.5 kg"}
+                                >
+                                  <Minus className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
+                                </button>
+                                <div className="w-12 sm:w-18 text-center min-w-0">
+                                  <input
+                                    type="number"
+                                    step={isCardio ? "0.1" : "0.5"}
+                                    value={set.actualWeightKg}
+                                    onChange={(e) => {
+                                      const val = parseFloat(e.target.value) || 0;
+                                      handleUpdateSetVal(set.id, 'actualWeightKg', val - set.actualWeightKg);
+                                    }}
+                                    className="w-full bg-[#09090b] text-center font-mono font-bold text-xs sm:text-sm rounded-lg sm:rounded-xl py-1 sm:py-1.5 border border-white/10 focus:border-cyan-500 focus:outline-none text-white px-0.5"
+                                  />
+                                  {!isCardio && set.actualWeightKg > 0 && (
+                                    <span className="text-[8px] sm:text-[9px] text-neutral-400 block font-mono mt-0.5 hidden xs:block">1RM:{estimated1rm}k</span>
+                                  )}
+                                  {isCardio && (
+                                    <span className="text-[8px] sm:text-[9px] text-purple-400 block font-mono mt-0.5">km</span>
+                                  )}
+                                </div>
+                                <button
+                                  onClick={() => handleUpdateSetVal(set.id, 'actualWeightKg', stepVal)}
+                                  className="w-6 h-6 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-white/5 hover:bg-white/10 text-white flex items-center justify-center font-bold border border-white/5 shrink-0"
+                                  title={isCardio ? "+0.5 km" : "+2.5 kg"}
+                                >
+                                  <Plus className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
+                                </button>
+                              </div>
+
+                              {/* Reps or Minutes Adjuster */}
+                              <div className="col-span-3 sm:col-span-3 flex items-center justify-center gap-1 sm:gap-1.5">
+                                <button
+                                  onClick={() => handleUpdateSetVal(set.id, 'actualReps', -1)}
+                                  className="w-6 h-6 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-white/5 hover:bg-white/10 text-white flex items-center justify-center font-bold border border-white/5 shrink-0"
+                                >
+                                  <Minus className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
+                                </button>
+                                <input
+                                  type="number"
+                                  value={set.actualReps}
+                                  onChange={(e) => {
+                                    const val = parseInt(e.target.value) || 0;
+                                    handleUpdateSetVal(set.id, 'actualReps', val - set.actualReps);
+                                  }}
+                                  className="w-9 sm:w-12 bg-[#09090b] text-center font-mono font-bold text-xs sm:text-sm rounded-lg sm:rounded-xl py-1 sm:py-1.5 border border-white/10 focus:border-cyan-500 focus:outline-none text-white px-0.5"
+                                />
+                                <button
+                                  onClick={() => handleUpdateSetVal(set.id, 'actualReps', 1)}
+                                  className="w-6 h-6 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-white/5 hover:bg-white/10 text-white flex items-center justify-center font-bold border border-white/5 shrink-0"
+                                >
+                                  <Plus className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
+                                </button>
+                              </div>
+
+                              {/* Complete Checkbox */}
+                              <div className="col-span-3 sm:col-span-3 flex justify-center">
+                                <button
+                                  id={`btn-complete-set-${setIdx}`}
+                                  disabled={!set.completed && (isLocked || isWaitingRest)}
+                                  onClick={() => handleToggleSet(set.id)}
+                                  className={`w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl flex items-center justify-center transition-all ${
+                                    set.completed
+                                      ? 'bg-cyan-500 text-neutral-950 shadow-[0_0_15px_rgba(6,182,212,0.4)] scale-105 hover:bg-cyan-400'
+                                      : isWaitingRest
+                                      ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/40 cursor-not-allowed opacity-75 animate-pulse'
+                                      : isCurrentActive
+                                      ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/50 hover:bg-cyan-500/30 animate-pulse shadow-[0_0_12px_rgba(6,182,212,0.2)]'
+                                      : isLocked
+                                      ? 'bg-white/[0.02] text-neutral-600 border border-white/5 cursor-not-allowed opacity-35'
+                                      : 'bg-white/5 hover:bg-white/10 text-neutral-400 border border-white/10'
+                                  }`}
+                                  title={
+                                    set.completed
+                                      ? "Desmarcar serie"
+                                      : isWaitingRest
+                                      ? `Descanso en curso (${restRemaining}s). Pulsa 'Saltar Descanso' para registrar`
+                                      : isLocked
+                                      ? "Bloqueada: Completa la serie anterior primero"
+                                      : "Completar serie"
+                                  }
+                                >
+                                  {set.completed ? (
+                                    <Check className="w-4 h-4 sm:w-5 sm:h-5 stroke-[3]" />
+                                  ) : isWaitingRest ? (
+                                    <span className="text-[10px] font-mono font-bold text-cyan-400">⏳</span>
+                                  ) : (
+                                    <span className="text-[10px] font-mono font-bold">OK</span>
+                                  )}
+                                </button>
+                              </div>
                             </div>
 
-                        {/* Reps Adjuster */}
-                        <div className="col-span-3 sm:col-span-3 flex items-center justify-center gap-1 sm:gap-1.5">
-                          <button
-                            onClick={() => handleUpdateSetVal(set.id, 'actualReps', -1)}
-                            className="w-6 h-6 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-white/5 hover:bg-white/10 text-white flex items-center justify-center font-bold border border-white/5 shrink-0"
-                          >
-                            <Minus className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
-                          </button>
-                          <input
-                            type="number"
-                            value={set.actualReps}
-                            onChange={(e) => {
-                              const val = parseInt(e.target.value) || 0;
-                              handleUpdateSetVal(set.id, 'actualReps', val - set.actualReps);
-                            }}
-                            className="w-9 sm:w-12 bg-[#09090b] text-center font-mono font-bold text-xs sm:text-sm rounded-lg sm:rounded-xl py-1 sm:py-1.5 border border-white/10 focus:border-cyan-500 focus:outline-none text-white px-0.5"
-                          />
-                          <button
-                            onClick={() => handleUpdateSetVal(set.id, 'actualReps', 1)}
-                            className="w-6 h-6 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-white/5 hover:bg-white/10 text-white flex items-center justify-center font-bold border border-white/5 shrink-0"
-                          >
-                            <Plus className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
-                          </button>
-                        </div>
+                            {/* Runner & Treadmill Set Telemetry Sub-Row */}
+                            {isCardio && (
+                              <div className="mt-2.5 pt-2 border-t border-white/5 flex flex-wrap items-center justify-between gap-2 text-[11px] font-mono">
+                                {/* Incline Control (Treadmill) */}
+                                <div className="flex items-center gap-1.5 bg-white/5 px-2.5 py-1 rounded-xl border border-white/5">
+                                  <Mountain className="w-3 h-3 text-amber-400" />
+                                  <span className="text-neutral-400 text-[10px]">Inclinación Cinta:</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleUpdateSetVal(set.id, 'inclinePercent', -0.5)}
+                                    className="w-5 h-5 rounded bg-white/10 hover:bg-white/20 text-white flex items-center justify-center font-bold text-xs"
+                                  >
+                                    -
+                                  </button>
+                                  <span className="font-bold text-amber-400 min-w-[28px] text-center">
+                                    {(set.inclinePercent || 0).toFixed(1)}%
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleUpdateSetVal(set.id, 'inclinePercent', 0.5)}
+                                    className="w-5 h-5 rounded bg-white/10 hover:bg-white/20 text-white flex items-center justify-center font-bold text-xs"
+                                  >
+                                    +
+                                  </button>
+                                </div>
 
-                        {/* Complete Checkbox */}
-                        <div className="col-span-3 sm:col-span-3 flex justify-center">
-                          <button
-                            id={`btn-complete-set-${setIdx}`}
-                            disabled={!set.completed && (isLocked || isWaitingRest)}
-                            onClick={() => handleToggleSet(set.id)}
-                            className={`w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl flex items-center justify-center transition-all ${
-                              set.completed
-                                ? 'bg-cyan-500 text-neutral-950 shadow-[0_0_15px_rgba(6,182,212,0.4)] scale-105 hover:bg-cyan-400'
-                                : isWaitingRest
-                                ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/40 cursor-not-allowed opacity-75 animate-pulse'
-                                : isCurrentActive
-                                ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/50 hover:bg-cyan-500/30 animate-pulse shadow-[0_0_12px_rgba(6,182,212,0.2)]'
-                                : isLocked
-                                ? 'bg-white/[0.02] text-neutral-600 border border-white/5 cursor-not-allowed opacity-35'
-                                : 'bg-white/5 hover:bg-white/10 text-neutral-400 border border-white/10'
-                            }`}
-                            title={
-                              set.completed
-                                ? "Desmarcar serie"
-                                : isWaitingRest
-                                ? `Descanso en curso (${restRemaining}s). Pulsa 'Saltar Descanso' para registrar`
-                                : isLocked
-                                ? "Bloqueada: Completa la serie anterior primero"
-                                : "Completar serie"
-                            }
-                          >
-                            {set.completed ? (
-                              <Check className="w-4 h-4 sm:w-5 sm:h-5 stroke-[3]" />
-                            ) : isWaitingRest ? (
-                              <Timer className="w-4 h-4 sm:w-4.5 sm:h-4.5 text-cyan-400 animate-spin" style={{ animationDuration: '4s' }} />
-                            ) : isLocked ? (
-                              <Lock className="w-3.5 h-3.5 sm:w-4 sm:h-4 opacity-60" />
-                            ) : (
-                              <Check className="w-4 h-4 sm:w-5 sm:h-5 stroke-[3]" />
+                                {/* Calculated Live Pace & Speed Badge */}
+                                {distanceKm > 0 && timeMin > 0 && (
+                                  <div className="flex items-center gap-2 text-cyan-300 bg-cyan-500/10 px-2.5 py-1 rounded-xl border border-cyan-500/20">
+                                    <span className="flex items-center gap-1">
+                                      <Gauge className="w-3 h-3 text-cyan-400" />
+                                      <strong className="font-extrabold">{speedKmh} km/h</strong>
+                                    </span>
+                                    <span className="text-neutral-500">•</span>
+                                    <span className="flex items-center gap-1">
+                                      <Wind className="w-3 h-3 text-cyan-400" />
+                                      <strong>{paceMin}'{paceSec.toString().padStart(2, '0')}" /km</strong>
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
                             )}
-                          </button>
-                        </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </>
-              );
-            })()}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </>
+                );
+              })()}
 
               {/* Add Set button */}
               <button

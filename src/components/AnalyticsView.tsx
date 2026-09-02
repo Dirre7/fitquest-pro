@@ -31,7 +31,12 @@ import {
   FileSpreadsheet,
   ChevronDown,
   ChevronUp,
-  Sparkles
+  Sparkles,
+  Footprints,
+  Gauge,
+  Wind,
+  Mountain,
+  Zap,
 } from 'lucide-react';
 import { WorkoutHistoryEntry, UserProfile, Language } from '../types';
 import { translations } from '../lib/i18n';
@@ -267,47 +272,91 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
         </div>
 
         {/* Cardio & Running Distance Evolution */}
-        <div className="bg-[#121214] border border-white/10 rounded-3xl p-5 sm:p-6 shadow-xl space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Activity className="w-5 h-5 text-purple-400" />
-              <h3 className="font-display font-bold text-lg text-white">
-                Rendimiento Cardio & Running (km)
-              </h3>
-            </div>
-            <span className="text-xs font-mono font-bold text-purple-400">
-              {totalDistance.toFixed(1)} km Acumulados
-            </span>
-          </div>
+        {(() => {
+          const cardioHistory = history.filter((h) => (h.totalDistanceKm || 0) > 0 || h.routineTitle?.toLowerCase().includes('cardio') || h.routineTitle?.toLowerCase().includes('running'));
+          const totalCardioKm = cardioHistory.reduce((s, h) => s + (h.totalDistanceKm || 0), 0);
+          const totalCardioMinutes = cardioHistory.reduce((s, h) => s + (h.durationMinutes || 0), 0);
+          const avgRunnerPaceMin = totalCardioKm > 0 ? totalCardioMinutes / totalCardioKm : 0;
+          const formattedAvgRunnerPace = avgRunnerPaceMin > 0
+            ? `${Math.floor(avgRunnerPaceMin)}'${Math.round((avgRunnerPaceMin % 1) * 60).toString().padStart(2, '0')}" /km`
+            : '-- /km';
+          const longestRunKm = cardioHistory.length > 0 ? Math.max(...cardioHistory.map((h) => h.totalDistanceKm || 0)) : 0;
 
-          <div className="h-64 w-full pt-4">
-            {cardioData.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={cardioData}>
-                  <defs>
-                    <linearGradient id="cardioGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#a855f7" stopOpacity={0.4} />
-                      <stop offset="95%" stopColor="#a855f7" stopOpacity={0.0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#262626" />
-                  <XAxis dataKey="date" stroke="#737373" fontSize={11} />
-                  <YAxis stroke="#737373" fontSize={11} />
-                  <Tooltip
-                    contentStyle={{ backgroundColor: '#121214', borderColor: '#333', borderRadius: '16px', fontSize: '12px' }}
-                  />
-                  <Area type="monotone" dataKey="km" stroke="#a855f7" strokeWidth={2.5} fillOpacity={1} fill="url(#cardioGrad)" name="Distancia (km)" />
-                </AreaChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="h-full w-full flex flex-col items-center justify-center text-center p-6 bg-white/[0.01] rounded-2xl border border-dashed border-white/5">
-                <Activity className="w-8 h-8 text-neutral-600 mb-2" />
-                <p className="text-xs font-mono font-bold text-neutral-400">Sin sesiones de cardio</p>
-                <p className="text-[11px] text-neutral-500 max-w-xs mt-1">Completa carreras, cinta o ciclismo para visualizar tu telemetría aeróbica.</p>
+          return (
+            <div className="bg-[#121214] border border-white/10 rounded-3xl p-5 sm:p-6 shadow-xl space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <Activity className="w-5 h-5 text-purple-400" />
+                  <h3 className="font-display font-bold text-lg text-white">
+                    Rendimiento Runner & Cardio
+                  </h3>
+                </div>
+                <span className="text-xs font-mono font-bold text-purple-400">
+                  {totalCardioKm.toFixed(1)} km Acumulados
+                </span>
               </div>
-            )}
-          </div>
-        </div>
+
+              {/* Runner KPI Highlights Grid */}
+              <div className="grid grid-cols-3 gap-2 sm:gap-3">
+                <div className="bg-white/5 p-3 rounded-2xl border border-white/5 text-center">
+                  <div className="flex items-center justify-center gap-1 text-purple-400 text-[10px] font-mono uppercase mb-0.5">
+                    <Footprints className="w-3 h-3" />
+                    <span>Distancia</span>
+                  </div>
+                  <p className="text-sm sm:text-base font-mono font-extrabold text-white">
+                    {totalCardioKm.toFixed(1)} <span className="text-xs text-neutral-400">km</span>
+                  </p>
+                </div>
+                <div className="bg-white/5 p-3 rounded-2xl border border-white/5 text-center">
+                  <div className="flex items-center justify-center gap-1 text-cyan-400 text-[10px] font-mono uppercase mb-0.5">
+                    <Wind className="w-3 h-3" />
+                    <span>Ritmo Medio</span>
+                  </div>
+                  <p className="text-sm sm:text-base font-mono font-extrabold text-cyan-300">
+                    {formattedAvgRunnerPace}
+                  </p>
+                </div>
+                <div className="bg-white/5 p-3 rounded-2xl border border-white/5 text-center">
+                  <div className="flex items-center justify-center gap-1 text-emerald-400 text-[10px] font-mono uppercase mb-0.5">
+                    <Gauge className="w-3 h-3" />
+                    <span>Tirada Máx</span>
+                  </div>
+                  <p className="text-sm sm:text-base font-mono font-extrabold text-emerald-300">
+                    {longestRunKm.toFixed(1)} <span className="text-xs text-neutral-400">km</span>
+                  </p>
+                </div>
+              </div>
+
+              <div className="h-64 w-full pt-2">
+                {cardioData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={cardioData}>
+                      <defs>
+                        <linearGradient id="cardioGrad" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#a855f7" stopOpacity={0.4} />
+                          <stop offset="95%" stopColor="#a855f7" stopOpacity={0.0} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#262626" />
+                      <XAxis dataKey="date" stroke="#737373" fontSize={11} />
+                      <YAxis stroke="#737373" fontSize={11} />
+                      <Tooltip
+                        contentStyle={{ backgroundColor: '#121214', borderColor: '#333', borderRadius: '16px', fontSize: '12px' }}
+                      />
+                      <Area type="monotone" dataKey="km" stroke="#a855f7" strokeWidth={2.5} fillOpacity={1} fill="url(#cardioGrad)" name="Distancia (km)" />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="h-full w-full flex flex-col items-center justify-center text-center p-6 bg-white/[0.01] rounded-2xl border border-dashed border-white/5">
+                    <Activity className="w-8 h-8 text-neutral-600 mb-2" />
+                    <p className="text-xs font-mono font-bold text-neutral-400">Sin sesiones de cardio</p>
+                    <p className="text-[11px] text-neutral-500 max-w-xs mt-1">Completa carreras en cinta o calle para visualizar tu telemetría aeróbica y ritmos.</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })()}
 
         {/* Calorie Burn & Average BPM Correlation */}
         <div className="bg-[#121214] border border-white/10 rounded-3xl p-5 sm:p-6 shadow-xl space-y-3">

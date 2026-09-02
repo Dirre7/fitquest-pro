@@ -59,6 +59,8 @@ export interface ExerciseSet {
   targetDurationSeconds?: number;
   actualDurationSeconds?: number;
   paceMinKm?: string;
+  inclinePercent?: number; // Treadmill incline % (e.g. 1.0%, 2.5%)
+  speedKmh?: number; // Treadmill or GPS speed (e.g. 11.5 km/h)
   completed: boolean;
   rpe?: number; // Rate of Perceived Exertion (1-10)
   isWarmup?: boolean;
@@ -144,6 +146,8 @@ export interface WorkoutHistoryEntry {
   totalDistanceKm?: number;
   averagePace?: string;
   cardioMinutes?: number;
+  cardioMode?: 'treadmill' | 'outdoor' | 'general';
+  inclinePercent?: number;
   calories: number;
   avgHeartRate: number;
   maxHeartRate: number;
