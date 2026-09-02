@@ -41,6 +41,7 @@ const KEYS = {
   HIGH_CONTRAST: 'fitquest_high_contrast',
   TEXT_SIZE: 'fitquest_text_size',
   LAST_CLOUD_SYNC: 'fitquest_last_cloud_sync',
+  LAST_RESET_AT: 'fitquest_last_reset_at',
   IS_OFFLINE: 'fitquest_is_offline',
   ACTIVE_SESSION: 'fitquest_active_session',
 };
@@ -62,13 +63,7 @@ export class FitStorage {
         ...user,
         ...(uid ? { id: uid } : {}),
       };
-      localStorage.setItem(KEYS.USER, JSON.stringify(userToSave));
-      // Auto-sync to firestore if logged in or has persistent UID
-      if (uid) {
-        this.syncUserToCloud(userToSave).catch((err) => {
-          console.error('Firestore auto-sync error:', err);
-        });
-      }
+      localStorage.setItem(KEYS.USER, JSON.stringify(user));
     } catch (e) {
       console.error('Failed to save user', e);
     }
@@ -76,7 +71,7 @@ export class FitStorage {
 
   public static async syncUserToCloud(user: UserProfile) {
     try {
-      const uid = auth.currentUser?.uid || (user.id && !user.id.startsWith('guest_') ? user.id : null);
+      const uid = auth.currentUser?.uid;
       if (!uid) return;
       const userRef = doc(db, 'users', uid);
       await setDoc(userRef, {
@@ -92,6 +87,7 @@ export class FitStorage {
         unlockedBadges: user.unlockedBadges || [],
         claimedChallenges: user.claimedChallenges || [],
         claimedChallengesWeek: user.claimedChallengesWeek || '',
+        lastResetAt: user.lastResetAt || '',
         weightKg: user.weightKg,
         targetWeightKg: user.targetWeightKg,
         name: user.name,
@@ -125,36 +121,61 @@ export class FitStorage {
         const cloudData = userSnap.data() as Partial<UserProfile>;
         const defaults = createFreshUser(uid, displayName || (email ? email.split('@')[0] : 'Atleta FitQuest'), email);
         const existingLocalUser = this.getUser();
-        let existingLocalClaimed: string[] = [];
-        try {
-          const raw = localStorage.getItem('fitquest_claimed_challenges');
-          existingLocalClaimed = raw ? JSON.parse(raw) : [];
-        } catch {}
 
-        const mergedClaimed = Array.from(new Set([
-          ...(cloudData.claimedChallenges || []),
-          ...(existingLocalUser.claimedChallenges || []),
-          ...existingLocalClaimed,
-        ]));
+        // Check if cloud has an active reset
+        const localResetAt = localStorage.getItem(KEYS.LAST_RESET_AT);
+        const cloudResetAt = cloudData.lastResetAt;
+        const isCloudResetActive = Boolean(
+          (cloudResetAt && (!localResetAt || new Date(cloudResetAt).getTime() >= new Date(localResetAt).getTime())) ||
+          (cloudData.level === 1 && (cloudData.xp === 0 || !cloudData.xp) && existingLocalUser.level > 1)
+        );
 
-        const mergedBadges = Array.from(new Set([
-          ...(cloudData.unlockedBadges || []),
-          ...(existingLocalUser.unlockedBadges || []),
-          ...(defaults.unlockedBadges || []),
-        ]));
+        if (isCloudResetActive) {
+          if (cloudResetAt) localStorage.setItem(KEYS.LAST_RESET_AT, cloudResetAt);
+          localStorage.removeItem(KEYS.HISTORY);
+          localStorage.setItem('fitquest_claimed_challenges', JSON.stringify([]));
+          this.saveHistory([]);
+          this.saveAchievements(createFreshAchievements());
+        }
 
-        const maxLevel = Math.max(cloudData.level || 1, existingLocalUser.level || 1, defaults.level || 1);
-        const maxTotalXp = Math.max(cloudData.xp || 0, existingLocalUser.xp || 0);
-        const effectiveCurrentLevelXp = (cloudData.xp !== undefined && cloudData.xp >= (existingLocalUser.xp || 0))
+        const mergedClaimed = isCloudResetActive
+          ? (cloudData.claimedChallenges || [])
+          : Array.from(new Set([
+              ...(cloudData.claimedChallenges || []),
+              ...(existingLocalUser.claimedChallenges || []),
+            ]));
+
+        const mergedBadges = isCloudResetActive
+          ? (cloudData.unlockedBadges || [])
+          : Array.from(new Set([
+              ...(cloudData.unlockedBadges || []),
+              ...(existingLocalUser.unlockedBadges || []),
+              ...(defaults.unlockedBadges || []),
+            ]));
+
+        const maxLevel = isCloudResetActive
+          ? (cloudData.level || 1)
+          : Math.max(cloudData.level || 1, existingLocalUser.level || 1, defaults.level || 1);
+
+        const maxTotalXp = isCloudResetActive
+          ? (cloudData.xp || 0)
+          : Math.max(cloudData.xp || 0, existingLocalUser.xp || 0);
+
+        const effectiveCurrentLevelXp = isCloudResetActive
+          ? (cloudData.currentLevelXp || 0)
+          : (cloudData.xp !== undefined && cloudData.xp >= (existingLocalUser.xp || 0))
           ? (cloudData.currentLevelXp ?? existingLocalUser.currentLevelXp ?? defaults.currentLevelXp)
           : (existingLocalUser.currentLevelXp ?? defaults.currentLevelXp);
-        const effectiveNextLevelXp = (cloudData.xp !== undefined && cloudData.xp >= (existingLocalUser.xp || 0))
+
+        const effectiveNextLevelXp = isCloudResetActive
+          ? (cloudData.nextLevelXp || 500)
+          : (cloudData.xp !== undefined && cloudData.xp >= (existingLocalUser.xp || 0))
           ? (cloudData.nextLevelXp || existingLocalUser.nextLevelXp || defaults.nextLevelXp)
           : (existingLocalUser.nextLevelXp || defaults.nextLevelXp);
 
         userProfile = {
           ...defaults,
-          ...existingLocalUser,
+          ...(isCloudResetActive ? {} : existingLocalUser),
           ...cloudData,
           id: uid,
           level: maxLevel,
@@ -163,19 +184,20 @@ export class FitStorage {
           nextLevelXp: effectiveNextLevelXp,
           name: cloudData.name || existingLocalUser.name || defaults.name,
           avatar: cloudData.avatar || existingLocalUser.avatar || defaults.avatar,
-          rankTitle: cloudData.rankTitle || existingLocalUser.rankTitle || defaults.rankTitle,
+          rankTitle: cloudData.rankTitle || (isCloudResetActive ? 'Gladiador de Bronce' : (existingLocalUser.rankTitle || defaults.rankTitle)),
           weightKg: cloudData.weightKg ?? existingLocalUser.weightKg ?? defaults.weightKg,
           targetWeightKg: cloudData.targetWeightKg ?? existingLocalUser.targetWeightKg ?? defaults.targetWeightKg,
           claimedChallenges: mergedClaimed,
           claimedChallengesWeek: cloudData.claimedChallengesWeek || existingLocalUser.claimedChallengesWeek,
           unlockedBadges: mergedBadges,
+          lastResetAt: cloudResetAt || (isCloudResetActive ? new Date().toISOString() : existingLocalUser.lastResetAt),
         };
         try {
           localStorage.setItem('fitquest_claimed_challenges', JSON.stringify(mergedClaimed));
         } catch {}
 
-        // If local had a custom title or badges or higher XP, sync them to cloud
-        if (userProfile.rankTitle !== cloudData.rankTitle || userProfile.xp !== cloudData.xp || (userProfile.unlockedBadges?.length || 0) > (cloudData.unlockedBadges?.length || 0)) {
+        // If local had a custom title or badges or higher XP without active reset, sync them to cloud
+        if (!isCloudResetActive && (userProfile.rankTitle !== cloudData.rankTitle || userProfile.xp !== cloudData.xp || (userProfile.unlockedBadges?.length || 0) > (cloudData.unlockedBadges?.length || 0))) {
           this.syncUserToCloud(userProfile);
         }
       } else {
@@ -188,7 +210,7 @@ export class FitStorage {
         });
       }
 
-      // Load history subcollection and merge safely with local history (NEVER overwrite with empty array)
+      // Load history subcollection and merge safely with local history
       try {
         const historyRef = collection(db, 'users', uid, 'history');
         const q = query(historyRef, orderBy('date', 'desc'));
@@ -200,21 +222,26 @@ export class FitStorage {
         console.warn('Could not load history subcollection', err);
       }
 
-      const localHistory = this.getHistory();
       const combinedHistoryMap = new Map<string, WorkoutHistoryEntry>();
       // Put Firestore entries first
       historyEntries.forEach(h => combinedHistoryMap.set(h.id, h));
-      // Put local entries (merge any local not yet in cloud)
-      localHistory.forEach(h => {
-        if (!combinedHistoryMap.has(h.id)) {
-          combinedHistoryMap.set(h.id, h);
-          // Sync missing entry to cloud
-          try {
-            const historyDocRef = doc(db, 'users', uid, 'history', h.id);
-            setDoc(historyDocRef, { ...h, createdAt: h.date || new Date().toISOString() }, { merge: true });
-          } catch {}
-        }
-      });
+
+      // Put local entries ONLY if cloud was not reset
+      const localResetAt = localStorage.getItem(KEYS.LAST_RESET_AT);
+      const isCloudReset = userProfile.lastResetAt && localResetAt && userProfile.lastResetAt === localResetAt && userProfile.level === 1 && userProfile.xp === 0;
+      if (!isCloudReset) {
+        const localHistory = this.getHistory();
+        localHistory.forEach(h => {
+          if (!combinedHistoryMap.has(h.id)) {
+            combinedHistoryMap.set(h.id, h);
+            // Sync missing entry to cloud
+            try {
+              const historyDocRef = doc(db, 'users', uid, 'history', h.id);
+              setDoc(historyDocRef, { ...h, createdAt: h.date || new Date().toISOString() }, { merge: true });
+            } catch {}
+          }
+        });
+      }
 
       // Sanitize any historically corrupted distance/calorie entries from previous strength rowing bug
       const finalHistory = Array.from(combinedHistoryMap.values())
@@ -721,6 +748,8 @@ export class FitStorage {
     const currentUser = auth.currentUser;
     const existingUser = this.getUser();
 
+    const resetTimestamp = new Date().toISOString();
+
     const freshUser: UserProfile = {
       id: currentUser ? currentUser.uid : existingUser.id,
       name: existingUser.name || (currentUser?.displayName ?? 'Atleta'),
@@ -732,7 +761,7 @@ export class FitStorage {
       rankTitle: 'Gladiador de Bronce',
       league: 'Bronze',
       leaguePoints: 0,
-      joinedAt: existingUser.joinedAt || new Date().toISOString().split('T')[0],
+      joinedAt: existingUser.joinedAt || resetTimestamp.split('T')[0],
       weightKg: existingUser.weightKg || 75,
       targetWeightKg: existingUser.targetWeightKg || 72,
       attributes: {
@@ -754,12 +783,14 @@ export class FitStorage {
       },
       unlockedBadges: [],
       claimedChallenges: [],
+      lastResetAt: resetTimestamp,
     };
 
     // 1. Reset local storage
     this.saveUser(freshUser);
     this.saveHistory([]);
     try {
+      localStorage.setItem(KEYS.LAST_RESET_AT, resetTimestamp);
       localStorage.removeItem(KEYS.HISTORY);
       localStorage.setItem('fitquest_claimed_challenges', JSON.stringify([]));
     } catch {}
@@ -782,7 +813,8 @@ export class FitStorage {
         const userDocRef = doc(db, 'users', currentUser.uid);
         await setDoc(userDocRef, {
           ...freshUser,
-          updatedAt: new Date().toISOString(),
+          updatedAt: resetTimestamp,
+          lastResetAt: resetTimestamp,
         });
 
         // Clear history subcollection in cloud

@@ -42,6 +42,7 @@ export interface UserProfile {
   targetWeightKg: number;
   claimedChallenges?: string[];
   claimedChallengesWeek?: string;
+  lastResetAt?: string;
 }
 
 export interface ExerciseSet {

@@ -154,29 +154,48 @@ export default function App() {
 
         // Real-time Firestore Live Sync for instant multi-device synchronization
         const userDocRef = doc(db, 'users', firebaseUser.uid);
-        unsubSnapshot = onSnapshot(userDocRef, (snap) => {
-          if (snap.exists()) {
-            const data = snap.data() as Partial<UserProfile>;
+        unsubSnapshot = onSnapshot(userDocRef, (docSnap) => {
+          if (docSnap.exists()) {
+            const data = docSnap.data() as Partial<UserProfile>;
+            
+            const localResetAt = localStorage.getItem('fitquest_last_reset_at');
+            const isSnapshotReset = Boolean(
+              (data.lastResetAt && (!localResetAt || new Date(data.lastResetAt).getTime() > new Date(localResetAt).getTime())) ||
+              (data.level === 1 && (data.xp === 0 || !data.xp) && user.level > 1)
+            );
+
+            if (isSnapshotReset) {
+              if (data.lastResetAt) localStorage.setItem('fitquest_last_reset_at', data.lastResetAt);
+              localStorage.removeItem('fitquest_history');
+              localStorage.setItem('fitquest_claimed_challenges', JSON.stringify([]));
+              setHistory([]);
+              setAchievements(createFreshAchievements());
+              setChallenges(defaultChallenges.map(c => ({ ...c, currentProgress: 0, completed: false })));
+            }
+
             setUser((prev) => {
-              const currentHistory = FitStorage.getHistory();
+              const currentHistory = isSnapshotReset ? [] : FitStorage.getHistory();
               const realStreak = calculateRealStreak(currentHistory);
               const dynamicAttributes = calculateAthleteAttributes(currentHistory, realStreak.currentStreak);
+
+              const effectiveLevel = isSnapshotReset ? (data.level || 1) : Math.max(prev.level, data.level || 1);
+              const effectiveXp = isSnapshotReset ? (data.xp || 0) : Math.max(prev.xp, data.xp || 0);
 
               const updated: UserProfile = {
                 ...prev,
                 ...data,
                 name: data.name || prev.name,
                 avatar: data.avatar || prev.avatar,
-                rankTitle: data.rankTitle || prev.rankTitle,
-                level: Math.max(prev.level, data.level || 1),
-                xp: Math.max(prev.xp, data.xp || 0),
-                currentLevelXp: (data.xp !== undefined && data.xp >= prev.xp) ? (data.currentLevelXp ?? prev.currentLevelXp) : prev.currentLevelXp,
-                nextLevelXp: data.nextLevelXp || prev.nextLevelXp,
+                rankTitle: data.rankTitle || (isSnapshotReset ? 'Gladiador de Bronce' : prev.rankTitle),
+                level: effectiveLevel,
+                xp: effectiveXp,
+                currentLevelXp: isSnapshotReset ? (data.currentLevelXp || 0) : ((data.xp !== undefined && data.xp >= prev.xp) ? (data.currentLevelXp ?? prev.currentLevelXp) : prev.currentLevelXp),
+                nextLevelXp: data.nextLevelXp || (isSnapshotReset ? 500 : prev.nextLevelXp),
                 weightKg: data.weightKg ?? prev.weightKg,
                 targetWeightKg: data.targetWeightKg ?? prev.targetWeightKg,
-                unlockedBadges: data.unlockedBadges !== undefined ? data.unlockedBadges : (prev.unlockedBadges || []),
-                claimedChallenges: data.claimedChallenges !== undefined ? data.claimedChallenges : (prev.claimedChallenges || []),
-                attributes: dynamicAttributes,
+                unlockedBadges: isSnapshotReset ? (data.unlockedBadges || []) : (data.unlockedBadges !== undefined ? data.unlockedBadges : (prev.unlockedBadges || [])),
+                claimedChallenges: isSnapshotReset ? (data.claimedChallenges || []) : (data.claimedChallenges !== undefined ? data.claimedChallenges : (prev.claimedChallenges || [])),
+                attributes: isSnapshotReset ? { strength: 10, endurance: 10, agility: 10, discipline: 10 } : dynamicAttributes,
                 stats: {
                   ...prev.stats,
                   totalWorkouts: currentHistory.length,
@@ -187,12 +206,11 @@ export default function App() {
                   currentStreak: realStreak.currentStreak,
                   bestStreak: Math.max(prev.stats?.bestStreak || 0, realStreak.bestStreak),
                 },
+                lastResetAt: data.lastResetAt || prev.lastResetAt,
               };
               try {
                 localStorage.setItem('fitquest_user_profile', JSON.stringify(updated));
-                if (data.claimedChallenges) {
-                  localStorage.setItem('fitquest_claimed_challenges', JSON.stringify(updated.claimedChallenges));
-                }
+                localStorage.setItem('fitquest_claimed_challenges', JSON.stringify(updated.claimedChallenges || []));
               } catch {}
               return updated;
             });
