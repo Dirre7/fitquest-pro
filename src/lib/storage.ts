@@ -162,7 +162,7 @@ export class FitStorage {
         });
       }
 
-      // Load history subcollection
+      // Load history subcollection and merge safely with local history (NEVER overwrite with empty array)
       try {
         const historyRef = collection(db, 'users', uid, 'history');
         const q = query(historyRef, orderBy('date', 'desc'));
@@ -174,13 +174,33 @@ export class FitStorage {
         console.warn('Could not load history subcollection', err);
       }
 
-      // Update local storage with cloud user
+      const localHistory = this.getHistory();
+      const combinedHistoryMap = new Map<string, WorkoutHistoryEntry>();
+      // Put Firestore entries first
+      historyEntries.forEach(h => combinedHistoryMap.set(h.id, h));
+      // Put local entries (merge any local not yet in cloud)
+      localHistory.forEach(h => {
+        if (!combinedHistoryMap.has(h.id)) {
+          combinedHistoryMap.set(h.id, h);
+          // Sync missing entry to cloud
+          try {
+            const historyDocRef = doc(db, 'users', uid, 'history', h.id);
+            setDoc(historyDocRef, { ...h, createdAt: h.date || new Date().toISOString() }, { merge: true });
+          } catch {}
+        }
+      });
+
+      const finalHistory = Array.from(combinedHistoryMap.values()).sort(
+        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+      );
+
+      // Update local storage with combined history & user
+      this.saveHistory(finalHistory);
       this.saveUser(userProfile);
-      this.saveHistory(historyEntries);
 
       return {
         user: userProfile,
-        history: historyEntries,
+        history: finalHistory,
         achievements: achievementsList,
         challenges: challengesList,
         routines: routinesList,
@@ -395,17 +415,18 @@ export class FitStorage {
 
   public static async addHistoryEntry(entry: WorkoutHistoryEntry, user?: UserProfile) {
     const history = this.getHistory();
-    const updated = [entry, ...history];
+    const updated = [entry, ...history.filter(h => h.id !== entry.id)];
     this.saveHistory(updated);
 
-    // Save to Firestore if authenticated
-    if (auth.currentUser) {
+    // Save to Firestore if authenticated or has persistent user ID
+    const uid = auth.currentUser?.uid || (user?.id && !user.id.startsWith('guest_') ? user.id : null);
+    if (uid) {
       try {
-        const historyRef = collection(db, 'users', auth.currentUser.uid, 'history');
-        await addDoc(historyRef, {
+        const historyDocRef = doc(db, 'users', uid, 'history', entry.id);
+        await setDoc(historyDocRef, {
           ...entry,
-          createdAt: new Date().toISOString(),
-        });
+          createdAt: entry.date || new Date().toISOString(),
+        }, { merge: true });
       } catch (err) {
         console.error('Failed to save workout entry to Firestore', err);
       }

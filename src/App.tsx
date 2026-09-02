@@ -156,6 +156,10 @@ export default function App() {
           if (snap.exists()) {
             const data = snap.data() as Partial<UserProfile>;
             setUser((prev) => {
+              const currentHistory = FitStorage.getHistory();
+              const realStreak = calculateRealStreak(currentHistory);
+              const dynamicAttributes = calculateAthleteAttributes(currentHistory, realStreak.currentStreak);
+
               const updated: UserProfile = {
                 ...prev,
                 ...data,
@@ -166,6 +170,14 @@ export default function App() {
                 targetWeightKg: data.targetWeightKg ?? prev.targetWeightKg,
                 unlockedBadges: Array.from(new Set([...(prev.unlockedBadges || []), ...(data.unlockedBadges || [])])),
                 claimedChallenges: Array.from(new Set([...(prev.claimedChallenges || []), ...(data.claimedChallenges || [])])),
+                attributes: dynamicAttributes,
+                stats: {
+                  ...prev.stats,
+                  ...(data.stats || {}),
+                  totalWorkouts: Math.max(prev.stats?.totalWorkouts || 0, currentHistory.length, data.stats?.totalWorkouts || 0),
+                  totalVolumeKg: Math.max(prev.stats?.totalVolumeKg || 0, currentHistory.reduce((s, h) => s + (h.totalVolumeKg || 0), 0), data.stats?.totalVolumeKg || 0),
+                  currentStreak: realStreak.currentStreak,
+                },
               };
               try {
                 localStorage.setItem('fitquest_user_profile', JSON.stringify(updated));

@@ -275,33 +275,35 @@ export const ProfileEditModal: React.FC<ProfileEditModalProps> = ({
               <label className="text-[11px] font-mono font-bold text-neutral-300 block uppercase tracking-wider">
                 Título Honorífico Equipado
               </label>
-              <span className="text-[10px] font-mono text-cyan-400 font-bold">
-                {rankTitle}
-              </span>
             </div>
 
+            <div className="relative">
+              <input
+                type="text"
+                value={rankTitle}
+                onChange={(e) => setRankTitle(e.target.value)}
+                placeholder="Ej: Guerrero de Bronce, Titán de Acero..."
+                className="w-full bg-neutral-900/80 border border-cyan-500/40 rounded-xl px-3 py-2 text-xs font-mono font-bold text-cyan-300 focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400"
+              />
+            </div>
+
+            <p className="text-[10px] font-mono text-neutral-400 pt-0.5">O elige un título de la lista:</p>
             <div className="space-y-1 max-h-36 overflow-y-auto no-scrollbar p-1.5 bg-white/[0.02] border border-white/5 rounded-2xl">
               {levelTitles.map((item) => {
-                const isUnlocked = user.level >= item.minLevel;
                 const isSelected = rankTitle === item.title;
 
                 return (
                   <button
                     key={item.title}
                     type="button"
-                    disabled={!isUnlocked}
                     onClick={() => {
-                      if (isUnlocked) {
-                        setRankTitle(item.title);
-                        sound.playBeep(750, 70);
-                      }
+                      setRankTitle(item.title);
+                      sound.playBeep(750, 70);
                     }}
                     className={`w-full px-2.5 py-1.5 rounded-xl text-xs font-mono flex items-center justify-between transition-all border ${
                       isSelected
                         ? 'bg-cyan-500/20 border-cyan-500/80 text-cyan-300 font-extrabold shadow-sm'
-                        : isUnlocked
-                        ? 'bg-white/5 border-white/5 text-neutral-200 hover:bg-white/10 hover:border-white/20'
-                        : 'bg-white/[0.02] border-white/5 text-neutral-600 opacity-50 cursor-not-allowed'
+                        : 'bg-white/5 border-white/5 text-neutral-200 hover:bg-white/10 hover:border-white/20'
                     }`}
                   >
                     <span className="flex items-center gap-1.5">
@@ -312,10 +314,8 @@ export const ProfileEditModal: React.FC<ProfileEditModalProps> = ({
                       <span className="text-[10px] text-cyan-400 font-bold flex items-center gap-0.5">
                         <Check className="w-3 h-3" /> Equipado
                       </span>
-                    ) : isUnlocked ? (
-                      <span className="text-[10px] text-neutral-400">Desbloqueado</span>
                     ) : (
-                      <span className="text-[10px] text-neutral-500">Nvl {item.minLevel}</span>
+                      <span className="text-[10px] text-neutral-400">Nvl {item.minLevel}</span>
                     )}
                   </button>
                 );
@@ -327,19 +327,14 @@ export const ProfileEditModal: React.FC<ProfileEditModalProps> = ({
                   <button
                     key={ach.title}
                     type="button"
-                    disabled={!ach.unlocked}
                     onClick={() => {
-                      if (ach.unlocked) {
-                        setRankTitle(ach.title);
-                        sound.playBeep(750, 70);
-                      }
+                      setRankTitle(ach.title);
+                      sound.playBeep(750, 70);
                     }}
                     className={`w-full px-2.5 py-1.5 rounded-xl text-xs font-mono flex items-center justify-between transition-all border ${
                       isSelected
                         ? 'bg-amber-500/20 border-amber-500/80 text-amber-300 font-extrabold shadow-sm'
-                        : ach.unlocked
-                        ? 'bg-white/5 border-white/5 text-neutral-200 hover:bg-white/10 hover:border-white/20'
-                        : 'bg-white/[0.02] border-white/5 text-neutral-600 opacity-50 cursor-not-allowed'
+                        : 'bg-white/5 border-white/5 text-neutral-200 hover:bg-white/10 hover:border-white/20'
                     }`}
                   >
                     <span className="flex items-center gap-1.5">
@@ -350,10 +345,8 @@ export const ProfileEditModal: React.FC<ProfileEditModalProps> = ({
                       <span className="text-[10px] text-amber-400 font-bold flex items-center gap-0.5">
                         <Check className="w-3 h-3" /> Equipado
                       </span>
-                    ) : ach.unlocked ? (
-                      <span className="text-[10px] text-emerald-400">Logro Desbloqueado</span>
                     ) : (
-                      <span className="text-[10px] text-neutral-500">Bloqueado</span>
+                      <span className="text-[10px] text-amber-400/80">Logro</span>
                     )}
                   </button>
                 );
