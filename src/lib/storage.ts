@@ -717,6 +717,80 @@ export class FitStorage {
     }
   }
 
+  public static async resetUserProgress(): Promise<UserProfile> {
+    const currentUser = auth.currentUser;
+    const existingUser = this.getUser();
+
+    const freshUser: UserProfile = {
+      id: currentUser ? currentUser.uid : existingUser.id,
+      name: existingUser.name || (currentUser?.displayName ?? 'Atleta'),
+      avatar: existingUser.avatar || `https://api.dicebear.com/7.x/initials/svg?seed=${existingUser.name || 'Atleta'}`,
+      level: 1,
+      xp: 0,
+      currentLevelXp: 0,
+      nextLevelXp: 500,
+      rankTitle: 'Gladiador de Bronce',
+      league: 'Bronze',
+      leaguePoints: 0,
+      joinedAt: existingUser.joinedAt || new Date().toISOString().split('T')[0],
+      weightKg: existingUser.weightKg || 75,
+      targetWeightKg: existingUser.targetWeightKg || 72,
+      attributes: {
+        strength: 10,
+        endurance: 10,
+        agility: 10,
+        discipline: 10,
+      },
+      stats: {
+        totalWorkouts: 0,
+        totalVolumeKg: 0,
+        totalDistanceKm: 0,
+        totalMinutes: 0,
+        caloriesBurned: 0,
+        currentStreak: 0,
+        bestStreak: 0,
+        duelsWon: 0,
+        challengesCompleted: 0,
+      },
+      unlockedBadges: [],
+      claimedChallenges: [],
+    };
+
+    // 1. Reset local storage
+    this.saveUser(freshUser);
+    this.saveHistory([]);
+    try {
+      localStorage.removeItem(KEYS.HISTORY);
+      localStorage.removeItem('fitquest_claimed_challenges');
+    } catch {}
+
+    // Reset achievements in local storage
+    const resetAchievements = createFreshAchievements();
+    this.saveAchievements(resetAchievements);
+
+    // 2. Clear cloud Firestore if user is authenticated
+    if (currentUser) {
+      try {
+        const userDocRef = doc(db, 'users', currentUser.uid);
+        await setDoc(userDocRef, {
+          ...freshUser,
+          updatedAt: new Date().toISOString(),
+        });
+
+        // Clear history subcollection in cloud
+        const historyCol = collection(db, 'users', currentUser.uid, 'history');
+        const historySnap = await getDocs(historyCol);
+        for (const docSnap of historySnap.docs) {
+          await deleteDoc(doc(db, 'users', currentUser.uid, 'history', docSnap.id));
+        }
+      } catch (err) {
+        console.warn('Cloud reset warning:', err);
+      }
+    }
+
+    return freshUser;
+  }
+
   public static async deleteUserAccountAndData(): Promise<boolean> {
     try {
       const currentUser = auth.currentUser;

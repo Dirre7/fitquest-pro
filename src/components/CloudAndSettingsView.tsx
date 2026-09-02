@@ -25,6 +25,7 @@ import {
   AlertTriangle,
   LogOut,
   ShieldAlert,
+  RotateCcw,
 } from 'lucide-react';
 import {
   PushReminder,
@@ -54,6 +55,7 @@ interface CloudAndSettingsViewProps {
   reminders: PushReminder[];
   onUpdateReminders: (reminders: PushReminder[]) => void;
   onDataImported: () => void;
+  onResetProgress?: () => Promise<void> | void;
 }
 
 export const CloudAndSettingsView: React.FC<CloudAndSettingsViewProps> = ({
@@ -73,6 +75,7 @@ export const CloudAndSettingsView: React.FC<CloudAndSettingsViewProps> = ({
   reminders,
   onUpdateReminders,
   onDataImported,
+  onResetProgress,
 }) => {
   const t = translations[lang];
 
@@ -84,12 +87,34 @@ export const CloudAndSettingsView: React.FC<CloudAndSettingsViewProps> = ({
   const [testNotificationSent, setTestNotificationSent] = useState<boolean>(false);
   const [showDeleteAccountModal, setShowDeleteAccountModal] = useState<boolean>(false);
   const [isDeletingAccount, setIsDeletingAccount] = useState<boolean>(false);
+  const [showResetProgressModal, setShowResetProgressModal] = useState<boolean>(false);
+  const [isResettingProgress, setIsResettingProgress] = useState<boolean>(false);
 
   // Sign out handler
   const handleSignOut = async () => {
     sound.playBeep(400, 100);
     await signOut(auth);
     window.location.reload();
+  };
+
+  // Reset progress handler (Reset to level 1 & empty history while keeping account)
+  const handleResetProgressAction = async () => {
+    setIsResettingProgress(true);
+    sound.playWarning();
+    try {
+      if (onResetProgress) {
+        await onResetProgress();
+      } else {
+        await FitStorage.resetUserProgress();
+        window.location.reload();
+      }
+      setShowResetProgressModal(false);
+      sound.playLevelUp();
+    } catch (e) {
+      console.error('Reset error:', e);
+    } finally {
+      setIsResettingProgress(false);
+    }
   };
 
   // Delete account and data handler (Apple & GDPR compliance)
@@ -469,7 +494,7 @@ export const CloudAndSettingsView: React.FC<CloudAndSettingsViewProps> = ({
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {/* Sign Out Action */}
           <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 flex flex-col justify-between gap-3">
             <div>
@@ -480,17 +505,35 @@ export const CloudAndSettingsView: React.FC<CloudAndSettingsViewProps> = ({
             </div>
             <button
               onClick={handleSignOut}
-              className="w-full py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-neutral-200 border border-white/10 text-xs font-mono font-bold flex items-center justify-center gap-2 transition-colors"
+              className="w-full py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-neutral-200 border border-white/10 text-xs font-mono font-bold flex items-center justify-center gap-2 transition-colors cursor-pointer"
             >
               <LogOut className="w-3.5 h-3.5" />
               <span>Cerrar Sesión</span>
             </button>
           </div>
 
+          {/* Reset Progress Action */}
+          <div className="p-4 rounded-2xl bg-amber-950/20 border border-amber-500/30 flex flex-col justify-between gap-3">
+            <div>
+              <h5 className="font-bold text-amber-300 text-xs">Reiniciar Progreso (Empezar de 0)</h5>
+              <p className="text-[11px] text-neutral-400 mt-0.5">
+                Vuelve al Nivel 1 (0 XP) y limpia el historial de entrenamientos, manteniendo tu cuenta y correo intactos.
+              </p>
+            </div>
+            <button
+              id="btn-reset-progress"
+              onClick={() => setShowResetProgressModal(true)}
+              className="w-full py-2.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-xs font-mono font-bold flex items-center justify-center gap-2 transition-colors cursor-pointer"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>Reiniciar Datos</span>
+            </button>
+          </div>
+
           {/* Delete Account Action */}
           <div className="p-4 rounded-2xl bg-red-950/20 border border-red-500/30 flex flex-col justify-between gap-3">
             <div>
-              <h5 className="font-bold text-red-300 text-xs">Eliminar Cuenta y Todos los Datos</h5>
+              <h5 className="font-bold text-red-300 text-xs">Eliminar Cuenta y Datos</h5>
               <p className="text-[11px] text-neutral-400 mt-0.5">
                 Borrado irreversible de tu usuario, historial en Firestore y registros en el servidor (GDPR / Apple Compliance).
               </p>
@@ -498,7 +541,7 @@ export const CloudAndSettingsView: React.FC<CloudAndSettingsViewProps> = ({
             <button
               id="btn-delete-account"
               onClick={() => setShowDeleteAccountModal(true)}
-              className="w-full py-2.5 rounded-xl bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-500/40 text-xs font-mono font-bold flex items-center justify-center gap-2 transition-colors"
+              className="w-full py-2.5 rounded-xl bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-500/40 text-xs font-mono font-bold flex items-center justify-center gap-2 transition-colors cursor-pointer"
             >
               <Trash2 className="w-3.5 h-3.5" />
               <span>Eliminar Cuenta</span>
@@ -506,6 +549,52 @@ export const CloudAndSettingsView: React.FC<CloudAndSettingsViewProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Reset Progress Confirmation Modal */}
+      {showResetProgressModal && (
+        <div 
+          style={{ 
+            paddingTop: 'max(1rem, env(safe-area-inset-top, 0px))', 
+            paddingBottom: 'max(1rem, env(safe-area-inset-bottom, 0px))' 
+          }}
+          className="fixed inset-0 z-50 bg-black/85 backdrop-blur-xl flex items-center justify-center p-4 overflow-y-auto"
+        >
+          <div className="bg-[#121214] border border-amber-500/40 rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl text-center animate-in zoom-in-95 relative overflow-hidden">
+            <div className="w-14 h-14 rounded-2xl bg-amber-500/20 text-amber-400 flex items-center justify-center mx-auto mb-4 shadow-[0_0_20px_rgba(245,158,11,0.3)]">
+              <RotateCcw className="w-7 h-7" />
+            </div>
+            <h3 className="font-display font-black text-xl text-white">
+              ¿Reiniciar progreso y empezar de 0?
+            </h3>
+            <p className="text-xs text-neutral-300 mt-2 leading-relaxed">
+              Volverás al **Nivel 1 con 0 XP**, tus 4 atributos volverán a su base inicial (10 pts) y se vaciará el historial de entrenamientos y logros. **Tu cuenta y correo seguirán activos.**
+            </p>
+            <div className="mt-6 flex flex-col gap-2.5">
+              <button
+                disabled={isResettingProgress}
+                onClick={handleResetProgressAction}
+                className="w-full py-3 rounded-2xl bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-neutral-950 font-mono font-bold text-xs shadow-xl shadow-amber-500/30 flex items-center justify-center gap-2 transition-all disabled:opacity-50 cursor-pointer"
+              >
+                {isResettingProgress ? (
+                  <span className="animate-pulse">Reiniciando temporada...</span>
+                ) : (
+                  <>
+                    <RotateCcw className="w-4 h-4" />
+                    <span>Sí, Reiniciar a Nivel 1 (0 XP)</span>
+                  </>
+                )}
+              </button>
+              <button
+                disabled={isResettingProgress}
+                onClick={() => setShowResetProgressModal(false)}
+                className="w-full py-3 rounded-2xl bg-white/5 hover:bg-white/10 text-neutral-300 font-mono font-bold text-xs border border-white/5 transition-colors cursor-pointer"
+              >
+                Cancelar y Mantener Progreso
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Delete Account Confirmation Modal */}
       {showDeleteAccountModal && (
@@ -530,7 +619,7 @@ export const CloudAndSettingsView: React.FC<CloudAndSettingsViewProps> = ({
               <button
                 disabled={isDeletingAccount}
                 onClick={handleDeleteAccount}
-                className="w-full py-3 rounded-2xl bg-red-600 hover:bg-red-500 text-white font-mono font-bold text-xs shadow-xl shadow-red-600/30 flex items-center justify-center gap-2 transition-all disabled:opacity-50"
+                className="w-full py-3 rounded-2xl bg-red-600 hover:bg-red-500 text-white font-mono font-bold text-xs shadow-xl shadow-red-600/30 flex items-center justify-center gap-2 transition-all disabled:opacity-50 cursor-pointer"
               >
                 {isDeletingAccount ? (
                   <span className="animate-pulse">Borrando datos del servidor...</span>
@@ -544,7 +633,7 @@ export const CloudAndSettingsView: React.FC<CloudAndSettingsViewProps> = ({
               <button
                 disabled={isDeletingAccount}
                 onClick={() => setShowDeleteAccountModal(false)}
-                className="w-full py-3 rounded-2xl bg-white/5 hover:bg-white/10 text-neutral-300 font-mono font-bold text-xs border border-white/5 transition-colors"
+                className="w-full py-3 rounded-2xl bg-white/5 hover:bg-white/10 text-neutral-300 font-mono font-bold text-xs border border-white/5 transition-colors cursor-pointer"
               >
                 Cancelar y Volver
               </button>

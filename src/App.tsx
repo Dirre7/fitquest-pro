@@ -694,6 +694,12 @@ export default function App() {
               FitStorage.saveReminders(rems);
             }}
             onDataImported={handleDataImported}
+            onResetProgress={async () => {
+              const freshUser = await FitStorage.resetUserProgress();
+              setUser(freshUser);
+              setHistory([]);
+              setAchievements(FitStorage.getAchievements());
+            }}
           />
         )}
       </main>
