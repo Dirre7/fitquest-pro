@@ -244,10 +244,12 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
           return prevExercises;
         }
 
-        // If we were resting from previous set, stop rest timer
+        // If resting, block completion until rest finishes or is skipped
         if (isResting) {
-          setIsResting(false);
-          setRestRemaining(0);
+          sound.playBeep(400, 100);
+          setActiveWarningToast(`⏳ Descanso en curso (${restRemaining}s). Pulsa 'Saltar Descanso' para registrar la serie ya.`);
+          setTimeout(() => setActiveWarningToast(null), 3000);
+          return prevExercises;
         }
       } else {
         // If unchecking a set, stop any active rest timer
@@ -719,6 +721,7 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
                         );
                         const isCurrentActive = setIdx === activeSetIdx;
                         const isLocked = !set.completed && activeSetIdx !== -1 && setIdx > activeSetIdx;
+                        const isWaitingRest = !set.completed && isCurrentActive && isResting;
                         const stepVal = isCardio ? 0.5 : 2.5;
 
                         return (
@@ -727,6 +730,8 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
                             className={`grid grid-cols-12 gap-1 sm:gap-2 items-center p-2.5 sm:p-3.5 rounded-2xl border transition-all ${
                               set.completed
                                 ? 'bg-cyan-500/10 border-cyan-500/30 text-cyan-100 shadow-[0_0_15px_rgba(6,182,212,0.1)]'
+                                : isWaitingRest
+                                ? 'bg-cyan-500/[0.03] border-cyan-500/30 text-cyan-300'
                                 : isCurrentActive
                                 ? 'bg-cyan-500/[0.05] border-cyan-500/60 ring-2 ring-cyan-500/30 text-white shadow-[0_0_20px_rgba(6,182,212,0.15)]'
                                 : isLocked
@@ -737,8 +742,10 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
                             {/* Set Number & Badge */}
                             <div className="col-span-2 sm:col-span-2 flex items-center gap-1 sm:gap-1.5">
                               <span className={`w-5 h-5 sm:w-6 sm:h-6 rounded-lg font-mono font-bold text-[11px] sm:text-xs flex items-center justify-center ${
-                                isCurrentActive
+                                isCurrentActive && !isResting
                                   ? 'bg-cyan-500 text-neutral-950 shadow-md shadow-cyan-500/40'
+                                  : isWaitingRest
+                                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40'
                                   : 'bg-white/10 text-neutral-200'
                               }`}>
                                 {setIdx + 1}
@@ -815,20 +822,34 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
                         <div className="col-span-3 sm:col-span-3 flex justify-center">
                           <button
                             id={`btn-complete-set-${setIdx}`}
-                            disabled={isLocked}
+                            disabled={!set.completed && (isLocked || isWaitingRest)}
                             onClick={() => handleToggleSet(set.id)}
                             className={`w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl flex items-center justify-center transition-all ${
                               set.completed
-                                ? 'bg-cyan-500 text-neutral-950 shadow-[0_0_15px_rgba(6,182,212,0.4)] scale-105'
+                                ? 'bg-cyan-500 text-neutral-950 shadow-[0_0_15px_rgba(6,182,212,0.4)] scale-105 hover:bg-cyan-400'
+                                : isWaitingRest
+                                ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/40 cursor-not-allowed opacity-75 animate-pulse'
                                 : isCurrentActive
                                 ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/50 hover:bg-cyan-500/30 animate-pulse shadow-[0_0_12px_rgba(6,182,212,0.2)]'
                                 : isLocked
                                 ? 'bg-white/[0.02] text-neutral-600 border border-white/5 cursor-not-allowed opacity-35'
                                 : 'bg-white/5 hover:bg-white/10 text-neutral-400 border border-white/10'
                             }`}
-                            title={isLocked ? "Bloqueada: Completa la serie anterior primero" : set.completed ? "Desmarcar serie" : "Completar serie"}
+                            title={
+                              set.completed
+                                ? "Desmarcar serie"
+                                : isWaitingRest
+                                ? `Descanso en curso (${restRemaining}s). Pulsa 'Saltar Descanso' para registrar`
+                                : isLocked
+                                ? "Bloqueada: Completa la serie anterior primero"
+                                : "Completar serie"
+                            }
                           >
-                            {isLocked ? (
+                            {set.completed ? (
+                              <Check className="w-4 h-4 sm:w-5 sm:h-5 stroke-[3]" />
+                            ) : isWaitingRest ? (
+                              <Timer className="w-4 h-4 sm:w-4.5 sm:h-4.5 text-cyan-400 animate-spin" style={{ animationDuration: '4s' }} />
+                            ) : isLocked ? (
                               <Lock className="w-3.5 h-3.5 sm:w-4 sm:h-4 opacity-60" />
                             ) : (
                               <Check className="w-4 h-4 sm:w-5 sm:h-5 stroke-[3]" />
