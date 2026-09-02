@@ -597,6 +597,7 @@ export default function App() {
             onStartRoutine={handleStartRoutine}
             onNavigateTab={setActiveTab}
             onOpenQuickStart={() => setQuickStartModalOpen(true)}
+            onOpenProfileModal={() => setProfileModalOpen(true)}
           />
         )}
 

@@ -57,14 +57,14 @@ export class FitStorage {
 
   public static saveUser(user: UserProfile) {
     try {
-      const currentAuthUser = auth.currentUser;
+      const uid = auth.currentUser?.uid || (user.id && !user.id.startsWith('guest_') ? user.id : null);
       const userToSave: UserProfile = {
         ...user,
-        ...(currentAuthUser ? { id: currentAuthUser.uid } : {}),
+        ...(uid ? { id: uid } : {}),
       };
       localStorage.setItem(KEYS.USER, JSON.stringify(userToSave));
-      // Auto-sync to firestore if logged in
-      if (currentAuthUser) {
+      // Auto-sync to firestore if logged in or has persistent UID
+      if (uid) {
         this.syncUserToCloud(userToSave).catch((err) => {
           console.error('Firestore auto-sync error:', err);
         });
@@ -76,12 +76,13 @@ export class FitStorage {
 
   public static async syncUserToCloud(user: UserProfile) {
     try {
-      const currentAuthUser = auth.currentUser;
-      if (!currentAuthUser) return;
-      const userRef = doc(db, 'users', currentAuthUser.uid);
+      const uid = auth.currentUser?.uid || (user.id && !user.id.startsWith('guest_') ? user.id : null);
+      if (!uid) return;
+      const userRef = doc(db, 'users', uid);
       await setDoc(userRef, {
         ...user,
-        id: currentAuthUser.uid,
+        id: uid,
+        rankTitle: user.rankTitle || 'Recluta Inicial',
         updatedAt: new Date().toISOString(),
       }, { merge: true });
       localStorage.setItem(KEYS.LAST_CLOUD_SYNC, new Date().toISOString());

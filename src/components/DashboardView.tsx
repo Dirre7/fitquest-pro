@@ -35,6 +35,7 @@ interface DashboardViewProps {
   onStartRoutine: (routine: WorkoutRoutine) => void;
   onNavigateTab: (tab: string) => void;
   onOpenQuickStart?: () => void;
+  onOpenProfileModal?: () => void;
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
@@ -46,6 +47,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onStartRoutine,
   onNavigateTab,
   onOpenQuickStart,
+  onOpenProfileModal,
 }) => {
   const t = translations[lang];
 
@@ -64,12 +66,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
           {/* Top Header of the Hero Card */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 relative z-10">
-            <div className="flex items-center gap-4">
+            <div 
+              onClick={onOpenProfileModal}
+              className="flex items-center gap-4 cursor-pointer group transition-transform hover:scale-[1.02]"
+              title="Haz clic para personalizar avatar, nombre o título honorífico"
+            >
               <div className="relative">
                 <img
                   src={user.avatar}
                   alt={user.name}
-                  className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl object-cover border-2 border-cyan-500/40 shadow-xl shadow-cyan-500/20"
+                  className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl object-cover border-2 border-cyan-500/40 shadow-xl shadow-cyan-500/20 group-hover:border-cyan-400 group-hover:shadow-cyan-500/40 transition-all"
                 />
                 <div className="absolute -bottom-2 -right-2 bg-cyan-500 text-neutral-950 text-[10px] font-black px-2 py-0.5 rounded-lg shadow-md font-mono">
                   LV.{user.level}
@@ -78,7 +84,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
               <div>
                 <div className="flex items-center gap-2 flex-wrap">
-                  <h2 className="font-display font-extrabold text-2xl sm:text-3xl text-white tracking-tight">
+                  <h2 className="font-display font-extrabold text-2xl sm:text-3xl text-white tracking-tight group-hover:text-cyan-300 transition-colors">
                     {user.name}
                   </h2>
                   <span className="text-[10px] font-mono font-black px-2.5 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 uppercase tracking-wider">
