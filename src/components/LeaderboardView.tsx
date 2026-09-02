@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Trophy,
   Crown,
@@ -59,7 +59,7 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
   const [filterMode, setFilterMode] = useState<'global' | 'friends'>('global');
   const [countdown, setCountdown] = useState<WeeklyCountdown>(getCountdownToSunday());
   const [selectedAthlete, setSelectedAthlete] = useState<LeaderboardUser | null>(null);
-  const [followingSet, setFollowingSet] = useState<Set<string>>(() => new Set(user.following || ['bot_g1', 'bot_s2', 'bot_d1']));
+  const [followingSet, setFollowingSet] = useState<Set<string>>(() => new Set(user.following || ['bot_b1', 'bot_s2', 'bot_g1', 'bot_d1']));
   const [cheeredUserIds, setCheeredUserIds] = useState<Set<string>>(new Set());
   
   // Social Connections Modal state ('following' | 'followers' | null)
@@ -102,10 +102,47 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
   const userWeeklyXp = calculateUserWeeklyXp(user, history);
   const leagueLeaderboard = getLeagueLeaderboard(selectedLeague, user, userWeeklyXp, history);
 
-  const filteredUsers = leagueLeaderboard.filter((u) => {
-    if (filterMode === 'friends') return followingSet.has(u.userId) || u.isCurrentUser;
-    return true;
-  });
+  // Flatten all registered community users for connections list and global friends ranking
+  const allCommunityUsers: LeaderboardUser[] = useMemo(() => {
+    return Object.values(LEAGUE_BOTS).flat().map((b, idx) => ({
+      ...b,
+      rank: idx + 1,
+    }));
+  }, []);
+
+  // When filterMode === 'friends', build a cross-league leaderboard with ALL athletes you follow + yourself
+  const filteredUsers: LeaderboardUser[] = useMemo(() => {
+    if (filterMode === 'friends') {
+      const currentUserEntry: LeaderboardUser = {
+        rank: 1,
+        userId: user.id,
+        name: `${user.name} (Tú)`,
+        avatar: user.avatar || `https://api.dicebear.com/7.x/initials/svg?seed=${user.name}`,
+        level: user.level,
+        xpEarned: userWeeklyXp,
+        streakDays: user.stats.currentStreak || 0,
+        league: user.league,
+        workoutsThisWeek: history.length,
+        isCurrentUser: true,
+        rankTitle: user.rankTitle || 'Atleta en Forja',
+        achievementsUnlockedCount: FitStorage.getAchievements().filter((a) => a.unlocked).length,
+        totalVolumeKg: history.reduce((s, h) => s + (h.totalVolumeKg || 0), 0),
+        totalDistanceKm: history.reduce((s, h) => s + (h.totalDistanceKm || 0), 0),
+        bio: user.bio || 'Entrenando duro en FitQuest Pro para conquistar el podio.',
+        followingCount: followingSet.size,
+        followersCount: (user.followers || []).length || 4,
+      };
+
+      const followedBots = allCommunityUsers.filter((b) => followingSet.has(b.userId));
+      const combined = [currentUserEntry, ...followedBots].sort((a, b) => b.xpEarned - a.xpEarned);
+      return combined.map((item, index) => ({
+        ...item,
+        rank: index + 1,
+      }));
+    }
+
+    return leagueLeaderboard;
+  }, [filterMode, followingSet, leagueLeaderboard, allCommunityUsers, user, userWeeklyXp, history]);
 
   const top3 = filteredUsers.slice(0, 3);
   const restOfUsers = filteredUsers.slice(3);
@@ -113,12 +150,6 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
   const currentLeagueIdx = LEAGUE_HIERARCHY.indexOf(selectedLeague);
   const nextLeague = currentLeagueIdx < LEAGUE_HIERARCHY.length - 1 ? LEAGUE_HIERARCHY[currentLeagueIdx + 1] : null;
   const prevLeague = currentLeagueIdx > 0 ? LEAGUE_HIERARCHY[currentLeagueIdx - 1] : null;
-
-  // Flatten all registered community users for connections list
-  const allCommunityUsers: LeaderboardUser[] = Object.values(LEAGUE_BOTS).flat().map((b, idx) => ({
-    ...b,
-    rank: idx + 1,
-  }));
 
   const handleCheerAthlete = (athlete: LeaderboardUser) => {
     setCheeredUserIds((prev) => new Set(prev).add(athlete.userId));
@@ -163,6 +194,21 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
     }
   };
 
+  const getLeagueTagStyle = (leagueName: League) => {
+    switch (leagueName) {
+      case 'Titan':
+        return 'bg-purple-950/80 border-purple-500/50 text-purple-300';
+      case 'Diamond':
+        return 'bg-cyan-950/80 border-cyan-500/50 text-cyan-300';
+      case 'Gold':
+        return 'bg-amber-950/80 border-amber-500/50 text-amber-300';
+      case 'Silver':
+        return 'bg-neutral-800 border-neutral-400/50 text-neutral-300';
+      default:
+        return 'bg-amber-950/40 border-amber-700/50 text-amber-600';
+    }
+  };
+
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
       
@@ -182,7 +228,9 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
             Clasificación & Ligas
           </h2>
           <p className="text-xs sm:text-sm text-neutral-400 mt-0.5">
-            Pincha sobre cualquier atleta para ver sus logros, biografía y seguidores.
+            {filterMode === 'friends'
+              ? 'Mostrando el ranking unificado de todos los atletas que sigues en FitQuest Pro.'
+              : 'Pincha sobre cualquier atleta para ver sus logros, biografía y seguidores.'}
           </p>
         </div>
 
@@ -197,7 +245,7 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
             }`}
           >
             <Globe className="w-3.5 h-3.5" />
-            <span>Global</span>
+            <span>Por Ligas</span>
           </button>
           <button
             onClick={() => setFilterMode('friends')}
@@ -213,52 +261,81 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
         </div>
       </div>
 
-      {/* League Selection Tabs */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
-        {leagues.map((l) => (
-          <button
-            key={l.id}
-            onClick={() => setSelectedLeague(l.id)}
-            className={`px-4 py-2 rounded-2xl text-xs font-extrabold whitespace-nowrap transition-all border flex items-center gap-1.5 cursor-pointer ${
-              selectedLeague === l.id
-                ? `${l.color} shadow-lg scale-105 font-black`
-                : 'bg-[#121214] border-white/5 text-neutral-400 hover:text-white'
-            }`}
-          >
-            <span>{l.name}</span>
-            {user.league === l.id && (
-              <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-cyan-500 text-neutral-950 font-black">
-                MI LIGA
-              </span>
-            )}
-          </button>
-        ))}
-      </div>
+      {/* Conditional: League Selection Tabs (when in Global mode) OR Unified Friends Banner (when in Friends mode) */}
+      {filterMode === 'global' ? (
+        <>
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
+            {leagues.map((l) => (
+              <button
+                key={l.id}
+                onClick={() => setSelectedLeague(l.id)}
+                className={`px-4 py-2 rounded-2xl text-xs font-extrabold whitespace-nowrap transition-all border flex items-center gap-1.5 cursor-pointer ${
+                  selectedLeague === l.id
+                    ? `${l.color} shadow-lg scale-105 font-black`
+                    : 'bg-[#121214] border-white/5 text-neutral-400 hover:text-white'
+                }`}
+              >
+                <span>{l.name}</span>
+                {user.league === l.id && (
+                  <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-cyan-500 text-neutral-950 font-black">
+                    MI LIGA
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
 
-      {/* Promotion & Demotion Rules Banner */}
-      <div className="bg-gradient-to-r from-emerald-950/40 via-[#121214] to-neutral-900 border border-emerald-500/30 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs text-neutral-300 shadow-xl">
-        <div className="flex items-center gap-2.5">
-          <div className="p-2 rounded-xl bg-emerald-500/20 text-emerald-400">
-            <ChevronUp className="w-4 h-4 animate-bounce" />
+          {/* Promotion & Demotion Rules Banner */}
+          <div className="bg-gradient-to-r from-emerald-950/40 via-[#121214] to-neutral-900 border border-emerald-500/30 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs text-neutral-300 shadow-xl">
+            <div className="flex items-center gap-2.5">
+              <div className="p-2 rounded-xl bg-emerald-500/20 text-emerald-400">
+                <ChevronUp className="w-4 h-4 animate-bounce" />
+              </div>
+              <div>
+                <p className="font-bold text-white">Zona de Ascenso: Puestos 1º al 3º</p>
+                <p className="text-[11px] text-neutral-400">
+                  {nextLeague ? `Suben a la Liga ${nextLeague} al cierre del domingo` : '¡Máxima liga alcanzada!'}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 text-[11px] font-mono">
+              <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-2.5 py-1 rounded-xl font-bold">
+                Top 3: Ascenso +350 XP
+              </span>
+              {prevLeague && (
+                <span className="bg-red-500/10 text-red-400 border border-red-500/30 px-2.5 py-1 rounded-xl font-bold">
+                  Puesto 5-6: Descenso
+                </span>
+              )}
+            </div>
           </div>
-          <div>
-            <p className="font-bold text-white">Zona de Ascenso: Puestos 1º al 3º</p>
-            <p className="text-[11px] text-neutral-400">
-              {nextLeague ? `Suben a la Liga ${nextLeague} al cierre del domingo` : '¡Máxima liga alcanzada!'}
-            </p>
+        </>
+      ) : (
+        /* Unified Friends Info Banner */
+        <div className="bg-gradient-to-r from-cyan-950/40 via-neutral-900 to-neutral-900 border border-cyan-500/30 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs shadow-xl">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 rounded-xl bg-cyan-500/20 text-cyan-400">
+              <Users className="w-4 h-4" />
+            </div>
+            <div>
+              <p className="font-bold text-white">Clasificación General de Amigos ({followingSet.size} Atletas Seguidos)</p>
+              <p className="text-[11px] text-neutral-400">
+                Mostrando a todos tus competidores seguidos a través de todas las ligas de FitQuest Pro.
+              </p>
+            </div>
           </div>
+          <button
+            onClick={() => {
+              setConnectionsModalType('following');
+              setConnectionsSearch('');
+            }}
+            className="px-3.5 py-1.5 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/40 text-cyan-300 font-mono font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-md"
+          >
+            <UserCheck className="w-3.5 h-3.5" />
+            <span>Gestionar Lista de Amigos</span>
+          </button>
         </div>
-        <div className="flex items-center gap-2 text-[11px] font-mono">
-          <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-2.5 py-1 rounded-xl font-bold">
-            Top 3: Ascenso +350 XP
-          </span>
-          {prevLeague && (
-            <span className="bg-red-500/10 text-red-400 border border-red-500/30 px-2.5 py-1 rounded-xl font-bold">
-              Puesto 5-6: Descenso
-            </span>
-          )}
-        </div>
-      </div>
+      )}
 
       {/* Top 3 Podium Display */}
       {top3.length >= 3 && (
@@ -284,7 +361,9 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
               {top3[1].xpEarned} <span className="text-[10px] font-sans font-normal text-neutral-500">XP</span>
             </p>
             <div className="flex items-center justify-center gap-1 mt-1">
-              <span className="text-[10px] text-emerald-400 font-mono font-bold">↑ Asciende</span>
+              <span className={`text-[9px] font-mono font-bold px-1.5 py-0.2 rounded border ${getLeagueTagStyle(top3[1].league)}`}>
+                {top3[1].league}
+              </span>
               <span className="text-[9px] text-neutral-500 font-mono">🏆 {top3[1].achievementsUnlockedCount || 10}/100</span>
             </div>
           </div>
@@ -309,7 +388,9 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
               {top3[0].xpEarned} <span className="text-xs font-sans font-normal text-amber-300/70">XP</span>
             </p>
             <div className="flex items-center justify-center gap-1.5 mt-1">
-              <span className="text-[10px] text-amber-400 font-mono font-black uppercase">👑 Líder</span>
+              <span className={`text-[9px] font-mono font-black uppercase px-1.5 py-0.2 rounded border ${getLeagueTagStyle(top3[0].league)}`}>
+                {top3[0].league}
+              </span>
               <span className="text-[9px] text-amber-300/80 font-mono font-bold">🏆 {top3[0].achievementsUnlockedCount || 25}/100</span>
             </div>
           </div>
@@ -334,7 +415,9 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
               {top3[2].xpEarned} <span className="text-[10px] font-sans font-normal text-neutral-500">XP</span>
             </p>
             <div className="flex items-center justify-center gap-1 mt-1">
-              <span className="text-[10px] text-emerald-400 font-mono font-bold">↑ Asciende</span>
+              <span className={`text-[9px] font-mono font-bold px-1.5 py-0.2 rounded border ${getLeagueTagStyle(top3[2].league)}`}>
+                {top3[2].league}
+              </span>
               <span className="text-[9px] text-neutral-500 font-mono">🏆 {top3[2].achievementsUnlockedCount || 8}/100</span>
             </div>
           </div>
@@ -347,6 +430,7 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
         <div className="flex items-center justify-between text-[11px] font-mono font-bold text-neutral-400 uppercase px-4 pb-2 border-b border-white/5">
           <span>Puesto & Atleta (Toca para ver tarjeta)</span>
           <div className="flex items-center gap-6">
+            <span className="hidden sm:inline">Liga</span>
             <span className="hidden sm:inline">Logros</span>
             <span className="hidden sm:inline">Racha</span>
             <span>XP Semanal</span>
@@ -355,7 +439,7 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
 
         {filteredUsers.map((item) => {
           const isTop3 = item.rank <= 3;
-          const isDemotionZone = item.rank >= 5 && selectedLeague !== 'Bronze';
+          const isDemotionZone = filterMode === 'global' && item.rank >= 5 && selectedLeague !== 'Bronze';
           const isUser = item.isCurrentUser;
 
           return (
@@ -414,12 +498,15 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
                   </div>
                   <div className="flex items-center gap-2 mt-0.5">
                     <span className="text-[10px] font-mono text-neutral-400">Nvl {item.level}</span>
-                    {isTop3 && (
+                    <span className={`text-[9px] font-mono font-bold px-1.5 py-0.2 rounded border sm:hidden ${getLeagueTagStyle(item.league)}`}>
+                      {item.league}
+                    </span>
+                    {filterMode === 'global' && isTop3 && (
                       <span className="text-[9px] font-bold text-emerald-400 flex items-center gap-0.5">
                         <ChevronUp className="w-3 h-3" /> Ascenso
                       </span>
                     )}
-                    {isDemotionZone && (
+                    {filterMode === 'global' && isDemotionZone && (
                       <span className="text-[9px] font-bold text-red-400 flex items-center gap-0.5">
                         <ChevronDown className="w-3 h-3" /> Descenso
                       </span>
@@ -430,6 +517,12 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
 
               {/* Stats & Weekly XP */}
               <div className="flex items-center gap-4 sm:gap-6 shrink-0">
+                <div className="hidden sm:block">
+                  <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-lg border ${getLeagueTagStyle(item.league)}`}>
+                    {item.league}
+                  </span>
+                </div>
+
                 <div className="hidden sm:flex items-center gap-1 text-xs text-amber-400 font-mono font-bold bg-amber-500/10 border border-amber-500/20 px-2 py-1 rounded-xl">
                   <Trophy className="w-3.5 h-3.5 text-amber-400" />
                   <span>{item.achievementsUnlockedCount || (item.rank <= 3 ? 20 : 8)}/100</span>
@@ -512,7 +605,7 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
                   <span className="text-xs font-mono font-extrabold px-2 py-0.5 rounded-lg bg-white/5 border border-white/10 text-neutral-200">
                     Nivel {selectedAthlete.level}
                   </span>
-                  <span className="text-xs font-mono text-neutral-400">
+                  <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-lg border ${getLeagueTagStyle(selectedAthlete.league)}`}>
                     Liga {selectedAthlete.league}
                   </span>
                 </div>
@@ -734,7 +827,7 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
                 type="text"
                 value={connectionsSearch}
                 onChange={(e) => setConnectionsSearch(e.target.value)}
-                placeholder="Buscar por nombre..."
+                placeholder="Buscar por nombre o liga..."
                 className="w-full bg-neutral-950 border border-white/10 rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder-neutral-500 focus:outline-none focus:border-cyan-500"
               />
             </div>
@@ -750,7 +843,9 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
                 })
                 .filter((u) => {
                   if (!connectionsSearch.trim()) return true;
-                  return u.name.toLowerCase().includes(connectionsSearch.toLowerCase()) || (u.rankTitle || '').toLowerCase().includes(connectionsSearch.toLowerCase());
+                  return u.name.toLowerCase().includes(connectionsSearch.toLowerCase()) || 
+                         (u.rankTitle || '').toLowerCase().includes(connectionsSearch.toLowerCase()) ||
+                         u.league.toLowerCase().includes(connectionsSearch.toLowerCase());
                 })
                 .map((athlete) => {
                   const isFollowing = followingSet.has(athlete.userId);
@@ -776,9 +871,14 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
                           <p className="text-xs font-bold text-white group-hover:text-cyan-300 truncate">
                             {athlete.name}
                           </p>
-                          <p className="text-[10px] font-mono text-neutral-400 truncate">
-                            Nvl {athlete.level} • "{athlete.rankTitle || 'Atleta'}"
-                          </p>
+                          <div className="flex items-center gap-1.5 mt-0.5">
+                            <span className="text-[10px] font-mono text-neutral-400 truncate">
+                              Nvl {athlete.level}
+                            </span>
+                            <span className={`text-[9px] font-mono font-bold px-1.5 py-0.2 rounded border ${getLeagueTagStyle(athlete.league)}`}>
+                              {athlete.league}
+                            </span>
+                          </div>
                         </div>
                       </div>
 
