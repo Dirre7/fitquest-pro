@@ -58,12 +58,13 @@ export class FitStorage {
 
   public static saveUser(user: UserProfile) {
     try {
-      const uid = auth.currentUser?.uid || (user.id && !user.id.startsWith('guest_') ? user.id : null);
-      const userToSave: UserProfile = {
-        ...user,
-        ...(uid ? { id: uid } : {}),
-      };
       localStorage.setItem(KEYS.USER, JSON.stringify(user));
+      const uid = auth.currentUser?.uid;
+      if (uid) {
+        this.syncUserToCloud(user).catch((err) => {
+          console.warn('Firestore auto-sync warning:', err);
+        });
+      }
     } catch (e) {
       console.error('Failed to save user', e);
     }
@@ -88,6 +89,8 @@ export class FitStorage {
         claimedChallenges: user.claimedChallenges || [],
         claimedChallengesWeek: user.claimedChallengesWeek || '',
         lastResetAt: user.lastResetAt || '',
+        programProgress: user.programProgress || this.getProgramProgress(),
+        activeSession: user.activeSession !== undefined ? user.activeSession : (this.getActiveSession() || null),
         weightKg: user.weightKg,
         targetWeightKg: user.targetWeightKg,
         name: user.name,
@@ -355,6 +358,13 @@ export class FitStorage {
       const current = this.getProgramProgress();
       current[progId] = Math.max(current[progId] || 0, dayNumber);
       localStorage.setItem('fitquest_program_progress', JSON.stringify(current));
+      const uid = auth.currentUser?.uid;
+      if (uid) {
+        setDoc(doc(db, 'users', uid), {
+          programProgress: current,
+          updatedAt: new Date().toISOString(),
+        }, { merge: true }).catch((err) => console.warn('Program progress sync warning:', err));
+      }
     } catch (e) {
       console.error(e);
     }
@@ -499,6 +509,13 @@ export class FitStorage {
       } else {
         localStorage.removeItem(KEYS.ACTIVE_SESSION);
       }
+      const uid = auth.currentUser?.uid;
+      if (uid) {
+        setDoc(doc(db, 'users', uid), {
+          activeSession: session,
+          updatedAt: new Date().toISOString(),
+        }, { merge: true }).catch((err) => console.warn('Active session sync warning:', err));
+      }
     } catch (e) {
       console.error('Failed to save active session', e);
     }
@@ -507,6 +524,13 @@ export class FitStorage {
   public static clearActiveSession() {
     try {
       localStorage.removeItem(KEYS.ACTIVE_SESSION);
+      const uid = auth.currentUser?.uid;
+      if (uid) {
+        setDoc(doc(db, 'users', uid), {
+          activeSession: null,
+          updatedAt: new Date().toISOString(),
+        }, { merge: true }).catch((err) => console.warn('Active session clear warning:', err));
+      }
     } catch (e) {
       console.error('Failed to clear active session', e);
     }

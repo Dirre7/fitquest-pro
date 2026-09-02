@@ -173,13 +173,40 @@ export default function App() {
               setChallenges(defaultChallenges.map(c => ({ ...c, currentProgress: 0, completed: false })));
             }
 
+            if (data.programProgress) {
+              try {
+                localStorage.setItem('fitquest_program_progress', JSON.stringify(data.programProgress));
+              } catch {}
+            }
+
+            if (data.activeSession !== undefined) {
+              if (data.activeSession) {
+                try {
+                  localStorage.setItem('fitquest_active_session', JSON.stringify(data.activeSession));
+                } catch {}
+                setActiveSession((prev) => {
+                  if (!prev || prev.routineId !== data.activeSession?.routineId) {
+                    return data.activeSession || null;
+                  }
+                  return prev;
+                });
+              } else {
+                try {
+                  localStorage.removeItem('fitquest_active_session');
+                } catch {}
+                if (!activeRoutine) {
+                  setActiveSession(null);
+                }
+              }
+            }
+
             setUser((prev) => {
               const currentHistory = isSnapshotReset ? [] : FitStorage.getHistory();
               const realStreak = calculateRealStreak(currentHistory);
               const dynamicAttributes = calculateAthleteAttributes(currentHistory, realStreak.currentStreak);
 
-              const effectiveLevel = isSnapshotReset ? (data.level || 1) : Math.max(prev.level, data.level || 1);
-              const effectiveXp = isSnapshotReset ? (data.xp || 0) : Math.max(prev.xp, data.xp || 0);
+              const effectiveLevel = isSnapshotReset ? (data.level || 1) : (data.level !== undefined ? data.level : prev.level);
+              const effectiveXp = isSnapshotReset ? (data.xp || 0) : (data.xp !== undefined ? data.xp : prev.xp);
 
               const updated: UserProfile = {
                 ...prev,
@@ -189,14 +216,26 @@ export default function App() {
                 rankTitle: data.rankTitle || (isSnapshotReset ? 'Gladiador de Bronce' : prev.rankTitle),
                 level: effectiveLevel,
                 xp: effectiveXp,
-                currentLevelXp: isSnapshotReset ? (data.currentLevelXp || 0) : ((data.xp !== undefined && data.xp >= prev.xp) ? (data.currentLevelXp ?? prev.currentLevelXp) : prev.currentLevelXp),
+                currentLevelXp: isSnapshotReset ? (data.currentLevelXp || 0) : (data.currentLevelXp !== undefined ? data.currentLevelXp : prev.currentLevelXp),
                 nextLevelXp: data.nextLevelXp || (isSnapshotReset ? 500 : prev.nextLevelXp),
                 weightKg: data.weightKg ?? prev.weightKg,
                 targetWeightKg: data.targetWeightKg ?? prev.targetWeightKg,
                 unlockedBadges: isSnapshotReset ? (data.unlockedBadges || []) : (data.unlockedBadges !== undefined ? data.unlockedBadges : (prev.unlockedBadges || [])),
                 claimedChallenges: isSnapshotReset ? (data.claimedChallenges || []) : (data.claimedChallenges !== undefined ? data.claimedChallenges : (prev.claimedChallenges || [])),
                 attributes: isSnapshotReset ? { strength: 10, endurance: 10, agility: 10, discipline: 10 } : dynamicAttributes,
-                stats: {
+                programProgress: data.programProgress || prev.programProgress,
+                activeSession: data.activeSession !== undefined ? data.activeSession : prev.activeSession,
+                stats: data.stats ? {
+                  ...prev.stats,
+                  ...data.stats,
+                  totalWorkouts: currentHistory.length,
+                  totalVolumeKg: currentHistory.reduce((s, h) => s + (h.totalVolumeKg || 0), 0),
+                  totalMinutes: currentHistory.reduce((s, h) => s + (h.durationMinutes || 0), 0),
+                  caloriesBurned: currentHistory.reduce((s, h) => s + (h.calories || 0), 0),
+                  totalDistanceKm: currentHistory.reduce((s, h) => s + (h.totalDistanceKm || 0), 0),
+                  currentStreak: realStreak.currentStreak,
+                  bestStreak: Math.max(prev.stats?.bestStreak || 0, realStreak.bestStreak),
+                } : {
                   ...prev.stats,
                   totalWorkouts: currentHistory.length,
                   totalVolumeKg: currentHistory.reduce((s, h) => s + (h.totalVolumeKg || 0), 0),

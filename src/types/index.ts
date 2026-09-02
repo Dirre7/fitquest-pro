@@ -43,6 +43,8 @@ export interface UserProfile {
   claimedChallenges?: string[];
   claimedChallengesWeek?: string;
   lastResetAt?: string;
+  programProgress?: { [progId: string]: number };
+  activeSession?: ActiveWorkoutState | null;
 }
 
 export interface ExerciseSet {
