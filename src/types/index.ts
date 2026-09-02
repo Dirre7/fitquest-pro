@@ -226,6 +226,12 @@ export interface LeaderboardUser {
   workoutsThisWeek: number;
   isFriend?: boolean;
   isCurrentUser?: boolean;
+  rankTitle?: string;
+  achievementsUnlockedCount?: number;
+  totalVolumeKg?: number;
+  totalDistanceKm?: number;
+  topBadges?: string[];
+  bio?: string;
 }
 
 export interface LiveParticipant {
