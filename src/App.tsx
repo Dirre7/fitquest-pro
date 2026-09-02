@@ -682,6 +682,7 @@ export default function App() {
         {activeTab === 'routines' && (
           <WorkoutCatalogView
             routines={routines}
+            user={user}
             lang={lang}
             onStartRoutine={handleStartRoutine}
             onCreateRoutine={handleCreateRoutine}
@@ -756,6 +757,7 @@ export default function App() {
               const freshUser = await FitStorage.resetUserProgress();
               setUser(freshUser);
               setHistory([]);
+              setActiveSession(null);
               setAchievements(createFreshAchievements());
               setChallenges(defaultChallenges.map((c) => ({ ...c, currentProgress: 0, completed: false })));
             }}

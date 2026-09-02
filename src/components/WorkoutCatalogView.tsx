@@ -22,13 +22,14 @@ import {
   RotateCcw,
   CheckCircle2
 } from 'lucide-react';
-import { WorkoutRoutine, WorkoutProgram, ProgramDay, Exercise, Language } from '../types';
+import { WorkoutRoutine, WorkoutProgram, ProgramDay, Exercise, Language, UserProfile } from '../types';
 import { translations } from '../lib/i18n';
 import { sound } from '../lib/soundFx';
 import { FitStorage } from '../lib/storage';
 
 interface WorkoutCatalogViewProps {
   routines: WorkoutRoutine[];
+  user: UserProfile;
   lang: Language;
   onStartRoutine: (routine: WorkoutRoutine) => void;
   onCreateRoutine: (routine: WorkoutRoutine) => void;
@@ -36,6 +37,7 @@ interface WorkoutCatalogViewProps {
 
 export const WorkoutCatalogView: React.FC<WorkoutCatalogViewProps> = ({
   routines,
+  user,
   lang,
   onStartRoutine,
   onCreateRoutine,
@@ -45,11 +47,15 @@ export const WorkoutCatalogView: React.FC<WorkoutCatalogViewProps> = ({
   // Active Catalog Tab: 'routines' or 'programs'
   const [catalogTab, setCatalogTab] = useState<'routines' | 'programs'>('routines');
 
-  // Program tracking state
+  // Program tracking state reactive to user profile and storage
   const [programs] = useState<WorkoutProgram[]>(() => FitStorage.getPrograms());
   const [programProgress, setProgramProgress] = useState<{ [id: string]: number }>(() =>
-    FitStorage.getProgramProgress()
+    user?.programProgress || FitStorage.getProgramProgress() || {}
   );
+
+  React.useEffect(() => {
+    setProgramProgress(user?.programProgress || FitStorage.getProgramProgress() || {});
+  }, [user?.programProgress]);
 
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [selectedDifficulty, setSelectedDifficulty] = useState<string>('all');

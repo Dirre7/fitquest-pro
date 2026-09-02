@@ -808,6 +808,8 @@ export class FitStorage {
       unlockedBadges: [],
       claimedChallenges: [],
       lastResetAt: resetTimestamp,
+      programProgress: {},
+      activeSession: null,
     };
 
     // 1. Reset local storage
@@ -817,6 +819,8 @@ export class FitStorage {
       localStorage.setItem(KEYS.LAST_RESET_AT, resetTimestamp);
       localStorage.removeItem(KEYS.HISTORY);
       localStorage.setItem('fitquest_claimed_challenges', JSON.stringify([]));
+      localStorage.setItem('fitquest_program_progress', JSON.stringify({}));
+      localStorage.removeItem(KEYS.ACTIVE_SESSION);
     } catch {}
 
     // Reset challenges in local storage
@@ -837,6 +841,8 @@ export class FitStorage {
         const userDocRef = doc(db, 'users', currentUser.uid);
         await setDoc(userDocRef, {
           ...freshUser,
+          programProgress: {},
+          activeSession: null,
           updatedAt: resetTimestamp,
           lastResetAt: resetTimestamp,
         });
