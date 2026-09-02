@@ -14,6 +14,11 @@ export interface UserStats {
   bestStreak: number;
   duelsWon: number;
   challengesCompleted: number;
+  benchPressPrKg?: number;
+  squatPrKg?: number;
+  deadliftPrKg?: number;
+  overheadPrKg?: number;
+  totalPrsCount?: number;
 }
 
 export interface UserAttributes {
@@ -197,7 +202,7 @@ export interface Achievement {
   title: string;
   description: string;
   icon: string;
-  category: 'strength' | 'consistency' | 'speed' | 'social' | 'master';
+  category: 'strength' | 'speed' | 'calisthenics' | 'habits' | 'consistency' | 'programs' | 'secret' | 'social' | 'master';
   tier: 'Bronze' | 'Silver' | 'Gold' | 'Titan';
   currentProgress: number;
   maxProgress: number;
@@ -205,6 +210,8 @@ export interface Achievement {
   unlockedAt?: string;
   xpReward: number;
   rewardTitle?: string;
+  isSecret?: boolean;
+  hint?: string;
 }
 
 export interface LeaderboardUser {
