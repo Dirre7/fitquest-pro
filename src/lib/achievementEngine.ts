@@ -656,7 +656,7 @@ export function evaluateAllAchievements(
     return {
       ...base,
       currentProgress: progress,
-      unlocked: unlocked || (existing?.unlocked ?? false),
+      unlocked: unlocked || (existing?.unlocked ?? false) || (user?.unlockedBadges?.includes(base.id) ?? false),
       unlockedAt: unlocked && !existing?.unlocked ? new Date().toISOString() : existing?.unlockedAt,
     };
   });

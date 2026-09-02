@@ -15,7 +15,8 @@ import {
 import { FitStorage } from './lib/storage';
 import { translations } from './lib/i18n';
 import { sound } from './lib/soundFx';
-import { auth, onAuthStateChanged, signOut as fbSignOut } from './lib/firebase';
+import { auth, db, onAuthStateChanged, signOut as fbSignOut } from './lib/firebase';
+import { onSnapshot, doc } from 'firebase/firestore';
 import { evaluateWeeklyLeagueReset, calculateRealStreak, calculateAthleteAttributes } from './lib/leagueEngine';
 import { evaluateAllAchievements } from './lib/achievementEngine';
 import { Smartphone } from 'lucide-react';
@@ -103,12 +104,19 @@ export default function App() {
     document.body.scrollTo({ top: 0, left: 0, behavior: 'instant' });
   }, [activeTab]);
 
-  // Listen to Firebase Auth state
+  // Listen to Firebase Auth state and attach real-time Firestore sync
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+    let unsubSnapshot: (() => void) | null = null;
+
+    const unsubscribeAuth = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (unsubSnapshot) {
+        unsubSnapshot();
+        unsubSnapshot = null;
+      }
+
       if (firebaseUser) {
         setIsAuthenticated(true);
-        // Load or create cloud data
+        // Initial load of cloud data
         const cloudData = await FitStorage.loadUserFromCloud(
           firebaseUser.uid,
           firebaseUser.email || undefined,
@@ -141,6 +149,34 @@ export default function App() {
         setAchievements(evaluatedAch);
         setChallenges(cloudData.challenges);
         setRoutines(cloudData.routines);
+
+        // Real-time Firestore Live Sync for instant multi-device synchronization
+        const userDocRef = doc(db, 'users', firebaseUser.uid);
+        unsubSnapshot = onSnapshot(userDocRef, (snap) => {
+          if (snap.exists()) {
+            const data = snap.data() as Partial<UserProfile>;
+            setUser((prev) => {
+              const updated: UserProfile = {
+                ...prev,
+                ...data,
+                name: data.name || prev.name,
+                avatar: data.avatar || prev.avatar,
+                rankTitle: data.rankTitle || prev.rankTitle,
+                weightKg: data.weightKg ?? prev.weightKg,
+                targetWeightKg: data.targetWeightKg ?? prev.targetWeightKg,
+                unlockedBadges: Array.from(new Set([...(prev.unlockedBadges || []), ...(data.unlockedBadges || [])])),
+                claimedChallenges: Array.from(new Set([...(prev.claimedChallenges || []), ...(data.claimedChallenges || [])])),
+              };
+              try {
+                localStorage.setItem('fitquest_user_profile', JSON.stringify(updated));
+                if (data.claimedChallenges) {
+                  localStorage.setItem('fitquest_claimed_challenges', JSON.stringify(updated.claimedChallenges));
+                }
+              } catch {}
+              return updated;
+            });
+          }
+        });
       } else {
         setIsAuthenticated(false);
         const localUser = FitStorage.getUser();
@@ -172,7 +208,11 @@ export default function App() {
       }
       setAuthLoading(false);
     });
-    return () => unsubscribe();
+
+    return () => {
+      unsubscribeAuth();
+      if (unsubSnapshot) unsubSnapshot();
+    };
   }, []);
 
   // Sync theme to document root

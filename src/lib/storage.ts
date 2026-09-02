@@ -123,6 +123,12 @@ export class FitStorage {
           ...existingLocalClaimed,
         ]));
 
+        const mergedBadges = Array.from(new Set([
+          ...(cloudData.unlockedBadges || []),
+          ...(existingLocalUser.unlockedBadges || []),
+          ...(defaults.unlockedBadges || []),
+        ]));
+
         userProfile = {
           ...defaults,
           ...cloudData,
@@ -134,6 +140,7 @@ export class FitStorage {
           targetWeightKg: cloudData.targetWeightKg ?? defaults.targetWeightKg,
           claimedChallenges: mergedClaimed,
           claimedChallengesWeek: cloudData.claimedChallengesWeek,
+          unlockedBadges: mergedBadges,
         };
         try {
           localStorage.setItem('fitquest_claimed_challenges', JSON.stringify(mergedClaimed));
@@ -403,21 +410,12 @@ export class FitStorage {
     let currentXp = user.currentLevelXp + amount;
     let nextXp = user.nextLevelXp;
     let level = user.level;
-    let rankTitle = user.rankTitle;
+    const rankTitle = user.rankTitle || 'Recluta Inicial';
 
     while (currentXp >= nextXp) {
       currentXp -= nextXp;
       level += 1;
       nextXp = Math.round(nextXp * 1.3);
-
-      // Rank titles upgrades
-      if (level >= 30) rankTitle = 'Titán Olímpico Élite';
-      else if (level >= 25) rankTitle = 'Leyenda Inmortal';
-      else if (level >= 20) rankTitle = 'Maestro de la Fuerza';
-      else if (level >= 15) rankTitle = 'Guerrero de Hierro';
-      else if (level >= 10) rankTitle = 'Atleta Vanguardia';
-      else if (level >= 5) rankTitle = 'Gladiador de Bronce';
-      else rankTitle = 'Recluta Inicial';
     }
 
     const updatedUser: UserProfile = {
@@ -450,20 +448,12 @@ export class FitStorage {
     let currentXp = user.currentLevelXp + rewardXp;
     let nextXp = user.nextLevelXp;
     let level = user.level;
-    let rankTitle = user.rankTitle;
+    const rankTitle = user.rankTitle || 'Recluta Inicial';
 
     while (currentXp >= nextXp) {
       currentXp -= nextXp;
       level += 1;
       nextXp = Math.round(nextXp * 1.3);
-
-      if (level >= 30) rankTitle = 'Titán Olímpico Élite';
-      else if (level >= 25) rankTitle = 'Leyenda Inmortal';
-      else if (level >= 20) rankTitle = 'Maestro de la Fuerza';
-      else if (level >= 15) rankTitle = 'Guerrero de Hierro';
-      else if (level >= 10) rankTitle = 'Atleta Vanguardia';
-      else if (level >= 5) rankTitle = 'Gladiador de Bronce';
-      else rankTitle = 'Recluta Inicial';
     }
 
     const updatedUser: UserProfile = {
