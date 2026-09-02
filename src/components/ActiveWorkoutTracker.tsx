@@ -348,6 +348,7 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
 
   // Add extra set
   const handleAddSet = () => {
+    sound.playBeep(600, 80);
     setExercises((prev) => {
       return prev.map((ex, idx) => {
         if (idx !== currentExerciseIndex) return ex;
@@ -364,6 +365,13 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
         return { ...ex, sets: [...ex.sets, newSet] };
       });
     });
+
+    setTimeout(() => {
+      const addBtn = document.getElementById('btn-add-set');
+      if (addBtn) {
+        addBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }, 60);
   };
 
   // Format stopwatch seconds
@@ -496,7 +504,10 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-[#09090b]/95 backdrop-blur-2xl flex flex-col overflow-y-auto overflow-x-hidden w-full max-w-full">
+    <div 
+      style={{ WebkitOverflowScrolling: 'touch' }}
+      className="fixed inset-0 z-50 bg-[#09090b]/95 backdrop-blur-2xl flex flex-col overflow-y-auto overflow-x-hidden w-full max-w-full overscroll-contain"
+    >
       {/* Top Session HUD Bar with iOS Safe Area */}
       <div 
         style={{ paddingTop: 'max(0.6rem, env(safe-area-inset-top, 0px))' }}
@@ -595,7 +606,12 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
       )}
 
       {/* Main Content Area */}
-      <div className="max-w-4xl mx-auto w-full px-3 sm:px-6 py-4 sm:py-6 flex-1 flex flex-col gap-4 sm:gap-6 overflow-x-hidden">
+      <div 
+        style={{
+          paddingBottom: 'max(12rem, calc(env(safe-area-inset-bottom, 0px) + 10rem))',
+        }}
+        className="max-w-4xl mx-auto w-full px-3 sm:px-6 pt-3 sm:pt-6 flex-1 flex flex-col gap-4 sm:gap-6 overflow-x-hidden"
+      >
         
         {/* Exercise Switcher Tab Strip */}
         <div className="flex items-center gap-2 overflow-x-auto pb-1.5 no-scrollbar max-w-full">
