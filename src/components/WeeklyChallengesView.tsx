@@ -83,22 +83,12 @@ export const WeeklyChallengesView: React.FC<WeeklyChallengesViewProps> = ({
   const weeklyCalories = weekEntries.reduce((acc, h) => acc + (h.calories || 0), 0);
   const weeklyDistanceKm = Math.round(weekEntries.reduce((acc, h) => acc + (h.totalDistanceKm || 0), 0) * 10) / 10;
 
-  // Reactive State for claimed challenges (UserProfile cloud sync + localStorage fallback)
-  const [claimedList, setClaimedList] = useState<string[]>(() => {
-    const userClaimed = user.claimedChallenges || [];
-    let localClaimed: string[] = [];
-    try {
-      const data = localStorage.getItem('fitquest_claimed_challenges');
-      localClaimed = data ? JSON.parse(data) : [];
-    } catch {}
-    return Array.from(new Set([...userClaimed, ...localClaimed]));
-  });
+  // Reactive State for claimed challenges directly from user profile
+  const [claimedList, setClaimedList] = useState<string[]>(() => user.claimedChallenges || []);
 
-  // Sync if user.claimedChallenges changes from cloud sync
+  // Sync whenever user.claimedChallenges updates (e.g. from cloud sync or reset)
   useEffect(() => {
-    if (user.claimedChallenges) {
-      setClaimedList((prev) => Array.from(new Set([...prev, ...(user.claimedChallenges || [])])));
-    }
+    setClaimedList(user.claimedChallenges || []);
   }, [user.claimedChallenges]);
 
   const handleClaim = (chId: string, rewardXp: number) => {

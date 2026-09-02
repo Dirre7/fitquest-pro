@@ -13,6 +13,7 @@ import {
   ThemeMode,
 } from './types';
 import { FitStorage } from './lib/storage';
+import { createFreshAchievements, defaultChallenges } from './lib/initialData';
 import { translations } from './lib/i18n';
 import { sound } from './lib/soundFx';
 import { auth, db, onAuthStateChanged, signOut as fbSignOut } from './lib/firebase';
@@ -173,8 +174,8 @@ export default function App() {
                 nextLevelXp: data.nextLevelXp || prev.nextLevelXp,
                 weightKg: data.weightKg ?? prev.weightKg,
                 targetWeightKg: data.targetWeightKg ?? prev.targetWeightKg,
-                unlockedBadges: Array.from(new Set([...(prev.unlockedBadges || []), ...(data.unlockedBadges || [])])),
-                claimedChallenges: Array.from(new Set([...(prev.claimedChallenges || []), ...(data.claimedChallenges || [])])),
+                unlockedBadges: data.unlockedBadges !== undefined ? data.unlockedBadges : (prev.unlockedBadges || []),
+                claimedChallenges: data.claimedChallenges !== undefined ? data.claimedChallenges : (prev.claimedChallenges || []),
                 attributes: dynamicAttributes,
                 stats: {
                   ...prev.stats,
@@ -698,7 +699,8 @@ export default function App() {
               const freshUser = await FitStorage.resetUserProgress();
               setUser(freshUser);
               setHistory([]);
-              setAchievements(FitStorage.getAchievements());
+              setAchievements(createFreshAchievements());
+              setChallenges(defaultChallenges.map((c) => ({ ...c, currentProgress: 0, completed: false })));
             }}
           />
         )}

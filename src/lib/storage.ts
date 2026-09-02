@@ -761,8 +761,16 @@ export class FitStorage {
     this.saveHistory([]);
     try {
       localStorage.removeItem(KEYS.HISTORY);
-      localStorage.removeItem('fitquest_claimed_challenges');
+      localStorage.setItem('fitquest_claimed_challenges', JSON.stringify([]));
     } catch {}
+
+    // Reset challenges in local storage
+    const resetChallenges = defaultChallenges.map((c) => ({
+      ...c,
+      currentProgress: 0,
+      completed: false,
+    }));
+    this.saveChallenges(resetChallenges);
 
     // Reset achievements in local storage
     const resetAchievements = createFreshAchievements();
