@@ -643,6 +643,16 @@ export default function App() {
             onContribute={handleContributeChallenge}
             onClaimReward={handleClaimChallengeReward}
             onClaimAchievementXp={handleClaimAchievementXp}
+            onEquipTitle={(newTitle) => {
+              const updatedUser: UserProfile = {
+                ...user,
+                rankTitle: newTitle,
+              };
+              setUser(updatedUser);
+              FitStorage.saveUser(updatedUser);
+              FitStorage.syncUserToCloud(updatedUser);
+              sound.playLevelUp();
+            }}
           />
         )}
 

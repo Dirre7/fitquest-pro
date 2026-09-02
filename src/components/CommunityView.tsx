@@ -17,6 +17,7 @@ interface CommunityViewProps {
   onContribute: (challengeId: string, amount: number) => void;
   onClaimReward: (challengeId: string, rewardXp: number) => void;
   onClaimAchievementXp: (achievementId: string, xpReward: number) => void;
+  onEquipTitle?: (title: string) => void;
 }
 
 export const CommunityView: React.FC<CommunityViewProps> = ({
@@ -31,6 +32,7 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
   onContribute,
   onClaimReward,
   onClaimAchievementXp,
+  onEquipTitle,
 }) => {
   const [subTab, setSubTab] = useState<'challenges' | 'leaderboard' | 'achievements'>(initialSubTab);
 
@@ -104,6 +106,7 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
           user={user}
           lang={lang}
           onClaimXp={onClaimAchievementXp}
+          onEquipTitle={onEquipTitle}
         />
       )}
     </div>
