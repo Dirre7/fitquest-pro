@@ -247,9 +247,28 @@ export class FitStorage {
         })
         .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-      // Update local storage with combined sanitized history & user
+      // Recalculate accurate aggregate statistics directly from sanitized history
+      const exactVolume = finalHistory.reduce((s, h) => s + (h.totalVolumeKg || 0), 0);
+      const exactMinutes = finalHistory.reduce((s, h) => s + (h.durationMinutes || 0), 0);
+      const exactCalories = finalHistory.reduce((s, h) => s + (h.calories || 0), 0);
+      const exactDistance = finalHistory.reduce((s, h) => s + (h.totalDistanceKm || 0), 0);
+
+      userProfile = {
+        ...userProfile,
+        stats: {
+          ...userProfile.stats,
+          totalWorkouts: finalHistory.length,
+          totalVolumeKg: exactVolume,
+          totalMinutes: exactMinutes,
+          caloriesBurned: exactCalories,
+          totalDistanceKm: exactDistance,
+        },
+      };
+
+      // Update local storage with combined sanitized history & user, and sync clean stats to cloud
       this.saveHistory(finalHistory);
       this.saveUser(userProfile);
+      this.syncUserToCloud(userProfile);
 
       return {
         user: userProfile,

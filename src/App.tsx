@@ -178,10 +178,13 @@ export default function App() {
                 attributes: dynamicAttributes,
                 stats: {
                   ...prev.stats,
-                  ...(data.stats || {}),
-                  totalWorkouts: Math.max(prev.stats?.totalWorkouts || 0, currentHistory.length, data.stats?.totalWorkouts || 0),
-                  totalVolumeKg: Math.max(prev.stats?.totalVolumeKg || 0, currentHistory.reduce((s, h) => s + (h.totalVolumeKg || 0), 0), data.stats?.totalVolumeKg || 0),
+                  totalWorkouts: currentHistory.length,
+                  totalVolumeKg: currentHistory.reduce((s, h) => s + (h.totalVolumeKg || 0), 0),
+                  totalMinutes: currentHistory.reduce((s, h) => s + (h.durationMinutes || 0), 0),
+                  caloriesBurned: currentHistory.reduce((s, h) => s + (h.calories || 0), 0),
+                  totalDistanceKm: currentHistory.reduce((s, h) => s + (h.totalDistanceKm || 0), 0),
                   currentStreak: realStreak.currentStreak,
+                  bestStreak: Math.max(prev.stats?.bestStreak || 0, realStreak.bestStreak),
                 },
               };
               try {
