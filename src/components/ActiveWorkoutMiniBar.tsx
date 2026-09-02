@@ -37,10 +37,13 @@ export const ActiveWorkoutMiniBar: React.FC<ActiveWorkoutMiniBarProps> = ({
   }
 
   return (
-    <div className="fixed bottom-20 sm:bottom-24 left-1/2 -translate-x-1/2 z-40 w-[92%] sm:w-auto max-w-lg pointer-events-auto animate-in slide-in-from-bottom-5 duration-300">
+    <div 
+      style={{ bottom: 'max(5.75rem, calc(5.25rem + env(safe-area-inset-bottom, 0px)))' }}
+      className="fixed left-1/2 -translate-x-1/2 z-40 w-[94%] xs:w-[92%] sm:w-auto max-w-lg pointer-events-auto animate-in slide-in-from-bottom-5 duration-300"
+    >
       <div 
         onClick={onMaximize}
-        className="bg-[#121214]/95 backdrop-blur-2xl border border-cyan-500/40 rounded-2xl sm:rounded-full p-2.5 sm:px-4 sm:py-2.5 shadow-[0_10px_35px_rgba(0,0,0,0.85),0_0_20px_rgba(6,182,212,0.25)] flex items-center justify-between gap-3 cursor-pointer hover:border-cyan-400 group transition-all"
+        className="bg-[#121214]/98 backdrop-blur-2xl border border-cyan-500/50 rounded-2xl sm:rounded-full p-2.5 sm:px-4 sm:py-2.5 shadow-[0_15px_40px_rgba(0,0,0,0.9),0_0_25px_rgba(6,182,212,0.3)] flex items-center justify-between gap-3 cursor-pointer hover:border-cyan-400 group transition-all ring-1 ring-cyan-500/20"
       >
         {/* Left: Indicator & Routine Info */}
         <div className="flex items-center gap-3 min-w-0">

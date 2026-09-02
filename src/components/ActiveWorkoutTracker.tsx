@@ -760,15 +760,18 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
 
       {/* PR Celebration Floating Toast Notification */}
       {showPrNotification && (
-        <div className="fixed top-16 sm:top-20 left-1/2 -translate-x-1/2 z-50 bg-gradient-to-r from-amber-400 to-yellow-500 text-neutral-950 px-4 py-2.5 rounded-2xl shadow-[0_0_25px_rgba(245,158,11,0.5)] flex items-center gap-2 animate-bounce font-mono font-bold text-xs border border-amber-300">
+        <div className="fixed top-14 sm:top-16 right-3 sm:right-6 z-50 bg-gradient-to-r from-amber-400 to-yellow-500 text-neutral-950 px-3.5 py-2 rounded-2xl shadow-[0_0_25px_rgba(245,158,11,0.5)] flex items-center gap-2 animate-bounce font-mono font-bold text-xs border border-amber-300">
           <Award className="w-4 h-4 fill-current" />
           <span>{t.personalRecord}: {showPrNotification}</span>
+          <button onClick={() => setShowPrNotification(null)} className="ml-1 text-neutral-950/70 hover:text-neutral-950">
+            <X className="w-3.5 h-3.5" />
+          </button>
         </div>
       )}
 
       {/* Sequential Set Warning Toast */}
       {activeWarningToast && (
-        <div className="fixed top-16 sm:top-20 left-1/2 -translate-x-1/2 z-50 bg-[#18181b] border border-amber-500/60 text-amber-300 px-4 py-2.5 rounded-2xl shadow-[0_0_25px_rgba(245,158,11,0.4)] flex items-center gap-2 animate-in slide-in-from-top-3 font-mono font-bold text-xs">
+        <div className="fixed top-14 sm:top-16 right-3 sm:right-6 z-50 bg-[#18181b] border border-amber-500/60 text-amber-300 px-4 py-2.5 rounded-2xl shadow-[0_0_25px_rgba(245,158,11,0.4)] flex items-center gap-2 animate-in slide-in-from-top-3 font-mono font-bold text-xs">
           <AlertCircle className="w-4 h-4 text-amber-400 shrink-0 animate-pulse" />
           <span>{activeWarningToast}</span>
         </div>
@@ -777,7 +780,7 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
       {/* Main Content Area */}
       <div 
         style={{
-          paddingBottom: 'max(12rem, calc(env(safe-area-inset-bottom, 0px) + 10rem))',
+          paddingBottom: 'max(18rem, calc(env(safe-area-inset-bottom, 0px) + 16rem))',
         }}
         className="max-w-4xl mx-auto w-full px-3 sm:px-6 pt-3 sm:pt-6 flex-1 flex flex-col gap-4 sm:gap-6 overflow-x-hidden"
       >
@@ -1242,7 +1245,7 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
               <button
                 id="btn-add-set"
                 onClick={handleAddSet}
-                className="mt-5 w-full py-3 rounded-2xl border border-dashed border-white/10 hover:border-cyan-500/50 hover:bg-white/5 text-xs font-mono font-bold text-neutral-300 flex items-center justify-center gap-2 transition-colors"
+                className="mt-4 w-full py-3.5 px-4 rounded-2xl bg-white/5 hover:bg-cyan-500/10 border border-white/10 hover:border-cyan-500/40 text-xs font-mono font-bold text-neutral-200 hover:text-cyan-300 flex items-center justify-center gap-2 transition-all cursor-pointer shadow-sm"
               >
                 <Plus className="w-4 h-4 text-cyan-400" />
                 <span>Agregar Serie Adicional</span>
@@ -1253,12 +1256,12 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
 
         {/* Interactive Rest Timer Card (Shown when resting) */}
         {isResting && (
-          <div className="bg-[#121214] border-2 border-cyan-500/40 rounded-3xl p-6 shadow-2xl flex flex-col sm:flex-row items-center justify-between gap-5 animate-in fade-in relative overflow-hidden">
+          <div className="bg-[#121214] border-2 border-cyan-500/40 rounded-3xl p-5 sm:p-6 shadow-2xl flex flex-col sm:flex-row items-center justify-between gap-4 animate-in fade-in relative overflow-hidden">
             <div className="absolute top-0 right-0 w-48 h-48 bg-cyan-500/10 blur-3xl pointer-events-none" />
             
-            <div className="flex items-center gap-4 relative z-10">
+            <div className="flex items-center gap-3.5 relative z-10 w-full sm:w-auto">
               {/* Circular Countdown Progress Ring */}
-              <div className="relative w-16 h-16 flex items-center justify-center shrink-0">
+              <div className="relative w-14 h-14 sm:w-16 sm:h-16 flex items-center justify-center shrink-0">
                 <svg className="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
                   <path
                     className="text-white/10"
@@ -1277,33 +1280,33 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
                     d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
                   />
                 </svg>
-                <span className="absolute font-mono font-extrabold text-base text-white">
+                <span className="absolute font-mono font-black text-sm sm:text-base text-white">
                   {restRemaining}s
                 </span>
               </div>
 
-              <div>
-                <h4 className="font-display font-bold text-white text-base">{t.restTimer}</h4>
-                <p className="text-xs text-neutral-400">Recupera el aliento y prepárate para la siguiente serie.</p>
+              <div className="min-w-0">
+                <h4 className="font-display font-bold text-white text-sm sm:text-base leading-tight">{t.restTimer}</h4>
+                <p className="text-[11px] text-neutral-400 mt-0.5">Recupera el aliento y prepárate para la siguiente serie.</p>
               </div>
             </div>
 
             {/* Rest control buttons */}
-            <div className="flex items-center gap-3 relative z-10">
+            <div className="flex items-center gap-2.5 w-full sm:w-auto relative z-10">
               <button
                 onClick={() => setRestRemaining((prev) => prev + 30)}
-                className="px-3.5 py-2 rounded-2xl bg-white/5 hover:bg-white/10 text-xs font-mono font-bold text-cyan-400 border border-white/10"
+                className="flex-1 sm:flex-initial px-4 py-2.5 rounded-2xl bg-white/5 hover:bg-white/10 text-xs font-mono font-bold text-cyan-400 border border-white/10 transition-colors text-center cursor-pointer shadow-sm"
               >
-                {t.addRest30}
+                +30s Descanso
               </button>
               <button
                 onClick={() => {
                   setIsResting(false);
                   setRestRemaining(0);
                 }}
-                className="px-5 py-2 rounded-2xl bg-cyan-500 hover:bg-cyan-400 text-neutral-950 text-xs font-mono font-bold shadow-lg shadow-cyan-500/20"
+                className="flex-1 sm:flex-initial px-4 py-2.5 rounded-2xl bg-cyan-500 hover:bg-cyan-400 text-neutral-950 text-xs font-mono font-black shadow-lg shadow-cyan-500/20 transition-all cursor-pointer text-center"
               >
-                {t.skipRest}
+                Saltar Descanso
               </button>
             </div>
           </div>
