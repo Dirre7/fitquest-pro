@@ -1417,21 +1417,14 @@ export function evaluateAllAchievements(
   const fiveStarWorkouts = history.filter((h) => h.rating === 5).length;
   const workoutsWithNotes = history.filter((h) => h.notes && h.notes.trim().length > 0).length;
 
-  // Best PR estimates from user stats
-  const bestBenchKg = user.stats.benchPressPrKg || (totalVolume > 0 ? 60 : 0);
-  const bestSquatKg = user.stats.squatPrKg || (totalVolume > 0 ? 80 : 0);
-  const bestDeadliftKg = user.stats.deadliftPrKg || (totalVolume > 0 ? 100 : 0);
-  const bestOverheadKg = user.stats.overheadPrKg || (totalVolume > 0 ? 40 : 0);
-
   return allInitialAchievements.map((base) => {
-    const existing = existingMap.get(base.id);
-    let progress = existing?.currentProgress || 0;
-    let unlocked = existing?.unlocked || false;
+    let progress = 0;
+    let unlocked = false;
 
     switch (base.id) {
       // 1. FUERZA
       case 'ach_str_1_pr':
-        progress = Math.min(1, user.stats.totalPrsCount || (totalVolume > 0 ? 1 : 0));
+        progress = workouts >= 1 && totalVolume >= 500 ? 1 : 0;
         break;
       case 'ach_str_10k_vol':
         progress = Math.min(10000, totalVolume);
@@ -1446,69 +1439,69 @@ export function evaluateAllAchievements(
         progress = Math.min(250000, totalVolume);
         break;
       case 'ach_str_bench_60':
-        progress = Math.min(60, bestBenchKg);
+        progress = history.some((h) => (h.routineTitle?.toLowerCase().includes('banca') || h.routineTitle?.toLowerCase().includes('pecho') || h.routineTitle?.toLowerCase().includes('powerlifting')) && (h.totalVolumeKg || 0) >= 1500) ? 60 : 0;
         break;
       case 'ach_str_bench_100':
-        progress = Math.min(100, bestBenchKg);
+        progress = history.some((h) => (h.routineTitle?.toLowerCase().includes('banca') || h.routineTitle?.toLowerCase().includes('pecho') || h.routineTitle?.toLowerCase().includes('powerlifting')) && (h.totalVolumeKg || 0) >= 4000) ? 100 : 0;
         break;
       case 'ach_str_bench_140':
-        progress = Math.min(140, bestBenchKg);
+        progress = history.some((h) => (h.routineTitle?.toLowerCase().includes('banca') || h.routineTitle?.toLowerCase().includes('powerlifting')) && (h.totalVolumeKg || 0) >= 8000) ? 140 : 0;
         break;
       case 'ach_str_squat_100':
-        progress = Math.min(100, bestSquatKg);
+        progress = history.some((h) => (h.routineTitle?.toLowerCase().includes('sentadilla') || h.routineTitle?.toLowerCase().includes('pierna') || h.routineTitle?.toLowerCase().includes('legs')) && (h.totalVolumeKg || 0) >= 3000) ? 100 : 0;
         break;
       case 'ach_str_squat_150':
-        progress = Math.min(150, bestSquatKg);
+        progress = history.some((h) => (h.routineTitle?.toLowerCase().includes('sentadilla') || h.routineTitle?.toLowerCase().includes('pierna')) && (h.totalVolumeKg || 0) >= 6000) ? 150 : 0;
         break;
       case 'ach_str_squat_200':
-        progress = Math.min(200, bestSquatKg);
+        progress = history.some((h) => (h.routineTitle?.toLowerCase().includes('sentadilla') || h.routineTitle?.toLowerCase().includes('powerlifting')) && (h.totalVolumeKg || 0) >= 10000) ? 200 : 0;
         break;
       case 'ach_str_deadlift_120':
-        progress = Math.min(120, bestDeadliftKg);
+        progress = history.some((h) => (h.routineTitle?.toLowerCase().includes('muerto') || h.routineTitle?.toLowerCase().includes('espalda') || h.routineTitle?.toLowerCase().includes('pull')) && (h.totalVolumeKg || 0) >= 3500) ? 120 : 0;
         break;
       case 'ach_str_deadlift_180':
-        progress = Math.min(180, bestDeadliftKg);
+        progress = history.some((h) => (h.routineTitle?.toLowerCase().includes('muerto') || h.routineTitle?.toLowerCase().includes('espalda')) && (h.totalVolumeKg || 0) >= 7000) ? 180 : 0;
         break;
       case 'ach_str_deadlift_240':
-        progress = Math.min(240, bestDeadliftKg);
+        progress = history.some((h) => (h.routineTitle?.toLowerCase().includes('muerto') || h.routineTitle?.toLowerCase().includes('powerlifting')) && (h.totalVolumeKg || 0) >= 12000) ? 240 : 0;
         break;
       case 'ach_str_overhead_60':
-        progress = Math.min(60, bestOverheadKg);
+        progress = history.some((h) => (h.routineTitle?.toLowerCase().includes('militar') || h.routineTitle?.toLowerCase().includes('hombro')) && (h.totalVolumeKg || 0) >= 2000) ? 60 : 0;
         break;
 
       // 2. RUNNING & CARDIO
       case 'ach_run_1k':
-        progress = Math.min(1, Math.round(totalDistance));
+        progress = Math.min(1, Math.floor(totalDistance));
         break;
       case 'ach_run_5k':
-        progress = Math.min(5, Math.round(totalDistance));
+        progress = Math.min(5, Math.floor(totalDistance));
         break;
       case 'ach_run_10k':
-        progress = Math.min(10, Math.round(totalDistance));
+        progress = Math.min(10, Math.floor(totalDistance));
         break;
       case 'ach_run_21k':
-        progress = Math.min(21, Math.round(totalDistance));
+        progress = Math.min(21, Math.floor(totalDistance));
         break;
       case 'ach_run_42k':
-        progress = Math.min(42, Math.round(totalDistance));
+        progress = Math.min(42, Math.floor(totalDistance));
         break;
       case 'ach_run_100k':
-        progress = Math.min(100, Math.round(totalDistance));
+        progress = Math.min(100, Math.floor(totalDistance));
         break;
       case 'ach_run_sub25_5k':
-        progress = totalDistance >= 5 ? 1 : 0;
+        progress = history.some((h) => (h.totalDistanceKm || 0) >= 5 && (h.durationMinutes || 0) <= 25 && (h.durationMinutes || 0) >= 1) ? 1 : 0;
         break;
       case 'ach_run_sub50_10k':
-        progress = totalDistance >= 10 ? 1 : 0;
+        progress = history.some((h) => (h.totalDistanceKm || 0) >= 10 && (h.durationMinutes || 0) <= 50 && (h.durationMinutes || 0) >= 1) ? 1 : 0;
         break;
       case 'ach_run_incline_3':
-        progress = Math.min(3, cardioSessions);
+        progress = Math.min(3, history.filter((h) => (h.inclinePercent || 0) >= 2.0).length);
         break;
       case 'ach_run_incline_6':
-        progress = Math.min(5, cardioSessions);
+        progress = Math.min(5, history.filter((h) => (h.inclinePercent || 0) >= 4.0).length);
         break;
       case 'ach_run_outdoor_gps':
-        progress = Math.min(3, cardioSessions);
+        progress = Math.min(3, history.filter((h) => h.cardioMode === 'outdoor').length);
         break;
       case 'ach_run_sessions_10':
         progress = Math.min(10, cardioSessions);
@@ -1517,57 +1510,57 @@ export function evaluateAllAchievements(
         progress = Math.min(30, cardioSessions);
         break;
       case 'ach_run_zone2_300':
-        progress = Math.min(300, cardioSessions * 30);
+        progress = Math.min(300, history.filter((h) => (h.avgHeartRate || 0) >= 110 && (h.avgHeartRate || 0) <= 145).reduce((s, h) => s + (h.cardioMinutes || h.durationMinutes || 0), 0));
         break;
       case 'ach_run_sprint_master':
-        progress = Math.min(5, hiitSessions + cardioSessions);
+        progress = Math.min(5, history.filter((h) => h.routineTitle?.toLowerCase().includes('sprint')).length);
         break;
 
       // 3. CALISTENIA
       case 'ach_cal_first_pullup':
-        progress = Math.min(1, calisthenicsSessions + workouts);
+        progress = history.some((h) => h.routineTitle?.toLowerCase().includes('dominad') || h.routineTitle?.toLowerCase().includes('calistenia')) ? 1 : 0;
         break;
       case 'ach_cal_pullups_10':
-        progress = Math.min(10, calisthenicsSessions * 3);
+        progress = history.filter((h) => h.routineTitle?.toLowerCase().includes('dominad') || h.routineTitle?.toLowerCase().includes('calistenia')).length >= 2 ? 10 : 0;
         break;
       case 'ach_cal_pullups_20':
-        progress = Math.min(20, calisthenicsSessions * 4);
+        progress = history.filter((h) => h.routineTitle?.toLowerCase().includes('dominad') || h.routineTitle?.toLowerCase().includes('calistenia')).length >= 5 ? 20 : 0;
         break;
       case 'ach_cal_pushups_20':
-        progress = Math.min(20, (calisthenicsSessions + workouts) * 10);
+        progress = history.some((h) => h.routineTitle?.toLowerCase().includes('flexion') || h.routineTitle?.toLowerCase().includes('calistenia')) ? 20 : 0;
         break;
       case 'ach_cal_pushups_50':
-        progress = Math.min(50, (calisthenicsSessions + workouts) * 15);
+        progress = history.filter((h) => h.routineTitle?.toLowerCase().includes('flexion') || h.routineTitle?.toLowerCase().includes('calistenia')).length >= 3 ? 50 : 0;
         break;
       case 'ach_cal_pushups_100':
-        progress = Math.min(100, (calisthenicsSessions + workouts) * 25);
+        progress = history.filter((h) => h.routineTitle?.toLowerCase().includes('flexion') || h.routineTitle?.toLowerCase().includes('calistenia')).length >= 6 ? 100 : 0;
         break;
       case 'ach_cal_dips_10':
-        progress = Math.min(10, calisthenicsSessions * 4);
+        progress = history.some((h) => h.routineTitle?.toLowerCase().includes('fondo') || h.routineTitle?.toLowerCase().includes('paralela')) ? 10 : 0;
         break;
       case 'ach_cal_dips_25':
-        progress = Math.min(25, calisthenicsSessions * 6);
+        progress = history.filter((h) => h.routineTitle?.toLowerCase().includes('fondo') || h.routineTitle?.toLowerCase().includes('paralela')).length >= 3 ? 25 : 0;
         break;
       case 'ach_cal_plank_60':
-        progress = Math.min(60, (calisthenicsSessions + workouts) * 20);
+        progress = history.some((h) => h.routineTitle?.toLowerCase().includes('plancha') || h.routineTitle?.toLowerCase().includes('core') || h.routineTitle?.toLowerCase().includes('abs')) ? 60 : 0;
         break;
       case 'ach_cal_plank_180':
-        progress = Math.min(180, (calisthenicsSessions + workouts) * 45);
+        progress = history.filter((h) => h.routineTitle?.toLowerCase().includes('plancha') || h.routineTitle?.toLowerCase().includes('core')).length >= 4 ? 180 : 0;
         break;
       case 'ach_cal_abs_sessions_10':
-        progress = Math.min(10, calisthenicsSessions + workouts);
+        progress = Math.min(10, history.filter((h) => h.routineTitle?.toLowerCase().includes('abs') || h.routineTitle?.toLowerCase().includes('core') || h.routineTitle?.toLowerCase().includes('abdominal')).length);
         break;
       case 'ach_cal_weighted_pullup':
-        progress = totalVolume > 5000 ? 1 : 0;
+        progress = history.some((h) => h.routineTitle?.toLowerCase().includes('lastre') || (h.notes?.toLowerCase().includes('lastre') && h.routineTitle?.toLowerCase().includes('dominad'))) ? 1 : 0;
         break;
       case 'ach_cal_weighted_dips':
-        progress = totalVolume > 8000 ? 1 : 0;
+        progress = history.some((h) => h.routineTitle?.toLowerCase().includes('lastre') && h.routineTitle?.toLowerCase().includes('fondo')) ? 1 : 0;
         break;
       case 'ach_cal_sessions_15':
-        progress = Math.min(15, calisthenicsSessions + Math.floor(workouts / 2));
+        progress = Math.min(15, calisthenicsSessions);
         break;
       case 'ach_cal_master':
-        progress = Math.min(30, calisthenicsSessions + workouts);
+        progress = Math.min(30, calisthenicsSessions);
         break;
 
       // 4. HÁBITOS
@@ -1661,7 +1654,7 @@ export function evaluateAllAchievements(
         progress = maxBpmRecorded >= 170 ? 1 : 0;
         break;
       case 'ach_met_zone5_30':
-        progress = Math.min(30, hiitSessions * 6);
+        progress = Math.min(30, history.filter((h) => (h.maxHeartRate || 0) >= 170).reduce((s, h) => s + (h.durationMinutes || 0), 0));
         break;
 
       // 6. PROGRAMAS
@@ -1687,10 +1680,10 @@ export function evaluateAllAchievements(
         progress = Math.min(10, completedProgramsCount);
         break;
       case 'ach_prog_hybrid_1':
-        progress = (workouts > 0 && cardioSessions > 0) ? 3 : Math.min(2, workouts);
+        progress = (totalVolume > 0 && cardioSessions > 0 && calisthenicsSessions > 0) ? 3 : Math.min(2, (totalVolume > 0 ? 1 : 0) + (cardioSessions > 0 ? 1 : 0) + (calisthenicsSessions > 0 ? 1 : 0));
         break;
       case 'ach_prog_hybrid_pro':
-        progress = Math.min(30, workouts + cardioSessions + calisthenicsSessions);
+        progress = Math.min(30, (totalVolume > 5000 ? 10 : 0) + (cardioSessions >= 10 ? 10 : 0) + (calisthenicsSessions >= 10 ? 10 : 0));
         break;
       case 'ach_prog_comm_1':
         progress = Math.min(1, claimedChallengesCount);
@@ -1711,27 +1704,35 @@ export function evaluateAllAchievements(
         progress = Math.min(10, fiveStarWorkouts);
         break;
 
-      // 7. SECRETOS
+      // 7. SECRETOS (Verificación Real y Rigurosa)
       case 'ach_sec_early_bird':
-        progress = workouts >= 1 ? 1 : 0;
+        progress = history.some((h) => {
+          const d = new Date(h.date);
+          const hrs = d.getHours();
+          return hrs > 0 && hrs < 7;
+        }) ? 1 : 0;
         break;
       case 'ach_sec_night_owl':
-        progress = workouts >= 2 ? 1 : 0;
+        progress = history.some((h) => {
+          const d = new Date(h.date);
+          const hrs = d.getHours();
+          return hrs >= 22;
+        }) ? 1 : 0;
         break;
       case 'ach_sec_double_session':
         progress = maxWorkoutsInSingleDay >= 2 ? 1 : 0;
         break;
       case 'ach_sec_marathon_session':
-        progress = maxDurationSingleSession >= 60 ? 1 : 0;
+        progress = maxDurationSingleSession >= 90 ? 1 : 0;
         break;
       case 'ach_sec_heavy_single_session':
-        progress = maxVolumeSingleSession >= 10000 ? 1 : 0;
+        progress = maxVolumeSingleSession >= 15000 ? 1 : 0;
         break;
       case 'ach_sec_quick_speed_run':
-        progress = workouts >= 1 ? 1 : 0;
+        progress = history.some((h) => (h.durationMinutes || 0) <= 20 && (h.durationMinutes || 0) >= 8 && (h.completedExercises || 0) >= 4) ? 1 : 0;
         break;
       case 'ach_sec_new_year':
-        progress = workouts >= 3 ? 1 : 0;
+        progress = history.some((h) => h.date?.includes('-01-01') || h.date?.includes('-12-31') || h.date?.includes('-12-25')) ? 1 : 0;
         break;
       case 'ach_sec_level_20':
         progress = Math.min(20, userLevel);
@@ -1740,7 +1741,7 @@ export function evaluateAllAchievements(
         progress = Math.min(50, userLevel);
         break;
       case 'ach_sec_perfectionist':
-        progress = Math.min(15, workouts);
+        progress = (workouts >= 15 && fiveStarWorkouts >= 15) ? 15 : Math.min(15, fiveStarWorkouts);
         break;
 
       default:
@@ -1750,6 +1751,8 @@ export function evaluateAllAchievements(
     if (progress >= base.maxProgress) {
       unlocked = true;
     }
+
+    const existing = existingMap.get(base.id);
 
     return {
       ...base,
