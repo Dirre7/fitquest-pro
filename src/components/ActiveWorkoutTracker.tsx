@@ -502,6 +502,7 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
         unlockedPrs
       );
     }
+    onClose();
   };
 
   // Heart rate zone color helper

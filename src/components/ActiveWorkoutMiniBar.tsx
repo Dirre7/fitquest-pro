@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import { Play, Pause, ChevronUp, Timer, Dumbbell, X } from 'lucide-react';
 import { ActiveWorkoutState } from '../types';
 import { sound } from '../lib/soundFx';
@@ -20,11 +20,21 @@ export const ActiveWorkoutMiniBar: React.FC<ActiveWorkoutMiniBarProps> = ({
     return `${mins.toString().padStart(2, '0')}:${remainderSecs.toString().padStart(2, '0')}`;
   };
 
-  const totalSets = session.exercises.reduce((acc, ex) => acc + ex.sets.length, 0);
-  const completedSets = session.exercises.reduce(
-    (acc, ex) => acc + ex.sets.filter((s) => s.completed).length,
+  const totalSets = (session?.exercises || []).reduce((acc, ex) => acc + (ex.sets?.length || 0), 0);
+  const completedSets = (session?.exercises || []).reduce(
+    (acc, ex) => acc + (ex.sets || []).filter((s) => s.completed).length,
     0
   );
+
+  React.useEffect(() => {
+    if (totalSets > 0 && completedSets >= totalSets) {
+      onDiscard();
+    }
+  }, [completedSets, totalSets, onDiscard]);
+
+  if (totalSets > 0 && completedSets >= totalSets) {
+    return null;
+  }
 
   return (
     <div className="fixed bottom-20 sm:bottom-24 left-1/2 -translate-x-1/2 z-40 w-[92%] sm:w-auto max-w-lg pointer-events-auto animate-in slide-in-from-bottom-5 duration-300">
