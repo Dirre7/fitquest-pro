@@ -80,6 +80,7 @@ export const WeeklyChallengesView: React.FC<WeeklyChallengesViewProps> = ({
 
   const weeklyVolumeKg = weekEntries.reduce((acc, h) => acc + (h.totalVolumeKg || 0), 0);
   const weeklyWorkoutsCount = weekEntries.length;
+  const weeklyDaysCount = new Set(weekEntries.map((h) => h.date)).size;
   const weeklyCalories = weekEntries.reduce((acc, h) => acc + (h.calories || 0), 0);
   const weeklyDistanceKm = Math.round(weekEntries.reduce((acc, h) => acc + (h.totalDistanceKm || 0), 0) * 10) / 10;
 
@@ -114,52 +115,52 @@ export const WeeklyChallengesView: React.FC<WeeklyChallengesViewProps> = ({
   // Predefined real dynamic weekly challenges
   const activeChallenges = [
     {
-      id: 'ch_weekly_cardio_15k',
-      title: 'Desafío Fondista: 15 km de Carrera',
-      description: 'Acumula al menos 15 km de carrera, cinta o cardio exterior esta semana.',
-      category: 'DISTANCIA',
-      icon: Activity,
-      color: 'from-purple-500 to-indigo-600',
-      unit: 'km',
-      goal: 15,
-      userCurrent: weeklyDistanceKm,
-      rewardXp: 450,
-    },
-    {
-      id: 'ch_weekly_volume_titan',
-      title: 'Levantamiento de Titán Semanal',
-      description: 'Acumula más de 20,000 kg de volumen total levantado en tus rutinas de esta semana.',
+      id: 'ch_weekly_volume_titan_100k',
+      title: 'Levantamiento de Titán Semanal (100.000 kg)',
+      description: 'Acumula al menos 100.000 kg de volumen total levantado en tus rutinas de gimnasio esta semana.',
       category: 'VOLUMEN',
       icon: Dumbbell,
       color: 'from-cyan-500 to-blue-600',
       unit: 'kg',
-      goal: 20000,
+      goal: 100000,
       userCurrent: weeklyVolumeKg,
-      rewardXp: 500,
+      rewardXp: 1000,
     },
     {
-      id: 'ch_weekly_consistency_4',
-      title: 'Consistencia de Hierro (4 Días)',
-      description: 'Completa al menos 4 entrenamientos completos antes de la medianoche del domingo.',
-      category: 'SESIONES',
+      id: 'ch_weekly_cardio_40k',
+      title: 'Desafío Fondista: 40 km de Carrera',
+      description: 'Acumula al menos 40 km de carrera, cinta o cardio exterior antes del domingo.',
+      category: 'DISTANCIA',
+      icon: Activity,
+      color: 'from-purple-500 to-indigo-600',
+      unit: 'km',
+      goal: 40,
+      userCurrent: weeklyDistanceKm,
+      rewardXp: 800,
+    },
+    {
+      id: 'ch_weekly_consistency_5days',
+      title: 'Consistencia de Hierro (5 Días)',
+      description: 'Entrena en al menos 5 días diferentes de esta semana antes de la medianoche del domingo.',
+      category: 'DÍAS',
       icon: Calendar,
       color: 'from-emerald-500 to-teal-600',
-      unit: 'sesiones',
-      goal: 4,
-      userCurrent: weeklyWorkoutsCount,
-      rewardXp: 350,
+      unit: 'días',
+      goal: 5,
+      userCurrent: weeklyDaysCount,
+      rewardXp: 600,
     },
     {
-      id: 'ch_weekly_calorie_inferno',
-      title: 'Infierno Metabólico',
-      description: 'Quema 2,000 calorías acumuladas durante tus entrenamientos activos esta semana.',
+      id: 'ch_weekly_calorie_inferno_5k',
+      title: 'Infierno Metabólico (5.000 kcal)',
+      description: 'Quema 5.000 calorías activas acumuladas durante tus entrenamientos de esta semana.',
       category: 'CALORÍAS',
       icon: Flame,
       color: 'from-orange-500 to-amber-600',
       unit: 'kcal',
-      goal: 2000,
+      goal: 5000,
       userCurrent: weeklyCalories,
-      rewardXp: 400,
+      rewardXp: 800,
     },
   ];
 
