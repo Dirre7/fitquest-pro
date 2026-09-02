@@ -23,7 +23,7 @@ interface ProfileEditModalProps {
   achievements?: Achievement[];
   lang: Language;
   onClose: () => void;
-  onSaveUser: (updatedUser: UserProfile) => void;
+  onSaveUser: (updatedUser: UserProfile) => Promise<void> | void;
 }
 
 export const ProfileEditModal: React.FC<ProfileEditModalProps> = ({
@@ -38,6 +38,7 @@ export const ProfileEditModal: React.FC<ProfileEditModalProps> = ({
   const [rankTitle, setRankTitle] = useState(user.rankTitle || 'Recluta Inicial');
   const [weightKg, setWeightKg] = useState(user.weightKg || 70);
   const [targetWeightKg, setTargetWeightKg] = useState(user.targetWeightKg || 70);
+  const [isSaving, setIsSaving] = useState(false);
 
   // Avatar Presets
   const avatarPresets = [
@@ -114,8 +115,9 @@ export const ProfileEditModal: React.FC<ProfileEditModalProps> = ({
     reader.readAsDataURL(file);
   };
 
-  const handleSave = () => {
-    if (!name.trim()) return;
+  const handleSave = async () => {
+    if (!name.trim() || isSaving) return;
+    setIsSaving(true);
 
     const updatedUser: UserProfile = {
       ...user,
@@ -127,8 +129,14 @@ export const ProfileEditModal: React.FC<ProfileEditModalProps> = ({
     };
 
     sound.playLevelUp();
-    onSaveUser(updatedUser);
-    onClose();
+    try {
+      await onSaveUser(updatedUser);
+    } catch (e) {
+      console.error('Failed to save user profile:', e);
+    } finally {
+      setIsSaving(false);
+      onClose();
+    }
   };
 
   return (
@@ -272,7 +280,7 @@ export const ProfileEditModal: React.FC<ProfileEditModalProps> = ({
               </span>
             </div>
 
-            <div className="space-y-1 max-h-32 overflow-y-auto no-scrollbar p-1 bg-white/[0.02] border border-white/5 rounded-2xl">
+            <div className="space-y-1 max-h-36 overflow-y-auto no-scrollbar p-1.5 bg-white/[0.02] border border-white/5 rounded-2xl">
               {levelTitles.map((item) => {
                 const isUnlocked = user.level >= item.minLevel;
                 const isSelected = rankTitle === item.title;
@@ -282,12 +290,17 @@ export const ProfileEditModal: React.FC<ProfileEditModalProps> = ({
                     key={item.title}
                     type="button"
                     disabled={!isUnlocked}
-                    onClick={() => isUnlocked && setRankTitle(item.title)}
+                    onClick={() => {
+                      if (isUnlocked) {
+                        setRankTitle(item.title);
+                        sound.playBeep(750, 70);
+                      }
+                    }}
                     className={`w-full px-2.5 py-1.5 rounded-xl text-xs font-mono flex items-center justify-between transition-all border ${
                       isSelected
-                        ? 'bg-cyan-500/20 border-cyan-500/60 text-cyan-300 font-bold'
+                        ? 'bg-cyan-500/20 border-cyan-500/80 text-cyan-300 font-extrabold shadow-sm'
                         : isUnlocked
-                        ? 'bg-white/5 border-white/5 text-neutral-200 hover:bg-white/10'
+                        ? 'bg-white/5 border-white/5 text-neutral-200 hover:bg-white/10 hover:border-white/20'
                         : 'bg-white/[0.02] border-white/5 text-neutral-600 opacity-50 cursor-not-allowed'
                     }`}
                   >
@@ -315,12 +328,17 @@ export const ProfileEditModal: React.FC<ProfileEditModalProps> = ({
                     key={ach.title}
                     type="button"
                     disabled={!ach.unlocked}
-                    onClick={() => ach.unlocked && setRankTitle(ach.title)}
+                    onClick={() => {
+                      if (ach.unlocked) {
+                        setRankTitle(ach.title);
+                        sound.playBeep(750, 70);
+                      }
+                    }}
                     className={`w-full px-2.5 py-1.5 rounded-xl text-xs font-mono flex items-center justify-between transition-all border ${
                       isSelected
-                        ? 'bg-amber-500/20 border-amber-500/60 text-amber-300 font-bold'
+                        ? 'bg-amber-500/20 border-amber-500/80 text-amber-300 font-extrabold shadow-sm'
                         : ach.unlocked
-                        ? 'bg-white/5 border-white/5 text-neutral-200 hover:bg-white/10'
+                        ? 'bg-white/5 border-white/5 text-neutral-200 hover:bg-white/10 hover:border-white/20'
                         : 'bg-white/[0.02] border-white/5 text-neutral-600 opacity-50 cursor-not-allowed'
                     }`}
                   >
