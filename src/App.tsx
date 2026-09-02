@@ -697,6 +697,11 @@ export default function App() {
             lang={lang}
             onStartRoutine={handleStartRoutine}
             onCreateRoutine={handleCreateRoutine}
+            onUpdateProgramProgress={(progMap) => {
+              const updatedUser = { ...user, programProgress: progMap };
+              setUser(updatedUser);
+              FitStorage.saveUser(updatedUser);
+            }}
           />
         )}
 

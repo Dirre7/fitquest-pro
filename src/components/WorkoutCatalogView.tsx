@@ -33,6 +33,7 @@ interface WorkoutCatalogViewProps {
   lang: Language;
   onStartRoutine: (routine: WorkoutRoutine) => void;
   onCreateRoutine: (routine: WorkoutRoutine) => void;
+  onUpdateProgramProgress?: (progress: { [id: string]: number }) => void;
 }
 
 export const WorkoutCatalogView: React.FC<WorkoutCatalogViewProps> = ({
@@ -41,6 +42,7 @@ export const WorkoutCatalogView: React.FC<WorkoutCatalogViewProps> = ({
   lang,
   onStartRoutine,
   onCreateRoutine,
+  onUpdateProgramProgress,
 }) => {
   const t = translations[lang];
 
@@ -158,7 +160,12 @@ export const WorkoutCatalogView: React.FC<WorkoutCatalogViewProps> = ({
   const handleResetProgramCycle = (progId: string) => {
     sound.playLevelUp();
     FitStorage.setProgramDayCompleted(progId, 0);
-    setProgramProgress((prev) => ({ ...prev, [progId]: 0 }));
+    const updated = { ...programProgress };
+    delete updated[progId];
+    setProgramProgress(updated);
+    if (onUpdateProgramProgress) {
+      onUpdateProgramProgress(updated);
+    }
   };
 
   return (

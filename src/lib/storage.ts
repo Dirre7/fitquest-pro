@@ -356,7 +356,11 @@ export class FitStorage {
   public static setProgramDayCompleted(progId: string, dayNumber: number) {
     try {
       const current = this.getProgramProgress();
-      current[progId] = Math.max(current[progId] || 0, dayNumber);
+      if (dayNumber <= 0) {
+        delete current[progId];
+      } else {
+        current[progId] = Math.max(current[progId] || 0, dayNumber);
+      }
       localStorage.setItem('fitquest_program_progress', JSON.stringify(current));
       const uid = auth.currentUser?.uid;
       if (uid) {
