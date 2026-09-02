@@ -332,21 +332,23 @@ export function calculateAthleteAttributes(
       h.routineTitle?.toLowerCase().includes('shred')
   ).length;
 
-  // 1. FUERZA: Volume lifted + heavy strength sessions (infinite scaling)
-  const strengthPoints = Math.floor(totalVolumeKg / 600 + strengthWorkouts * 2.5);
-  const strength = Math.max(baseAttr, baseAttr + strengthPoints);
+  // 1. FUERZA: Volume lifted + heavy strength sessions (scale 10-100)
+  const strengthPoints = Math.floor(Math.min(90, (totalVolumeKg / 1000) * 1.5 + strengthWorkouts * 2.5));
+  const strength = Math.min(100, Math.max(baseAttr, baseAttr + strengthPoints));
 
-  // 2. RESISTENCIA: Total distance (km) + cardio minutes (infinite scaling)
-  const endurancePoints = Math.floor(totalDistanceKm * 3.5 + totalMinutes / 12 + cardioWorkouts * 2);
-  const endurance = Math.max(baseAttr, baseAttr + endurancePoints);
+  // 2. RESISTENCIA: Total distance (km) + cardio duration (scale 10-100)
+  // Sanitize distance per workout (ignore corrupted huge numbers)
+  const sanitizedDistance = history.reduce((sum, h) => sum + Math.min(30, h.totalDistanceKm || 0), 0);
+  const endurancePoints = Math.floor(Math.min(90, sanitizedDistance * 2.0 + (totalMinutes / 25) * 1.5 + cardioWorkouts * 3));
+  const endurance = Math.min(100, Math.max(baseAttr, baseAttr + endurancePoints));
 
-  // 3. AGILIDAD: HIIT sessions, calisthenics & fast reps (infinite scaling)
-  const agilityPoints = Math.floor(hiitWorkouts * 5 + history.length * 1.2);
-  const agility = Math.max(baseAttr, baseAttr + agilityPoints);
+  // 3. AGILIDAD: HIIT sessions, calisthenics & fast reps (scale 10-100)
+  const agilityPoints = Math.floor(Math.min(90, hiitWorkouts * 6 + history.length * 2.0));
+  const agility = Math.min(100, Math.max(baseAttr, baseAttr + agilityPoints));
 
-  // 4. DISCIPLINA: Real streak days + total workouts completed (infinite scaling)
-  const disciplinePoints = Math.floor(currentStreak * 4.5 + history.length * 2.5);
-  const discipline = Math.max(baseAttr, baseAttr + disciplinePoints);
+  // 4. DISCIPLINA: Real streak days + total workouts completed (scale 10-100)
+  const disciplinePoints = Math.floor(Math.min(90, currentStreak * 5.0 + history.length * 3.0));
+  const discipline = Math.min(100, Math.max(baseAttr, baseAttr + disciplinePoints));
 
   return { strength, endurance, agility, discipline };
 }

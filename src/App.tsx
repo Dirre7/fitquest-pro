@@ -133,6 +133,7 @@ export default function App() {
             currentStreak: realStreak.currentStreak,
             bestStreak: Math.max(evaluated.updatedUser.stats.bestStreak || 0, realStreak.bestStreak),
             caloriesBurned: cloudData.history.length > 0 ? cloudData.history.reduce((s, h) => s + (h.calories || 0), 0) : evaluated.updatedUser.stats.caloriesBurned,
+            totalDistanceKm: cloudData.history.length > 0 ? cloudData.history.reduce((s, h) => s + (h.totalDistanceKm || 0), 0) : (evaluated.updatedUser.stats.totalDistanceKm || 0),
             totalMinutes: cloudData.history.length > 0 ? cloudData.history.reduce((s, h) => s + (h.durationMinutes || 0), 0) : evaluated.updatedUser.stats.totalMinutes,
             totalVolumeKg: cloudData.history.length > 0 ? cloudData.history.reduce((s, h) => s + (h.totalVolumeKg || 0), 0) : evaluated.updatedUser.stats.totalVolumeKg,
             totalWorkouts: cloudData.history.length > 0 ? cloudData.history.length : evaluated.updatedUser.stats.totalWorkouts,

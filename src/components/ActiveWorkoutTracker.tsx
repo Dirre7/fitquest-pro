@@ -408,6 +408,7 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
   };
 
   const handleConfirmFinish = () => {
+    // Only calculate distance for explicit cardio exercises with actual distance recorded
     const totalDistanceKm = Math.round(
       exercises.reduce((acc, ex) => {
         const isCardio =
@@ -416,15 +417,26 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
           ex.name.toLowerCase().includes('carrera') ||
           ex.name.toLowerCase().includes('cinta') ||
           ex.name.toLowerCase().includes('running') ||
-          ex.name.toLowerCase().includes('remo') ||
+          ex.name.toLowerCase().includes('ciclismo') ||
+          ex.name.toLowerCase().includes('bicicleta') ||
           ex.name.toLowerCase().includes('sprint');
+        
+        // Strength rowing exercises (Remo con barra, Remo Pendlay, etc.) are strictly strength
+        const isStrengthRow =
+          ex.name.toLowerCase().includes('remo con') ||
+          ex.name.toLowerCase().includes('remo pendlay') ||
+          ex.name.toLowerCase().includes('remo en polea') ||
+          ex.name.toLowerCase().includes('remo con mancuerna') ||
+          ex.name.toLowerCase().includes('remo t');
+
+        if (isStrengthRow) return acc;
+
         return (
           acc +
           ex.sets
             .filter((s) => s.completed)
             .reduce((sAcc, s) => {
-              if (s.actualDistanceKm) return sAcc + s.actualDistanceKm;
-              if (isCardio && s.actualWeightKg > 0) return sAcc + s.actualWeightKg;
+              if (s.actualDistanceKm && s.actualDistanceKm > 0) return sAcc + s.actualDistanceKm;
               return sAcc;
             }, 0)
         );
@@ -434,11 +446,13 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
     const xpGained = Math.round(routine.xpReward * Math.max(0.6, completionPercent / 100));
 
     const calculatedMinutes = Math.max(1, Math.round(elapsedSeconds / 60));
-    // Accurate calorie expenditure: active duration + heavy volume lifted + cardio distance
-    const baseCal = Math.round(calculatedMinutes * 8.5);
-    const volumeCal = Math.round((totalVolume / 1000) * 12);
-    const distanceCal = Math.round(totalDistanceKm * 65);
-    const estimatedBurn = Math.max(liveCalories, baseCal + volumeCal + distanceCal, 35);
+    // Accurate biomechanical calorie expenditure: active duration + volume lifted + real cardio distance
+    const baseCal = Math.round(calculatedMinutes * 7.5);
+    const volumeCal = Math.round((totalVolume / 1000) * 8);
+    const distanceCal = Math.round(totalDistanceKm * 60);
+    const rawEstimated = Math.max(liveCalories, baseCal + volumeCal + distanceCal, 35);
+    // Sanity check: standard single workout upper limit around 1500 kcal
+    const estimatedBurn = Math.min(1500, rawEstimated);
 
     const historyEntry: WorkoutHistoryEntry = {
       id: `hist_${Date.now()}`,

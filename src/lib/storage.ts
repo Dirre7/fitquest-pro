@@ -216,11 +216,38 @@ export class FitStorage {
         }
       });
 
-      const finalHistory = Array.from(combinedHistoryMap.values()).sort(
-        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
-      );
+      // Sanitize any historically corrupted distance/calorie entries from previous strength rowing bug
+      const finalHistory = Array.from(combinedHistoryMap.values())
+        .map((h) => {
+          let cleanedKm = h.totalDistanceKm || 0;
+          let cleanedCal = h.calories || 0;
+          // If distance was inflated (> 30 km on a strength session)
+          if (cleanedKm > 30 && !h.routineTitle?.toLowerCase().includes('maratón')) {
+            cleanedKm = 0;
+          }
+          // If calories were inflated (> 1500 kcal on a single session)
+          if (cleanedCal > 1500) {
+            const minutes = h.durationMinutes || 45;
+            const volume = h.totalVolumeKg || 0;
+            cleanedCal = Math.round(minutes * 7.5 + (volume / 1000) * 8 + cleanedKm * 60);
+          }
+          const cleaned = {
+            ...h,
+            totalDistanceKm: cleanedKm,
+            calories: cleanedCal,
+          };
+          // Sync cleaned entry back to cloud if it was modified
+          if (cleaned.totalDistanceKm !== h.totalDistanceKm || cleaned.calories !== h.calories) {
+            try {
+              const historyDocRef = doc(db, 'users', uid, 'history', h.id);
+              setDoc(historyDocRef, cleaned, { merge: true });
+            } catch {}
+          }
+          return cleaned;
+        })
+        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-      // Update local storage with combined history & user
+      // Update local storage with combined sanitized history & user
       this.saveHistory(finalHistory);
       this.saveUser(userProfile);
 
