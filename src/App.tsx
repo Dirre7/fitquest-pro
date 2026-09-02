@@ -682,6 +682,7 @@ export default function App() {
             routines={routines}
             challenges={challenges}
             smartwatch={smartwatch}
+            history={history}
             lang={lang}
             onStartRoutine={handleStartRoutine}
             onNavigateTab={setActiveTab}

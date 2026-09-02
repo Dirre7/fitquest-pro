@@ -592,6 +592,43 @@ export class FitStorage {
     return updatedUser;
   }
 
+  public static getExercisePastPerformance(exerciseName: string, historyEntries?: WorkoutHistoryEntry[]) {
+    try {
+      const history = historyEntries || this.getHistory();
+      const cleanTargetName = exerciseName.trim().toLowerCase();
+      
+      for (const entry of history) {
+        if (!entry.exercises) continue;
+        for (const ex of entry.exercises) {
+          if (ex.name.trim().toLowerCase() === cleanTargetName) {
+            if (ex.sets && ex.sets.length > 0) {
+              const completedSets = ex.sets.filter((s) => s.completed || (s.actualReps && s.actualReps > 0));
+              if (completedSets.length > 0) {
+                const bestSet = completedSets.reduce((prev, curr) => {
+                  const prevW = prev.actualWeightKg || prev.targetWeightKg || 0;
+                  const currW = curr.actualWeightKg || curr.targetWeightKg || 0;
+                  return currW >= prevW ? curr : prev;
+                });
+                const weight = bestSet.actualWeightKg || bestSet.targetWeightKg || 0;
+                const reps = bestSet.actualReps || bestSet.targetReps || 0;
+                return {
+                  lastWeightKg: weight,
+                  lastReps: reps,
+                  date: entry.date,
+                  suggestedWeightKg: weight > 0 ? (reps >= (bestSet.targetReps || 8) ? weight + 2.5 : weight) : 0,
+                  suggestedReps: weight === 0 ? reps + 1 : (reps >= 10 ? reps : reps + 1),
+                };
+              }
+            }
+          }
+        }
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  }
+
   public static claimWeeklyChallenge(challengeId: string, rewardXp: number, currentUser?: UserProfile): UserProfile {
     const user = currentUser || this.getUser();
     const existing = user.claimedChallenges || [];

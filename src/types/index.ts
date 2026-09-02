@@ -163,6 +163,7 @@ export interface WorkoutHistoryEntry {
   completedExercises: number;
   rating: number; // 1-5
   notes?: string;
+  exercises?: Exercise[];
 }
 
 export interface SmartwatchDevice {

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Flame,
   Zap,
@@ -16,21 +16,28 @@ import {
   Target,
   Watch,
   Users,
+  Play,
+  Layers,
+  ChevronDown,
 } from 'lucide-react';
 import {
   UserProfile,
   WorkoutRoutine,
   CommunityChallenge,
   SmartwatchDevice,
+  WorkoutHistoryEntry,
   Language,
 } from '../types';
 import { translations } from '../lib/i18n';
+import { MuscleHeatmapWidget } from './MuscleHeatmapWidget';
+import { FitStorage } from '../lib/storage';
 
 interface DashboardViewProps {
   user: UserProfile;
   routines: WorkoutRoutine[];
   challenges: CommunityChallenge[];
   smartwatch: SmartwatchDevice;
+  history?: WorkoutHistoryEntry[];
   lang: Language;
   onStartRoutine: (routine: WorkoutRoutine) => void;
   onNavigateTab: (tab: string) => void;
@@ -43,6 +50,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   routines,
   challenges,
   smartwatch,
+  history = [],
   lang,
   onStartRoutine,
   onNavigateTab,
@@ -51,11 +59,124 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 }) => {
   const t = translations[lang];
 
+  // Active workout selection for "Misión del Día"
+  const [selectedRoutineId, setSelectedRoutineId] = useState<string>(() => {
+    return routines[0]?.id || '';
+  });
+
+  const currentRoutine = routines.find((r) => r.id === selectedRoutineId) || routines[0];
   const activeChallenge = challenges[0];
   const xpPercent = Math.min(100, Math.round((user.currentLevelXp / user.nextLevelXp) * 100));
 
+  // Determine target muscles for preview badges
+  const targetMuscles = Array.from(
+    new Set(currentRoutine?.exercises?.map((e) => e.muscleGroup) || ['Pecho', 'Tríceps'])
+  ).slice(0, 3);
+
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
+      
+      {/* ⚡ HERO CARD: MISIÓN DEL DÍA (Propuesta A) */}
+      {currentRoutine && (
+        <div className="bg-gradient-to-r from-neutral-900 via-[#151518] to-cyan-950/40 border-2 border-cyan-500/40 rounded-3xl p-6 sm:p-7 shadow-[0_0_35px_rgba(6,182,212,0.15)] relative overflow-hidden">
+          {/* Ambient light glow */}
+          <div className="absolute top-0 right-0 w-80 h-80 bg-cyan-500/10 blur-[90px] pointer-events-none" />
+          <div className="absolute -bottom-10 -left-10 w-64 h-64 bg-blue-600/10 blur-[80px] pointer-events-none" />
+
+          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 relative z-10">
+            <div className="space-y-2.5 max-w-2xl">
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <span className="text-xs font-mono font-black uppercase px-3 py-1 rounded-full bg-cyan-500 text-neutral-950 flex items-center gap-1.5 shadow-md shadow-cyan-500/30">
+                  <Zap className="w-3.5 h-3.5 fill-current animate-bounce" /> MISIÓN DEL DÍA
+                </span>
+                <span className="text-xs font-mono font-bold text-cyan-300 bg-cyan-500/10 border border-cyan-500/20 px-2.5 py-0.5 rounded-full">
+                  +{currentRoutine.xpReward} XP Recompensa
+                </span>
+                <span className="text-xs font-mono text-neutral-400">
+                  {currentRoutine.difficulty === 'Advanced' ? '🔥 Avanzado' : currentRoutine.difficulty === 'Intermediate' ? '⚡ Intermedio' : '🌱 Principiante'}
+                </span>
+              </div>
+
+              <div>
+                <h1 className="text-2xl sm:text-3xl font-display font-black text-white tracking-tight">
+                  {currentRoutine.title}
+                </h1>
+                <p className="text-xs sm:text-sm text-neutral-300 mt-1 leading-relaxed line-clamp-2">
+                  {currentRoutine.description}
+                </p>
+              </div>
+
+              {/* Workout Specs & Muscle Tags */}
+              <div className="flex items-center gap-4 flex-wrap pt-1 text-xs font-mono">
+                <span className="text-neutral-300 flex items-center gap-1 bg-white/5 border border-white/5 px-2.5 py-1 rounded-xl">
+                  <Clock className="w-3.5 h-3.5 text-cyan-400" />
+                  <span>{currentRoutine.durationMinutes} min aprox.</span>
+                </span>
+
+                <span className="text-neutral-300 flex items-center gap-1 bg-white/5 border border-white/5 px-2.5 py-1 rounded-xl">
+                  <Dumbbell className="w-3.5 h-3.5 text-cyan-400" />
+                  <span>{currentRoutine.exercises?.length || 5} Ejercicios</span>
+                </span>
+
+                <span className="text-orange-400 flex items-center gap-1 bg-orange-500/10 border border-orange-500/20 px-2.5 py-1 rounded-xl">
+                  <Flame className="w-3.5 h-3.5" />
+                  <span>~{currentRoutine.estimatedCalories} kcal</span>
+                </span>
+
+                <div className="flex items-center gap-1.5">
+                  {targetMuscles.map((muscle, idx) => (
+                    <span
+                      key={idx}
+                      className="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-cyan-500/10 text-cyan-300 border border-cyan-500/30"
+                    >
+                      {muscle}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Action Buttons: Big Start Button & Routine Switcher */}
+            <div className="flex flex-col sm:flex-row lg:flex-col gap-3 w-full lg:w-auto shrink-0">
+              <button
+                onClick={() => onStartRoutine(currentRoutine)}
+                className="w-full lg:w-64 py-4 px-6 rounded-2xl bg-gradient-to-r from-cyan-400 via-cyan-500 to-blue-600 hover:from-cyan-300 hover:to-blue-500 text-neutral-950 font-display font-black text-sm uppercase tracking-wider shadow-[0_0_30px_rgba(6,182,212,0.45)] flex items-center justify-center gap-2.5 transition-all hover:scale-105 active:scale-95 cursor-pointer"
+              >
+                <Play className="w-5 h-5 fill-current" />
+                <span>COMENZAR SESIÓN</span>
+              </button>
+
+              <div className="flex gap-2">
+                <button
+                  onClick={() => onNavigateTab('routines')}
+                  className="flex-1 py-2 px-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-mono font-bold text-neutral-300 hover:text-white flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                >
+                  <Layers className="w-3.5 h-3.5 text-cyan-400" />
+                  <span>Cambiar Rutina</span>
+                </button>
+
+                {onOpenQuickStart && (
+                  <button
+                    onClick={onOpenQuickStart}
+                    className="flex-1 py-2 px-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-mono font-bold text-neutral-300 hover:text-white flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                  >
+                    <Zap className="w-3.5 h-3.5 text-amber-400" />
+                    <span>Entreno Libre</span>
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 🧬 MAPA DE CALOR MUSCULAR & FRECUENCIA (Propuesta C) */}
+      <MuscleHeatmapWidget
+        history={history}
+        lang={lang}
+        onStartMuscleWorkout={() => onNavigateTab('routines')}
+      />
+
       {/* Top Hero Banner: Gamification Level, Rank & Metrics */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         
@@ -107,7 +228,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-neutral-950 px-4 py-2 rounded-2xl text-xs font-mono font-black uppercase tracking-wider shadow-[0_0_20px_rgba(6,182,212,0.4)] flex items-center gap-2 self-start sm:self-center transition-all hover:scale-105 active:scale-95 cursor-pointer"
             >
               <Zap className="w-3.5 h-3.5 fill-current animate-pulse" />
-              <span>INICIAR ENTRENAMIENTO</span>
+              <span>EXPLORAR RUTINAS</span>
             </button>
           </div>
 
@@ -398,13 +519,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         <div className="flex items-center justify-between mb-4">
           <div>
             <h3 className="font-display font-extrabold text-xl text-white">
-              Rutinas Recomendadas
+              Rutinas Disponibles
             </h3>
             <p className="text-xs text-neutral-400">Protocolos calibrados para tu nivel actual</p>
           </div>
           <button
             onClick={() => onNavigateTab('routines')}
-            className="text-xs font-mono font-bold text-cyan-400 hover:text-cyan-300 flex items-center gap-1"
+            className="text-xs font-mono font-bold text-cyan-400 hover:text-cyan-300 flex items-center gap-1 cursor-pointer"
           >
             <span>VER CATÁLOGO ({routines.length})</span>
             <ChevronRight className="w-4 h-4" />
@@ -444,7 +565,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 <button
                   id={`btn-start-routine-${routine.id}`}
                   onClick={() => onStartRoutine(routine)}
-                  className="px-4 py-2 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-neutral-950 font-bold text-xs shadow-md shadow-cyan-500/25 transition-all hover:scale-105"
+                  className="px-4 py-2 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-neutral-950 font-bold text-xs shadow-md shadow-cyan-500/25 transition-all hover:scale-105 cursor-pointer"
                 >
                   {t.startRoutine}
                 </button>

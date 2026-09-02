@@ -644,6 +644,7 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
       completedExercises: exercises.length,
       rating,
       notes,
+      exercises,
     };
 
     isFinishedRef.current = true;
@@ -873,6 +874,37 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
                 </button>
               </div>
             </div>
+
+            {/* Progressive Overload Assistant (Propuesta B) */}
+            {(() => {
+              const pastPerf = FitStorage.getExercisePastPerformance(currentExercise.name);
+              if (!pastPerf) return null;
+              return (
+                <div className="mt-3.5 p-3.5 bg-gradient-to-r from-amber-950/40 via-neutral-900 to-cyan-950/30 border border-amber-500/30 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 text-xs shadow-md">
+                  <div className="flex items-center gap-2.5">
+                    <span className="p-1.5 rounded-xl bg-amber-500/20 text-amber-400 font-black text-sm">📈</span>
+                    <div>
+                      <p className="font-bold text-white flex items-center gap-2">
+                        <span>Marca anterior:</span>
+                        <span className="font-mono text-amber-300 font-extrabold">
+                          {pastPerf.lastWeightKg > 0 ? `${pastPerf.lastWeightKg} kg × ${pastPerf.lastReps} reps` : `${pastPerf.lastReps} reps`}
+                        </span>
+                      </p>
+                      <p className="text-[11px] text-neutral-300 mt-0.5">
+                        🎯 Meta de Sobrecarga Hoy:{' '}
+                        <span className="text-cyan-300 font-mono font-black">
+                          {pastPerf.suggestedWeightKg > pastPerf.lastWeightKg ? `+2.5 kg (${pastPerf.suggestedWeightKg} kg)` : `+1 rep (${pastPerf.suggestedReps} reps)`}
+                        </span>{' '}
+                        para nuevo récord personal.
+                      </p>
+                    </div>
+                  </div>
+                  <span className="text-[9px] font-mono uppercase bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2.5 py-0.5 rounded-full font-extrabold shrink-0">
+                    Sobrecarga Asistida
+                  </span>
+                </div>
+              );
+            })()}
 
             {/* Instruction Tip */}
             {currentExercise.instructions && (
