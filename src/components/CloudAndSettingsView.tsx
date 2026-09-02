@@ -101,16 +101,21 @@ export const CloudAndSettingsView: React.FC<CloudAndSettingsViewProps> = ({
   };
 
   // Sync now action
-  const handleCloudSync = () => {
+  const handleCloudSync = async () => {
     setIsSyncing(true);
     sound.playBeep(850, 80);
 
-    setTimeout(() => {
+    try {
+      await FitStorage.syncUserToCloud(user);
       setIsSyncing(false);
       setSyncSuccessMsg('¡Sincronizado con la nube exitosamente!');
       sound.playAchievement();
       setTimeout(() => setSyncSuccessMsg(null), 3500);
-    }, 1200);
+    } catch {
+      setIsSyncing(false);
+      setSyncSuccessMsg('¡Guardado localmente!');
+      setTimeout(() => setSyncSuccessMsg(null), 3000);
+    }
   };
 
   // Request browser push permissions

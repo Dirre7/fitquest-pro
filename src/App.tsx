@@ -706,9 +706,10 @@ export default function App() {
           achievements={achievements}
           lang={lang}
           onClose={() => setProfileModalOpen(false)}
-          onSaveUser={(updatedUser) => {
-            FitStorage.saveUser(updatedUser);
+          onSaveUser={async (updatedUser) => {
             setUser(updatedUser);
+            FitStorage.saveUser(updatedUser);
+            await FitStorage.syncUserToCloud(updatedUser);
           }}
         />
       )}

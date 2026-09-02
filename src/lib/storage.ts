@@ -131,20 +131,26 @@ export class FitStorage {
 
         userProfile = {
           ...defaults,
+          ...existingLocalUser,
           ...cloudData,
           id: uid,
-          name: cloudData.name || defaults.name,
-          avatar: cloudData.avatar || defaults.avatar,
-          rankTitle: cloudData.rankTitle || defaults.rankTitle,
-          weightKg: cloudData.weightKg ?? defaults.weightKg,
-          targetWeightKg: cloudData.targetWeightKg ?? defaults.targetWeightKg,
+          name: cloudData.name || existingLocalUser.name || defaults.name,
+          avatar: cloudData.avatar || existingLocalUser.avatar || defaults.avatar,
+          rankTitle: cloudData.rankTitle || existingLocalUser.rankTitle || defaults.rankTitle,
+          weightKg: cloudData.weightKg ?? existingLocalUser.weightKg ?? defaults.weightKg,
+          targetWeightKg: cloudData.targetWeightKg ?? existingLocalUser.targetWeightKg ?? defaults.targetWeightKg,
           claimedChallenges: mergedClaimed,
-          claimedChallengesWeek: cloudData.claimedChallengesWeek,
+          claimedChallengesWeek: cloudData.claimedChallengesWeek || existingLocalUser.claimedChallengesWeek,
           unlockedBadges: mergedBadges,
         };
         try {
           localStorage.setItem('fitquest_claimed_challenges', JSON.stringify(mergedClaimed));
         } catch {}
+
+        // If local had a custom title or badges that cloud lacked, sync them back to cloud immediately
+        if (userProfile.rankTitle !== cloudData.rankTitle || (userProfile.unlockedBadges?.length || 0) > (cloudData.unlockedBadges?.length || 0)) {
+          this.syncUserToCloud(userProfile);
+        }
       } else {
         // Brand-new user: initialize from zero
         userProfile = createFreshUser(uid, displayName || (email ? email.split('@')[0] : 'Nuevo Atleta'), email);
