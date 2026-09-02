@@ -54,54 +54,47 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
 
   const totalDistance = history.reduce((acc, h) => acc + (h.totalDistanceKm || 0), 0);
 
-  // Volume progression over time chart data
+  // Volume progression over time chart data (only real history)
   const volumeData = history.length > 0 
     ? [...history].reverse().map((h) => ({
         date: h.date.slice(5), // MM-DD
-        vol: h.totalVolumeKg,
-        calories: h.calories,
-        bpm: h.avgHeartRate,
-        duration: h.durationMinutes,
-      }))
-    : [
-        { date: 'Lun', vol: 1200, calories: 340, bpm: 130, duration: 45 },
-        { date: 'Mie', vol: 2400, calories: 480, bpm: 142, duration: 55 },
-        { date: 'Vie', vol: 3100, calories: 520, bpm: 145, duration: 60 },
-        { date: 'Dom', vol: 1800, calories: 390, bpm: 135, duration: 40 },
-      ];
-
-  // Cardio progression over time chart data
-  const cardioData = history.length > 0
-    ? [...history].reverse().map((h) => ({
-        date: h.date.slice(5),
-        km: h.totalDistanceKm || (h.routineTitle?.toLowerCase().includes('cardio') ? 4.5 : 0),
+        vol: h.totalVolumeKg || 0,
+        calories: h.calories || 0,
         bpm: h.avgHeartRate || 135,
-        duration: h.durationMinutes,
+        duration: h.durationMinutes || 0,
       }))
-    : [
-        { date: 'Lun', km: 3.5, bpm: 132, duration: 25 },
-        { date: 'Mie', km: 5.0, bpm: 144, duration: 32 },
-        { date: 'Vie', km: 7.2, bpm: 148, duration: 45 },
-        { date: 'Dom', km: 10.0, bpm: 155, duration: 58 },
-      ];
+    : [];
 
-  // Estimated 1RM Progression data
-  const strength1rmData = [
-    { week: 'Sem 1', Bench: 70, Squat: 90, Deadlift: 110, OHP: 45 },
-    { week: 'Sem 2', Bench: 72.5, Squat: 95, Deadlift: 115, OHP: 47.5 },
-    { week: 'Sem 3', Bench: 77.5, Squat: 100, Deadlift: 122.5, OHP: 50 },
-    { week: 'Sem 4', Bench: 82.5, Squat: 107.5, Deadlift: 130, OHP: 52.5 },
-    { week: 'Sem 5', Bench: 87.5, Squat: 115, Deadlift: 140, OHP: 55 },
-  ];
+  // Cardio progression over time chart data (only real history)
+  const cardioData = history.length > 0
+    ? [...history]
+        .filter((h) => (h.totalDistanceKm || 0) > 0 || h.routineTitle?.toLowerCase().includes('cardio'))
+        .reverse()
+        .map((h) => ({
+          date: h.date.slice(5),
+          km: h.totalDistanceKm || 0,
+          bpm: h.avgHeartRate || 135,
+          duration: h.durationMinutes || 0,
+        }))
+    : [];
+
+  // Estimated 1RM Progression data (computed from real history)
+  const strength1rmData = history.length > 0
+    ? [...history].reverse().map((h, idx) => ({
+        week: `S${idx + 1}`,
+        vol: h.totalVolumeKg || 0,
+        calc1rm: Math.round(((h.totalVolumeKg || 0) / Math.max(1, h.completedExercises || 4)) * 0.15),
+      }))
+    : [];
 
   // Muscle group split breakdown
   const muscleDistributionData = [
-    { muscle: 'Pectoral', value: user.attributes.strength || 60 },
-    { muscle: 'Espalda', value: Math.min(100, (user.attributes.strength || 60) + 5) },
-    { muscle: 'Piernas', value: user.attributes.endurance || 65 },
-    { muscle: 'Hombros', value: user.attributes.discipline || 55 },
-    { muscle: 'Brazos', value: user.attributes.agility || 50 },
-    { muscle: 'Core', value: 65 },
+    { muscle: 'Pectoral', value: user.attributes.strength || 10 },
+    { muscle: 'Espalda', value: user.attributes.strength || 10 },
+    { muscle: 'Piernas', value: user.attributes.endurance || 10 },
+    { muscle: 'Hombros', value: user.attributes.discipline || 10 },
+    { muscle: 'Brazos', value: user.attributes.agility || 10 },
+    { muscle: 'Core', value: user.attributes.discipline || 10 },
   ];
 
   // Export JSON backup (Full app restoration)
@@ -210,23 +203,31 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
           </div>
 
           <div className="h-64 w-full pt-4">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={volumeData}>
-                <defs>
-                  <linearGradient id="volGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#06b6d4" stopOpacity={0.4} />
-                    <stop offset="95%" stopColor="#06b6d4" stopOpacity={0.0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#262626" />
-                <XAxis dataKey="date" stroke="#737373" fontSize={11} fontStyle="italic" />
-                <YAxis stroke="#737373" fontSize={11} />
-                <Tooltip
-                  contentStyle={{ backgroundColor: '#121214', borderColor: '#333', borderRadius: '16px', fontSize: '12px' }}
-                />
-                <Area type="monotone" dataKey="vol" stroke="#06b6d4" strokeWidth={2.5} fillOpacity={1} fill="url(#volGrad)" name="Volumen (kg)" />
-              </AreaChart>
-            </ResponsiveContainer>
+            {volumeData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={volumeData}>
+                  <defs>
+                    <linearGradient id="volGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#06b6d4" stopOpacity={0.4} />
+                      <stop offset="95%" stopColor="#06b6d4" stopOpacity={0.0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#262626" />
+                  <XAxis dataKey="date" stroke="#737373" fontSize={11} fontStyle="italic" />
+                  <YAxis stroke="#737373" fontSize={11} />
+                  <Tooltip
+                    contentStyle={{ backgroundColor: '#121214', borderColor: '#333', borderRadius: '16px', fontSize: '12px' }}
+                  />
+                  <Area type="monotone" dataKey="vol" stroke="#06b6d4" strokeWidth={2.5} fillOpacity={1} fill="url(#volGrad)" name="Volumen (kg)" />
+                </AreaChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-full w-full flex flex-col items-center justify-center text-center p-6 bg-white/[0.01] rounded-2xl border border-dashed border-white/5">
+                <TrendingUp className="w-8 h-8 text-neutral-600 mb-2" />
+                <p className="text-xs font-mono font-bold text-neutral-400">Sin datos de volumen</p>
+                <p className="text-[11px] text-neutral-500 max-w-xs mt-1">Completa entrenamientos para ver tu curva de sobrecarga progresiva en tiempo real.</p>
+              </div>
+            )}
           </div>
         </div>
 
@@ -243,19 +244,25 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
           </div>
 
           <div className="h-64 w-full pt-4">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={strength1rmData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#262626" />
-                <XAxis dataKey="week" stroke="#737373" fontSize={11} />
-                <YAxis stroke="#737373" fontSize={11} domain={[30, 'auto']} />
-                <Tooltip
-                  contentStyle={{ backgroundColor: '#121214', borderColor: '#333', borderRadius: '16px', fontSize: '12px' }}
-                />
-                <Line type="monotone" dataKey="Bench" stroke="#06b6d4" strokeWidth={2} name="Banca" />
-                <Line type="monotone" dataKey="Squat" stroke="#10b981" strokeWidth={2} name="Sentadilla" />
-                <Line type="monotone" dataKey="Deadlift" stroke="#f59e0b" strokeWidth={2} name="Peso Muerto" />
-              </LineChart>
-            </ResponsiveContainer>
+            {strength1rmData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={strength1rmData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#262626" />
+                  <XAxis dataKey="week" stroke="#737373" fontSize={11} />
+                  <YAxis stroke="#737373" fontSize={11} domain={[30, 'auto']} />
+                  <Tooltip
+                    contentStyle={{ backgroundColor: '#121214', borderColor: '#333', borderRadius: '16px', fontSize: '12px' }}
+                  />
+                  <Line type="monotone" dataKey="calc1rm" stroke="#10b981" strokeWidth={2.5} name="1RM Estimado (kg)" />
+                </LineChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-full w-full flex flex-col items-center justify-center text-center p-6 bg-white/[0.01] rounded-2xl border border-dashed border-white/5">
+                <BarChart3 className="w-8 h-8 text-neutral-600 mb-2" />
+                <p className="text-xs font-mono font-bold text-neutral-400">Sin registros 1RM</p>
+                <p className="text-[11px] text-neutral-500 max-w-xs mt-1">Registra series efectivas para calcular la progresión de fuerza en tus básicos.</p>
+              </div>
+            )}
           </div>
         </div>
 
@@ -274,23 +281,31 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
           </div>
 
           <div className="h-64 w-full pt-4">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={cardioData}>
-                <defs>
-                  <linearGradient id="cardioGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#a855f7" stopOpacity={0.4} />
-                    <stop offset="95%" stopColor="#a855f7" stopOpacity={0.0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#262626" />
-                <XAxis dataKey="date" stroke="#737373" fontSize={11} />
-                <YAxis stroke="#737373" fontSize={11} />
-                <Tooltip
-                  contentStyle={{ backgroundColor: '#121214', borderColor: '#333', borderRadius: '16px', fontSize: '12px' }}
-                />
-                <Area type="monotone" dataKey="km" stroke="#a855f7" strokeWidth={2.5} fillOpacity={1} fill="url(#cardioGrad)" name="Distancia (km)" />
-              </AreaChart>
-            </ResponsiveContainer>
+            {cardioData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={cardioData}>
+                  <defs>
+                    <linearGradient id="cardioGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#a855f7" stopOpacity={0.4} />
+                      <stop offset="95%" stopColor="#a855f7" stopOpacity={0.0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#262626" />
+                  <XAxis dataKey="date" stroke="#737373" fontSize={11} />
+                  <YAxis stroke="#737373" fontSize={11} />
+                  <Tooltip
+                    contentStyle={{ backgroundColor: '#121214', borderColor: '#333', borderRadius: '16px', fontSize: '12px' }}
+                  />
+                  <Area type="monotone" dataKey="km" stroke="#a855f7" strokeWidth={2.5} fillOpacity={1} fill="url(#cardioGrad)" name="Distancia (km)" />
+                </AreaChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-full w-full flex flex-col items-center justify-center text-center p-6 bg-white/[0.01] rounded-2xl border border-dashed border-white/5">
+                <Activity className="w-8 h-8 text-neutral-600 mb-2" />
+                <p className="text-xs font-mono font-bold text-neutral-400">Sin sesiones de cardio</p>
+                <p className="text-[11px] text-neutral-500 max-w-xs mt-1">Completa carreras, cinta o ciclismo para visualizar tu telemetría aeróbica.</p>
+              </div>
+            )}
           </div>
         </div>
 
@@ -309,17 +324,25 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
           </div>
 
           <div className="h-64 w-full pt-4">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={volumeData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#262626" />
-                <XAxis dataKey="date" stroke="#737373" fontSize={11} />
-                <YAxis stroke="#737373" fontSize={11} />
-                <Tooltip
-                  contentStyle={{ backgroundColor: '#121214', borderColor: '#333', borderRadius: '16px', fontSize: '12px' }}
-                />
-                <Bar dataKey="calories" fill="#f97316" radius={[8, 8, 0, 0]} name="Calorías (kcal)" />
-              </BarChart>
-            </ResponsiveContainer>
+            {volumeData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={volumeData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#262626" />
+                  <XAxis dataKey="date" stroke="#737373" fontSize={11} />
+                  <YAxis stroke="#737373" fontSize={11} />
+                  <Tooltip
+                    contentStyle={{ backgroundColor: '#121214', borderColor: '#333', borderRadius: '16px', fontSize: '12px' }}
+                  />
+                  <Bar dataKey="calories" fill="#f97316" radius={[8, 8, 0, 0]} name="Calorías (kcal)" />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-full w-full flex flex-col items-center justify-center text-center p-6 bg-white/[0.01] rounded-2xl border border-dashed border-white/5">
+                <Flame className="w-8 h-8 text-neutral-600 mb-2" />
+                <p className="text-xs font-mono font-bold text-neutral-400">Sin gasto calórico registrado</p>
+                <p className="text-[11px] text-neutral-500 max-w-xs mt-1">Tus calorías quemadas se calcularán automáticamente tras cada sesión.</p>
+              </div>
+            )}
           </div>
         </div>
 
