@@ -930,6 +930,10 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
                   currentExercise.type === 'cardio' ||
                   currentExercise.name.toLowerCase().includes('carrera') ||
                   currentExercise.name.toLowerCase().includes('cinta') ||
+                  currentExercise.name.toLowerCase().includes('caminata') ||
+                  currentExercise.name.toLowerCase().includes('andar') ||
+                  currentExercise.name.toLowerCase().includes('walk') ||
+                  currentExercise.name.toLowerCase().includes('paseo') ||
                   currentExercise.name.toLowerCase().includes('running') ||
                   currentExercise.name.toLowerCase().includes('remo') ||
                   currentExercise.name.toLowerCase().includes('sprint') ||

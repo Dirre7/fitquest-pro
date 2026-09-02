@@ -560,7 +560,57 @@ export const defaultRoutines: WorkoutRoutine[] = [
     ],
   },
 
-  // CARDIO
+  // CARDIO & WALKING
+  {
+    id: 'rt_cardio_12330',
+    title: 'Protocolo 12-3-30: Caminata en Cinta con Inclinación',
+    description: '30 minutos de caminata al 12% de pendiente y velocidad 4.8-5.0 km/h. Máxima oxidación de grasa sin impacto articular.',
+    category: 'Cardio',
+    difficulty: 'Beginner',
+    durationMinutes: 30,
+    estimatedCalories: 310,
+    xpReward: 250,
+    targetMuscles: ['Cardio', 'Piernas'],
+    tags: ['Cardio', 'Cinta', '12-3-30', 'LISS'],
+    exercises: [
+      {
+        id: 'ex_walk_12330',
+        name: 'Caminata en Cinta con Inclinación (12-3-30)',
+        muscleGroup: 'Cardio',
+        equipment: 'Machine',
+        restSeconds: 0,
+        instructions: 'Ajusta la cinta al 12% de inclinación y camina a 4.8 km/h durante 30 min continuos. Braceo rítmico sin apoyarte en los laterales.',
+        sets: [
+          { id: 's_w1', setNumber: 1, targetReps: 1, actualReps: 1, targetWeightKg: 2.5, actualWeightKg: 2.5, completed: false, inclinePercent: 12, speedKmh: 4.8 },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'rt_outdoor_power_walk',
+    title: 'Caminata & Marcha al Aire Libre (Power Walk)',
+    description: 'Paseo continuo y marcha activa en exterior con GPS para acumular volumen de pasos y mejorar la salud cardiovascular.',
+    category: 'Cardio',
+    difficulty: 'Beginner',
+    durationMinutes: 45,
+    estimatedCalories: 260,
+    xpReward: 250,
+    targetMuscles: ['Cardio', 'Piernas'],
+    tags: ['Cardio', 'Caminata', 'GPS', 'Salud'],
+    exercises: [
+      {
+        id: 'ex_outdoor_walk',
+        name: 'Caminata / Andar al Aire Libre (GPS)',
+        muscleGroup: 'Cardio',
+        equipment: 'None',
+        restSeconds: 0,
+        instructions: 'Camina a paso ligero y constante. Registra tu distancia, ritmo de paso y zonas cardíacas.',
+        sets: [
+          { id: 's_w2', setNumber: 1, targetReps: 1, actualReps: 1, targetWeightKg: 3.5, actualWeightKg: 3.5, completed: false },
+        ],
+      },
+    ],
+  },
   {
     id: 'rt_cardio_zone2',
     title: 'Cardio Zone 2 & Quema de Grasa',

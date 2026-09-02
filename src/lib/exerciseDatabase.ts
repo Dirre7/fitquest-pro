@@ -14,7 +14,43 @@ export interface ExerciseTemplate {
 }
 
 export const standardExerciseCatalog: ExerciseTemplate[] = [
-  // CARDIO & RUNNING
+  // CARDIO, WALKING & RUNNING
+  {
+    id: 'tpl_walk_outdoor',
+    name: 'Caminata / Andar al Aire Libre (GPS)',
+    muscleGroup: 'Cardio',
+    equipment: 'None',
+    type: 'cardio',
+    defaultSets: 1,
+    defaultReps: 1,
+    defaultWeightKg: 3.5,
+    instructions: 'Marcha continua o paseo a ritmo constante al aire libre con seguimiento GPS.',
+    tip: 'Mantén los hombros relajados y el abdomen activo durante la caminata.',
+  },
+  {
+    id: 'tpl_walk_incline_treadmill',
+    name: 'Caminata en Cinta con Inclinación (12-3-30)',
+    muscleGroup: 'Cardio',
+    equipment: 'Machine',
+    type: 'cardio',
+    defaultSets: 1,
+    defaultReps: 1,
+    defaultWeightKg: 2.5,
+    instructions: 'Caminata en cinta con pendiente (8%-12% de inclinación) a velocidad moderada (4.5 - 5.5 km/h).',
+    tip: 'No te agarres fuertemente a los manillares; bracea de forma natural para mayor quema calórica.',
+  },
+  {
+    id: 'tpl_walk_active_recovery',
+    name: 'Paseo de Recuperación Activa (LISS)',
+    muscleGroup: 'Cardio',
+    equipment: 'None',
+    type: 'cardio',
+    defaultSets: 1,
+    defaultReps: 1,
+    defaultWeightKg: 3.0,
+    instructions: 'Paseo suave para reducir el cortisol, activar la circulación y favorecer la recuperación muscular.',
+    tip: 'Mantén una respiración nasal relajada durante todo el trayecto.',
+  },
   {
     id: 'tpl_run_outdoor',
     name: 'Carrera Exterior / Asfalto (GPS)',
