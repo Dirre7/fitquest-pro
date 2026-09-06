@@ -6,6 +6,8 @@
       "package_name": "com.fitquestpro.app",
       "sha256_cert_fingerprints": [
         "FF:F3:FA:0B:17:39:B4:BB:5C:63:BB:7E:47:BF:93:72:4E:BB:4A:E0:BC:02:BD:83:26:97:55:F4:88:9F:62:5D",
+        "C4:8B:AA:EC:2B:F3:5A:54:4E:5D:C8:E7:21:57:41:CC:0E:63:2C:66:5E:1E:47:EB:5A:0F:73:57:66:63:D1:9D",
+        "0B:63:2F:C0:A5:9F:8B:F2:8E:AC:16:7E:D4:E5:12:5D:34:F7:FC:12:4E:C5:56:22:2B:68:A8:AC:DC:BA:11:C4",
         "F5:15:1A:AD:C3:49:34:8A:ED:E9:F1:21:A3:91:47:9A:C6:49:13:A5:9B:F0:36:95:D7:22:05:F2:86:22:F5:CF"
       ]
     }
@@ -17,6 +19,8 @@
       "package_name": "app.vercel.fitquest_pro_eta.twa",
       "sha256_cert_fingerprints": [
         "FF:F3:FA:0B:17:39:B4:BB:5C:63:BB:7E:47:BF:93:72:4E:BB:4A:E0:BC:02:BD:83:26:97:55:F4:88:9F:62:5D",
+        "C4:8B:AA:EC:2B:F3:5A:54:4E:5D:C8:E7:21:57:41:CC:0E:63:2C:66:5E:1E:47:EB:5A:0F:73:57:66:63:D1:9D",
+        "0B:63:2F:C0:A5:9F:8B:F2:8E:AC:16:7E:D4:E5:12:5D:34:F7:FC:12:4E:C5:56:22:2B:68:A8:AC:DC:BA:11:C4",
         "F5:15:1A:AD:C3:49:34:8A:ED:E9:F1:21:A3:91:47:9A:C6:49:13:A5:9B:F0:36:95:D7:22:05:F2:86:22:F5:CF"
       ]
     }
