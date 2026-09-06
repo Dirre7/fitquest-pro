@@ -925,4 +925,31 @@ export class FitStorage {
       return false;
     }
   }
+
+  public static logWeight(newWeightKg: number, date?: string, currentUser?: UserProfile): UserProfile {
+    const user = currentUser || this.getUser();
+    const todayStr = date || new Date().toISOString().split('T')[0];
+    const history = user.weightHistory && user.weightHistory.length > 0 ? user.weightHistory : [
+      { date: user.joinedAt || new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0], weightKg: user.weightKg || 75 }
+    ];
+    
+    // Check if already logged today
+    const existingIdx = history.findIndex((w) => w.date === todayStr);
+    let updatedHistory = [...history];
+    if (existingIdx >= 0) {
+      updatedHistory[existingIdx] = { date: todayStr, weightKg: newWeightKg };
+    } else {
+      updatedHistory.push({ date: todayStr, weightKg: newWeightKg });
+    }
+    // Sort chronological
+    updatedHistory.sort((a, b) => a.date.localeCompare(b.date));
+
+    const updatedUser: UserProfile = {
+      ...user,
+      weightKg: newWeightKg,
+      weightHistory: updatedHistory,
+    };
+    this.saveUser(updatedUser);
+    return updatedUser;
+  }
 }

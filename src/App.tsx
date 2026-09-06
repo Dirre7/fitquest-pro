@@ -747,6 +747,7 @@ export default function App() {
             user={user}
             lang={lang}
             onNavigateTab={(tab) => setActiveTab(tab)}
+            onUpdateUser={(updated) => setUser(updated)}
           />
         )}
 

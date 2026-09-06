@@ -44,7 +44,11 @@ export interface UserProfile {
   unlockedBadges: string[];
   joinedAt: string;
   weightKg: number;
+  heightCm?: number;
   targetWeightKg: number;
+  weightHistory?: { date: string; weightKg: number }[];
+  fitnessGoal?: 'Hypertrophy' | 'Strength' | 'FatLoss' | 'General';
+  trainingDaysPerWeek?: number;
   claimedChallenges?: string[];
   claimedChallengesWeek?: string;
   lastResetAt?: string;

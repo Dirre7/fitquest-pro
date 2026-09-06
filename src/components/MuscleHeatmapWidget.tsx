@@ -13,13 +13,15 @@ import {
   X,
   Layers,
   Calendar,
+  HelpCircle,
 } from 'lucide-react';
-import { WorkoutHistoryEntry, Language, Exercise } from '../types';
+import { WorkoutHistoryEntry, Language, Exercise, UserProfile } from '../types';
 import { FitStorage } from '../lib/storage';
 import { defaultRoutines } from '../lib/initialData';
 
 interface MuscleHeatmapWidgetProps {
   history: WorkoutHistoryEntry[];
+  user?: UserProfile;
   lang: Language;
   onStartMuscleWorkout?: (muscle: string) => void;
 }
@@ -28,11 +30,13 @@ type Timeframe = '7d' | '30d' | 'all';
 
 export const MuscleHeatmapWidget: React.FC<MuscleHeatmapWidgetProps> = ({
   history = [],
+  user,
   lang,
   onStartMuscleWorkout,
 }) => {
   const [timeframe, setTimeframe] = useState<Timeframe>('7d');
   const [selectedMuscleModal, setSelectedMuscleModal] = useState<string | null>(null);
+  const [showScienceModal, setShowScienceModal] = useState(false);
 
   const now = new Date();
 
@@ -206,14 +210,24 @@ export const MuscleHeatmapWidget: React.FC<MuscleHeatmapWidgetProps> = ({
     }
   });
 
+  // Dynamic Level & Goal Calibration Multipliers
+  const userLevel = user?.level || 5;
+  const isBeginner = userLevel <= 5;
+  const isAdvanced = userLevel >= 15;
+  const goal = user?.fitnessGoal || 'Hypertrophy';
+
+  const levelMultiplier = isBeginner ? 0.85 : isAdvanced ? 1.25 : 1.0;
+  const goalMultiplier = goal === 'Strength' ? 0.85 : goal === 'FatLoss' ? 0.9 : 1.0;
+  const totalMultiplier = levelMultiplier * goalMultiplier;
+
   const muscleList = [
-    { name: 'Pecho', icon: '🏋️', targetSets7d: 12, recoveryHours: 48 },
-    { name: 'Espalda', icon: '🛡️', targetSets7d: 12, recoveryHours: 48 },
-    { name: 'Piernas', icon: '🦵', targetSets7d: 14, recoveryHours: 72 },
-    { name: 'Hombros', icon: '⚡', targetSets7d: 10, recoveryHours: 48 },
-    { name: 'Brazos', icon: '💪', targetSets7d: 10, recoveryHours: 36 },
-    { name: 'Core', icon: '🎯', targetSets7d: 8, recoveryHours: 24 },
-    { name: 'Cardio', icon: '🏃', targetSets7d: 3, recoveryHours: 24 },
+    { name: 'Pecho', icon: '🏋️', targetSets7d: Math.max(8, Math.round(12 * totalMultiplier)), recoveryHours: 48 },
+    { name: 'Espalda', icon: '🛡️', targetSets7d: Math.max(8, Math.round(12 * totalMultiplier)), recoveryHours: 48 },
+    { name: 'Piernas', icon: '🦵', targetSets7d: Math.max(10, Math.round(14 * totalMultiplier)), recoveryHours: 72 },
+    { name: 'Hombros', icon: '⚡', targetSets7d: Math.max(6, Math.round(10 * totalMultiplier)), recoveryHours: 48 },
+    { name: 'Brazos', icon: '💪', targetSets7d: Math.max(6, Math.round(10 * totalMultiplier)), recoveryHours: 36 },
+    { name: 'Core', icon: '🎯', targetSets7d: Math.max(4, Math.round(8 * totalMultiplier)), recoveryHours: 24 },
+    { name: 'Cardio', icon: '🏃', targetSets7d: Math.max(2, Math.round(3 * totalMultiplier)), recoveryHours: 24 },
   ];
 
   // Smart advice generator based on recovery & lowest trained group
@@ -231,13 +245,21 @@ export const MuscleHeatmapWidget: React.FC<MuscleHeatmapWidgetProps> = ({
       {/* Ambient background glow */}
       <div className="absolute top-0 right-1/4 w-48 h-48 bg-cyan-500/5 blur-3xl pointer-events-none" />
 
-      {/* Header with Title, Timeframe Filter & Frequency Calendar */}
+      {/* Header with Title, Methodology Info Button, Timeframe Filter & Frequency Calendar */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-white/5 pb-5">
         <div>
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-[10px] font-mono font-black uppercase px-2.5 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 flex items-center gap-1">
               <Activity className="w-3 h-3" /> FRECUENCIA &amp; BALANCE MUSCULAR
             </span>
+            <button
+              onClick={() => setShowScienceModal(true)}
+              className="text-[10px] font-mono text-cyan-400 hover:text-cyan-300 flex items-center gap-1 bg-white/5 hover:bg-white/10 border border-white/10 px-2 py-0.5 rounded-full transition-colors cursor-pointer"
+              title="¿En base a qué criterio se calculan las series óptimas?"
+            >
+              <HelpCircle className="w-3 h-3" />
+              <span>Metodología &amp; Nivel (Lv.{userLevel})</span>
+            </button>
             <span className="text-[11px] font-mono text-neutral-400">
               {filteredEntries.length} {filteredEntries.length === 1 ? 'sesión registrada' : 'sesiones registradas'}
             </span>
@@ -319,12 +341,12 @@ export const MuscleHeatmapWidget: React.FC<MuscleHeatmapWidgetProps> = ({
           if (progressPercent >= 80) {
             statusColor = 'border-emerald-500/30 bg-emerald-500/[0.05] hover:border-emerald-500/60 shadow-[0_0_15px_rgba(16,185,129,0.1)]';
             statusText = 'Óptimo';
-            badgeColor = 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30';
+            badgeColor = 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30';
             barColor = 'bg-gradient-to-r from-emerald-400 to-teal-400';
           } else if (progressPercent > 0) {
             statusColor = 'border-cyan-500/30 bg-cyan-500/[0.05] hover:border-cyan-500/60 shadow-[0_0_15px_rgba(6,182,212,0.1)]';
             statusText = 'Activo';
-            badgeColor = 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30';
+            badgeColor = 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30';
             barColor = 'bg-gradient-to-r from-cyan-400 to-blue-500';
           }
 
@@ -483,6 +505,65 @@ export const MuscleHeatmapWidget: React.FC<MuscleHeatmapWidgetProps> = ({
                 <span>Explorar Rutinas de {selectedMuscleData.name}</span>
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Science & Methodology Explanation Modal */}
+      {showScienceModal && (
+        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in">
+          <div className="bg-[#121214] border border-cyan-500/40 rounded-3xl p-6 max-w-lg w-full shadow-2xl relative overflow-hidden space-y-4 animate-in zoom-in-95">
+            <div className="flex items-center justify-between border-b border-white/5 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-cyan-500/20 text-cyan-400 flex items-center justify-center font-bold">
+                  🧬
+                </div>
+                <h3 className="font-display font-black text-lg text-white">
+                  Ciencia del Volumen &amp; Calibración
+                </h3>
+              </div>
+              <button
+                onClick={() => setShowScienceModal(false)}
+                className="p-1 rounded-xl text-neutral-400 hover:text-white cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="text-xs text-neutral-300 space-y-3 leading-relaxed">
+              <p>
+                FitQuest Pro utiliza el consenso científico de <strong>Hitos de Volumen Semanal (Volume Landmarks)</strong> establecido por investigadores líderes en hipertrofia (<em>Dr. Brad Schoenfeld y Dr. Mike Israetel</em>):
+              </p>
+
+              <div className="space-y-2 font-mono bg-white/5 p-3 rounded-2xl border border-white/5 text-[11px]">
+                <div className="flex items-start gap-2">
+                  <span className="text-cyan-400 font-bold">MEV (Volumen Mínimo):</span>
+                  <span>~6-8 series/sem para mantener o iniciar adaptaciones.</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="text-emerald-400 font-bold">MAV (Volumen Óptimo):</span>
+                  <span><strong>10 a 16 series/sem</strong> para máxima hipertrofia y progreso.</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="text-amber-400 font-bold">MRV (Volumen Límite):</span>
+                  <span>&gt;20-22 series/sem (riesgo de sobreentrenamiento).</span>
+                </div>
+              </div>
+
+              <div className="p-3 bg-cyan-500/10 border border-cyan-500/20 rounded-2xl">
+                <p className="font-bold text-cyan-300 mb-1">🎯 Calibrado para tu Atleta:</p>
+                <p className="text-[11px] text-neutral-300">
+                  Tu nivel actual es <strong>Nivel {userLevel} ({user?.rankTitle || 'Iniciado'})</strong>. Tus metas semanales se adaptan dinámicamente: los atletas principiantes tienen metas de 8-10 series, mientras que los avanzados requieren 14-16 series para continuar progresando.
+                </p>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setShowScienceModal(false)}
+              className="w-full py-2.5 rounded-2xl bg-white/10 hover:bg-white/20 text-white font-mono font-bold text-xs transition-colors cursor-pointer"
+            >
+              Entendido
+            </button>
           </div>
         </div>
       )}
