@@ -29,7 +29,6 @@ import {
   Language,
 } from '../types';
 import { translations } from '../lib/i18n';
-import { MuscleHeatmapWidget } from './MuscleHeatmapWidget';
 import { FitStorage } from '../lib/storage';
 
 interface DashboardViewProps {
@@ -169,13 +168,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
         </div>
       )}
-
-      {/* 🧬 MAPA DE CALOR MUSCULAR & FRECUENCIA (Propuesta C) */}
-      <MuscleHeatmapWidget
-        history={history}
-        lang={lang}
-        onStartMuscleWorkout={() => onNavigateTab('routines')}
-      />
 
       {/* Top Hero Banner: Gamification Level, Rank & Metrics */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">

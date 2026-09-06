@@ -42,17 +42,20 @@ import { WorkoutHistoryEntry, UserProfile, Language } from '../types';
 import { translations } from '../lib/i18n';
 import { FitStorage } from '../lib/storage';
 import { sound } from '../lib/soundFx';
+import { MuscleHeatmapWidget } from './MuscleHeatmapWidget';
 
 interface AnalyticsViewProps {
   history: WorkoutHistoryEntry[];
   user: UserProfile;
   lang: Language;
+  onNavigateTab?: (tab: string) => void;
 }
 
 export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
   history,
   user,
   lang,
+  onNavigateTab,
 }) => {
   const t = translations[lang];
   const [expandedSessionId, setExpandedSessionId] = useState<string | null>(null);
@@ -189,6 +192,13 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
           </button>
         </div>
       </div>
+
+      {/* 🧬 Mapa de Activación & Frecuencia Muscular */}
+      <MuscleHeatmapWidget
+        history={history}
+        lang={lang}
+        onStartMuscleWorkout={onNavigateTab ? () => onNavigateTab('routines') : undefined}
+      />
 
       {/* Main Charts Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

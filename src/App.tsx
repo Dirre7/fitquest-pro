@@ -746,6 +746,7 @@ export default function App() {
             history={history}
             user={user}
             lang={lang}
+            onNavigateTab={(tab) => setActiveTab(tab)}
           />
         )}
 
