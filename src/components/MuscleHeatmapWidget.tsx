@@ -14,7 +14,9 @@ import {
   Layers,
   Calendar,
 } from 'lucide-react';
-import { WorkoutHistoryEntry, Language } from '../types';
+import { WorkoutHistoryEntry, Language, Exercise } from '../types';
+import { FitStorage } from '../lib/storage';
+import { defaultRoutines } from '../lib/initialData';
 
 interface MuscleHeatmapWidgetProps {
   history: WorkoutHistoryEntry[];
@@ -85,65 +87,121 @@ export const MuscleHeatmapWidget: React.FC<MuscleHeatmapWidgetProps> = ({
     };
   });
 
-  // Aggregate muscle work
+  // Get catalog routines for automatic historical reconstruction
+  const allRoutines = [...defaultRoutines, ...FitStorage.getRoutines()];
+
+  // Helper to map muscle group string to normalized target group
+  const mapMuscleGroup = (mgName: string): string => {
+    const mg = (mgName || '').toLowerCase();
+    if (mg.includes('chest') || mg.includes('pecho') || mg.includes('pectoral')) return 'Pecho';
+    if (mg.includes('back') || mg.includes('espalda') || mg.includes('lats') || mg.includes('dorsal')) return 'Espalda';
+    if (mg.includes('shoulder') || mg.includes('hombro') || mg.includes('delt')) return 'Hombros';
+    if (mg.includes('arm') || mg.includes('bicep') || mg.includes('tricep') || mg.includes('brazo')) return 'Brazos';
+    if (mg.includes('leg') || mg.includes('pierna') || mg.includes('quad') || mg.includes('hamstring') || mg.includes('glute') || mg.includes('femoral') || mg.includes('gemelo')) return 'Piernas';
+    if (mg.includes('core') || mg.includes('ab') || mg.includes('abs') || mg.includes('abdomen')) return 'Core';
+    if (mg.includes('cardio') || mg.includes('run') || mg.includes('carrera') || mg.includes('walk') || mg.includes('caminata') || mg.includes('cinta')) return 'Cardio';
+    return 'Pecho';
+  };
+
+  // Helper to add exercise to muscleScores
+  const registerExerciseToMuscle = (
+    targetGroup: string,
+    exName: string,
+    completedSets: number,
+    setVolume: number,
+    daysAgo: number
+  ) => {
+    if (!muscleScores[targetGroup]) return;
+
+    muscleScores[targetGroup].sets += completedSets;
+    muscleScores[targetGroup].volumeKg += setVolume;
+
+    if (muscleScores[targetGroup].lastTrainedDaysAgo === null || daysAgo < muscleScores[targetGroup].lastTrainedDaysAgo!) {
+      muscleScores[targetGroup].lastTrainedDaysAgo = daysAgo;
+    }
+
+    const existing = muscleScores[targetGroup].exercisesDone.find((e) => e.name.toLowerCase() === exName.toLowerCase());
+    if (existing) {
+      existing.sets += completedSets;
+      existing.volumeKg += setVolume;
+    } else {
+      muscleScores[targetGroup].exercisesDone.push({
+        name: exName,
+        sets: completedSets,
+        volumeKg: setVolume,
+      });
+    }
+  };
+
+  // Aggregate muscle work across all filtered entries
   filteredEntries.forEach((entry) => {
     const entryDate = new Date(entry.date);
     const daysAgo = Math.floor((now.getTime() - entryDate.getTime()) / (1000 * 60 * 60 * 24));
 
+    // Case 1: Entry has explicit exercises array
     if (entry.exercises && entry.exercises.length > 0) {
       entry.exercises.forEach((ex) => {
-        const mg = (ex.muscleGroup || '').toLowerCase();
-        let targetGroup = 'Pecho';
-
-        if (mg.includes('chest') || mg.includes('pecho')) targetGroup = 'Pecho';
-        else if (mg.includes('back') || mg.includes('espalda') || mg.includes('lats')) targetGroup = 'Espalda';
-        else if (mg.includes('shoulder') || mg.includes('hombro') || mg.includes('delt')) targetGroup = 'Hombros';
-        else if (mg.includes('arm') || mg.includes('bicep') || mg.includes('tricep') || mg.includes('brazo')) targetGroup = 'Brazos';
-        else if (mg.includes('leg') || mg.includes('pierna') || mg.includes('quad') || mg.includes('hamstring') || mg.includes('glute')) targetGroup = 'Piernas';
-        else if (mg.includes('core') || mg.includes('ab') || mg.includes('abs')) targetGroup = 'Core';
-        else if (mg.includes('cardio') || mg.includes('run') || mg.includes('carrera') || mg.includes('walk') || mg.includes('caminata')) targetGroup = 'Cardio';
-
-        const completedSets = ex.sets ? ex.sets.filter((s) => s.completed || (s.actualReps && s.actualReps > 0)).length : 3;
-        const setVolume = ex.sets
-          ? ex.sets.reduce((sum, s) => sum + (s.actualReps || 0) * (s.actualWeightKg || s.targetWeightKg || 0), 0)
-          : (ex.prKg || 0) * 10;
-
-        if (muscleScores[targetGroup]) {
-          muscleScores[targetGroup].sets += completedSets;
-          muscleScores[targetGroup].volumeKg += setVolume;
-          if (muscleScores[targetGroup].lastTrainedDaysAgo === null || daysAgo < muscleScores[targetGroup].lastTrainedDaysAgo!) {
-            muscleScores[targetGroup].lastTrainedDaysAgo = daysAgo;
-          }
-
-          // Track exercise list
-          const existingEx = muscleScores[targetGroup].exercisesDone.find((e) => e.name === ex.name);
-          if (existingEx) {
-            existingEx.sets += completedSets;
-            existingEx.volumeKg += setVolume;
-          } else {
-            muscleScores[targetGroup].exercisesDone.push({
-              name: ex.name,
-              sets: completedSets,
-              volumeKg: setVolume,
-            });
-          }
+        const targetGroup = mapMuscleGroup(ex.muscleGroup || '');
+        const completedSets = ex.sets
+          ? ex.sets.filter((s) => s.completed || (s.actualReps && s.actualReps > 0)).length || ex.sets.length
+          : 3;
+        
+        let setVolume = 0;
+        if (ex.sets && ex.sets.length > 0) {
+          setVolume = ex.sets.reduce((sum, s) => sum + (s.actualReps || 0) * (s.actualWeightKg || s.targetWeightKg || 0), 0);
         }
+        if (setVolume === 0 && entry.totalVolumeKg > 0 && entry.exercises) {
+          setVolume = Math.round(entry.totalVolumeKg / entry.exercises.length);
+        }
+
+        registerExerciseToMuscle(targetGroup, ex.name, completedSets, setVolume, daysAgo);
       });
-    } else {
-      // Fallback
-      const title = (entry.routineTitle || '').toLowerCase();
-      if (title.includes('pecho') || title.includes('push') || title.includes('empuje')) {
-        muscleScores['Pecho'].sets += 6;
-        muscleScores['Hombros'].sets += 4;
-        muscleScores['Brazos'].sets += 4;
-      } else if (title.includes('espalda') || title.includes('pull') || title.includes('tirón')) {
-        muscleScores['Espalda'].sets += 6;
-        muscleScores['Brazos'].sets += 4;
-      } else if (title.includes('pierna') || title.includes('leg')) {
-        muscleScores['Piernas'].sets += 10;
+    } 
+    // Case 2: Historical entry without explicit exercises: Reconstruct from catalog
+    else {
+      const routineTitle = (entry.routineTitle || '').trim().toLowerCase();
+      const matchedRoutine = allRoutines.find(
+        (r) => r.id === entry.routineId || r.title.toLowerCase() === routineTitle || routineTitle.includes(r.title.toLowerCase())
+      );
+
+      if (matchedRoutine && matchedRoutine.exercises && matchedRoutine.exercises.length > 0) {
+        const totalExs = matchedRoutine.exercises.length;
+        const volumePerEx = entry.totalVolumeKg > 0 ? Math.round(entry.totalVolumeKg / totalExs) : 0;
+
+        matchedRoutine.exercises.forEach((ex) => {
+          const targetGroup = mapMuscleGroup(ex.muscleGroup || '');
+          const setsCount = ex.sets ? ex.sets.length : 3;
+          registerExerciseToMuscle(targetGroup, ex.name, setsCount, volumePerEx, daysAgo);
+        });
       } else {
-        muscleScores['Pecho'].sets += 3;
-        muscleScores['Espalda'].sets += 3;
+        // Fallback reconstruction by routine title heuristics
+        const title = routineTitle;
+        const totalVol = entry.totalVolumeKg || 0;
+
+        if (title.includes('pecho') && title.includes('espalda')) {
+          registerExerciseToMuscle('Pecho', 'Press de Banca Plano', 4, Math.round(totalVol * 0.3), daysAgo);
+          registerExerciseToMuscle('Pecho', 'Press Inclinado con Mancuernas', 3, Math.round(totalVol * 0.2), daysAgo);
+          registerExerciseToMuscle('Espalda', 'Remo con Barra', 4, Math.round(totalVol * 0.3), daysAgo);
+          registerExerciseToMuscle('Espalda', 'Jalón al Pecho', 3, Math.round(totalVol * 0.2), daysAgo);
+        } else if (title.includes('torso')) {
+          registerExerciseToMuscle('Pecho', 'Press de Banca Pesado', 4, Math.round(totalVol * 0.35), daysAgo);
+          registerExerciseToMuscle('Espalda', 'Remo Pendlay con Barra', 4, Math.round(totalVol * 0.35), daysAgo);
+          registerExerciseToMuscle('Hombros', 'Press Militar Overhead', 3, Math.round(totalVol * 0.15), daysAgo);
+          registerExerciseToMuscle('Brazos', 'Fondos / Tríceps', 3, Math.round(totalVol * 0.15), daysAgo);
+        } else if (title.includes('powerlifting') || title.includes('fuerza')) {
+          registerExerciseToMuscle('Pecho', 'Press de Banca Competición', 5, Math.round(totalVol * 0.35), daysAgo);
+          registerExerciseToMuscle('Piernas', 'Sentadilla Trasera con Barra', 5, Math.round(totalVol * 0.35), daysAgo);
+          registerExerciseToMuscle('Espalda', 'Peso Muerto Convencional', 4, Math.round(totalVol * 0.30), daysAgo);
+        } else if (title.includes('pierna') || title.includes('leg') || title.includes('glúteo')) {
+          registerExerciseToMuscle('Piernas', 'Sentadilla Hack / Prensa', 4, Math.round(totalVol * 0.4), daysAgo);
+          registerExerciseToMuscle('Piernas', 'Peso Muerto Rumano', 3, Math.round(totalVol * 0.3), daysAgo);
+          registerExerciseToMuscle('Piernas', 'Extensiones & Curl Femoral', 4, Math.round(totalVol * 0.3), daysAgo);
+        } else if (title.includes('caminata') || title.includes('carrera') || title.includes('cardio')) {
+          registerExerciseToMuscle('Cardio', title.includes('caminata') ? 'Caminata / Andar al Aire Libre' : 'Carrera Continua', 1, 0, daysAgo);
+        } else {
+          registerExerciseToMuscle('Pecho', 'Press de Banca General', 3, Math.round(totalVol * 0.5), daysAgo);
+          registerExerciseToMuscle('Espalda', 'Remo con Mancuerna', 3, Math.round(totalVol * 0.5), daysAgo);
+        }
       }
     }
   });
@@ -195,7 +253,7 @@ export const MuscleHeatmapWidget: React.FC<MuscleHeatmapWidgetProps> = ({
           <div className="flex items-center bg-black/40 border border-white/10 p-1 rounded-2xl">
             <button
               onClick={() => setTimeframe('7d')}
-              className={`px-3 py-1 rounded-xl text-xs font-mono font-bold transition-all ${
+              className={`px-3 py-1 rounded-xl text-xs font-mono font-bold transition-all cursor-pointer ${
                 timeframe === '7d' ? 'bg-cyan-500 text-neutral-950 font-black shadow-md' : 'text-neutral-400 hover:text-white'
               }`}
             >
@@ -203,7 +261,7 @@ export const MuscleHeatmapWidget: React.FC<MuscleHeatmapWidgetProps> = ({
             </button>
             <button
               onClick={() => setTimeframe('30d')}
-              className={`px-3 py-1 rounded-xl text-xs font-mono font-bold transition-all ${
+              className={`px-3 py-1 rounded-xl text-xs font-mono font-bold transition-all cursor-pointer ${
                 timeframe === '30d' ? 'bg-cyan-500 text-neutral-950 font-black shadow-md' : 'text-neutral-400 hover:text-white'
               }`}
             >
@@ -211,7 +269,7 @@ export const MuscleHeatmapWidget: React.FC<MuscleHeatmapWidgetProps> = ({
             </button>
             <button
               onClick={() => setTimeframe('all')}
-              className={`px-3 py-1 rounded-xl text-xs font-mono font-bold transition-all ${
+              className={`px-3 py-1 rounded-xl text-xs font-mono font-bold transition-all cursor-pointer ${
                 timeframe === 'all' ? 'bg-cyan-500 text-neutral-950 font-black shadow-md' : 'text-neutral-400 hover:text-white'
               }`}
             >
@@ -261,12 +319,12 @@ export const MuscleHeatmapWidget: React.FC<MuscleHeatmapWidgetProps> = ({
           if (progressPercent >= 80) {
             statusColor = 'border-emerald-500/30 bg-emerald-500/[0.05] hover:border-emerald-500/60 shadow-[0_0_15px_rgba(16,185,129,0.1)]';
             statusText = 'Óptimo';
-            badgeColor = 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30';
+            badgeColor = 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30';
             barColor = 'bg-gradient-to-r from-emerald-400 to-teal-400';
           } else if (progressPercent > 0) {
             statusColor = 'border-cyan-500/30 bg-cyan-500/[0.05] hover:border-cyan-500/60 shadow-[0_0_15px_rgba(6,182,212,0.1)]';
             statusText = 'Activo';
-            badgeColor = 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30';
+            badgeColor = 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30';
             barColor = 'bg-gradient-to-r from-cyan-400 to-blue-500';
           }
 
@@ -302,7 +360,7 @@ export const MuscleHeatmapWidget: React.FC<MuscleHeatmapWidgetProps> = ({
                 </div>
                 <div className="flex items-center justify-between text-[9px] font-mono text-neutral-500 mt-1">
                   <span>{progressPercent}%</span>
-                  <span>{stats.volumeKg > 0 ? `${Math.round(stats.volumeKg)}kg` : '0kg'}</span>
+                  <span>{stats.volumeKg >= 1000 ? `${(stats.volumeKg / 1000).toFixed(1)}t` : `${Math.round(stats.volumeKg)}kg`}</span>
                 </div>
               </div>
             </div>
@@ -376,7 +434,9 @@ export const MuscleHeatmapWidget: React.FC<MuscleHeatmapWidgetProps> = ({
               <div className="p-3 bg-white/5 border border-white/5 rounded-2xl">
                 <span className="text-[10px] font-mono text-neutral-400 uppercase">Tonelaje Total</span>
                 <p className="text-xl font-mono font-black text-emerald-400 mt-0.5">
-                  {(selectedMuscleStats.volumeKg / 1000).toFixed(1)} <span className="text-xs font-normal">ton</span>
+                  {selectedMuscleStats.volumeKg >= 1000
+                    ? `${(selectedMuscleStats.volumeKg / 1000).toFixed(1)} ton`
+                    : `${Math.round(selectedMuscleStats.volumeKg)} kg`}
                 </p>
               </div>
             </div>
@@ -387,14 +447,19 @@ export const MuscleHeatmapWidget: React.FC<MuscleHeatmapWidgetProps> = ({
                 Ejercicios realizados ({selectedMuscleStats.exercisesDone.length})
               </h4>
               {selectedMuscleStats.exercisesDone.length > 0 ? (
-                <div className="max-h-48 overflow-y-auto space-y-2 pr-1">
+                <div className="max-h-52 overflow-y-auto space-y-2 pr-1">
                   {selectedMuscleStats.exercisesDone.map((ex, idx) => (
                     <div
                       key={idx}
-                      className="p-2.5 bg-white/5 border border-white/5 rounded-xl flex items-center justify-between text-xs"
+                      className="p-2.5 bg-white/5 border border-white/5 hover:border-cyan-500/30 rounded-xl flex items-center justify-between text-xs transition-colors"
                     >
-                      <span className="font-semibold text-neutral-200 truncate max-w-[200px]">{ex.name}</span>
-                      <span className="font-mono text-cyan-400 font-bold">{ex.sets} series ({Math.round(ex.volumeKg)}kg)</span>
+                      <div className="min-w-0 flex-1 pr-2">
+                        <p className="font-semibold text-neutral-200 truncate">{ex.name}</p>
+                        <p className="text-[10px] font-mono text-neutral-400">{ex.sets} series completadas</p>
+                      </div>
+                      <span className="font-mono text-cyan-400 font-bold shrink-0">
+                        {ex.volumeKg > 0 ? `${Math.round(ex.volumeKg)} kg` : `${ex.sets} series`}
+                      </span>
                     </div>
                   ))}
                 </div>
