@@ -123,7 +123,7 @@ export const Navbar: React.FC<NavbarProps> = ({
       {/* Top Header Bar with iOS Safe Area support */}
       <header 
         style={{ paddingTop: 'max(0.6rem, env(safe-area-inset-top, 0px))' }}
-        className="sticky top-0 z-40 bg-[#09090b]/95 backdrop-blur-xl border-b border-white/10 px-2.5 sm:px-6 lg:px-8 pb-2 sm:pb-2.5 transition-all w-full max-w-full overflow-x-hidden"
+        className="sticky top-0 z-40 bg-[#09090b]/95 backdrop-blur-xl border-b border-white/10 px-2.5 sm:px-6 lg:px-8 pb-2 sm:pb-2.5 w-full max-w-full"
       >
         <div className="max-w-7xl mx-auto flex items-center justify-between gap-1.5 sm:gap-4">
           
