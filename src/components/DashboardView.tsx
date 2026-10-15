@@ -81,6 +81,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const xpPercent = getXpProgressPercent(user.currentLevelXp, user.nextLevelXp);
   const remainingXp = Math.max(0, (user.nextLevelXp || 500) - (user.currentLevelXp || 0));
 
+  // Calculate real workouts completed in the last 7 days
+  const workoutsThisWeek = (history || []).filter((h) => {
+    const d = new Date(h.date);
+    const now = new Date();
+    const diffDays = Math.floor((now.getTime() - d.getTime()) / (1000 * 60 * 60 * 24));
+    return diffDays <= 7;
+  }).length;
+
   // Determine target muscles for preview badges
   const targetMuscles = Array.from(
     new Set(currentRoutine?.exercises?.map((e) => e.muscleGroup) || ['Pecho', 'Tríceps'])
@@ -361,7 +369,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
               <div className="bg-white/5 border border-white/5 p-4 rounded-2xl flex justify-between items-center hover:border-white/10 transition-colors">
                 <div>
-                  <p className="text-xs text-neutral-400 font-medium">Gasto Calórico Acumulado</p>
+                  <p className="text-xs text-neutral-400 font-medium">Gasto Calórico en Entrenamientos</p>
                   <p className="text-2xl font-mono font-bold text-white mt-0.5">
                     {user.stats.caloriesBurned.toLocaleString()} <span className="text-xs text-orange-400 font-semibold">KCAL</span>
                   </p>
@@ -616,7 +624,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <Dumbbell className="w-4 h-4 text-cyan-400" />
           </div>
           <p className="font-mono font-extrabold text-3xl text-white">{user.stats.totalWorkouts}</p>
-          <span className="text-[11px] text-cyan-400 font-mono font-medium">↑ +4 esta semana</span>
+          <span className="text-[11px] text-cyan-400 font-mono font-medium">
+            {workoutsThisWeek > 0 ? `↑ +${workoutsThisWeek} esta semana` : '0 esta semana'}
+          </span>
         </div>
 
         <div className="bg-[#121214] border border-white/5 hover:border-cyan-500/30 rounded-3xl p-5 shadow-xl transition-all">
@@ -630,10 +640,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <span className="text-[11px] text-neutral-400 font-mono">{user.stats.totalVolumeKg.toLocaleString()} kg total</span>
         </div>
 
-        {/* Calories Burned Card */}
+        {/* Calories Burned Card (Entrenamientos) */}
         <div className="bg-[#121214] border border-white/5 hover:border-orange-500/30 rounded-3xl p-5 shadow-xl transition-all">
           <div className="flex items-center justify-between text-neutral-400 mb-2">
-            <span className="text-xs font-mono font-bold uppercase tracking-wider">{t.caloriesBurned}</span>
+            <span className="text-xs font-mono font-bold uppercase tracking-wider">Calorías Quemadas (Entreno)</span>
             <Flame className="w-4 h-4 text-orange-400" />
           </div>
           <p className="font-mono font-extrabold text-3xl text-white">
