@@ -96,6 +96,18 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
     }, 2500);
   };
 
+  const safePlayClick = () => {
+    try {
+      sound.playClick();
+    } catch {}
+  };
+
+  const safePlaySuccess = () => {
+    try {
+      sound.playSuccess();
+    } catch {}
+  };
+
   // Weigh-in modal state
   const [weighInModalOpen, setWeighInModalOpen] = useState(false);
   const [weighInForm, setWeighInForm] = useState({
@@ -154,7 +166,7 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
 
   // Toggle Day Type (Workout vs Rest)
   const handleToggleDayType = (type: 'workout' | 'rest') => {
-    sound.playClick();
+    safePlayClick();
     const targetConfig = RENATO_PLAN_CONFIG.targets[type];
     const newLog: DailyNutritionLog = {
       ...log,
@@ -170,7 +182,7 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
 
   // Hydration modification
   const handleAddWater = (deltaMl: number) => {
-    sound.playClick();
+    safePlayClick();
     const newWater = Math.max(0, (log.waterMl || 0) + deltaMl);
     const newLog: DailyNutritionLog = {
       ...log,
@@ -180,7 +192,7 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
 
     if ((log.waterMl || 0) < targetWater && newWater >= targetWater && onGrantXp) {
       onGrantXp(25, 'Meta de hidratación diaria (3.5L)');
-      sound.playSuccess();
+      safePlaySuccess();
       showToast('🎉 ¡Objetivo de hidratación alcanzado (3.5L)! +25 XP');
     }
   };
@@ -191,7 +203,7 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
     mealType: MealType,
     quantity = 1
   ) => {
-    sound.playSuccess();
+    safePlaySuccess();
     const safeQty = Math.max(0.25, Number(quantity) || 1);
     const newItem: LoggedFoodItem = {
       ...food,
@@ -220,7 +232,7 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
 
   // Update quantity of an existing food item
   const handleUpdateItemQuantity = (itemId: string, delta: number) => {
-    sound.playClick();
+    safePlayClick();
     const updatedFoods = (log.foods || [])
       .map((item) => {
         if (item.id === itemId) {
@@ -237,7 +249,7 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
 
   // Remove food item
   const handleRemoveFoodItem = (itemId: string) => {
-    sound.playClick();
+    safePlayClick();
     const updatedFoods = (log.foods || []).filter((f) => f.id !== itemId);
     updateLog({ ...log, foods: updatedFoods });
     showToast('Alimento eliminado');
@@ -245,7 +257,7 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
 
   // Load complete preloaded meal template from Renato's plan
   const handleLoadMealTemplate = (slot: MealSlotConfig) => {
-    sound.playSuccess();
+    safePlaySuccess();
     const timeNow = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     const newItems: LoggedFoodItem[] = slot.suggestedFoods.slice(0, 3).map((food, idx) => ({
       ...food,
@@ -308,7 +320,7 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
     const weightNum = parseFloat(weighInForm.weightKg);
     if (isNaN(weightNum) || weightNum <= 0) return;
 
-    sound.playSuccess();
+    safePlaySuccess();
     const newEntry: SaturdayWeighIn = {
       id: `weigh_${Date.now()}`,
       date: weighInForm.date || todayStr,
@@ -337,7 +349,7 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
   };
 
   const handleDeleteWeighIn = (id: string) => {
-    sound.playClick();
+    safePlayClick();
     FitStorage.deleteSaturdayWeighIn(id);
     setWeighIns(FitStorage.getSaturdayWeighIns());
     showToast('Pesaje eliminado');
@@ -405,7 +417,7 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
           <div className="flex items-center bg-black/40 border border-white/10 rounded-2xl p-1 shrink-0 self-start md:self-auto">
             <button
               onClick={() => {
-                sound.playClick();
+                safePlayClick();
                 setActiveSubTab('meals');
               }}
               className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
@@ -419,7 +431,7 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
             </button>
             <button
               onClick={() => {
-                sound.playClick();
+                safePlayClick();
                 setActiveSubTab('weighin');
               }}
               className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
@@ -742,9 +754,14 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
 
                       {/* Button to load preloaded meal from Renato's plan */}
                       <button
-                        onClick={() => handleLoadMealTemplate(slot)}
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleLoadMealTemplate(slot);
+                        }}
                         title="Cargar menú sugerido de tu plan de nutrición con 1 click"
-                        className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-400 text-xs font-bold transition-all hover:scale-105 active:scale-95"
+                        className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-400 text-xs font-bold transition-all hover:scale-105 active:scale-95 cursor-pointer"
                       >
                         <Sparkles className="w-3.5 h-3.5" />
                         <span>Cargar Menú Plan</span>
@@ -752,8 +769,11 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
 
                       {/* Add Food Button */}
                       <button
-                        onClick={() => {
-                          sound.playClick();
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          safePlayClick();
                           setTargetMealType(slot.type);
                           setSelectedCatalogFood(null);
                           setModalQuantity(1);
@@ -761,7 +781,7 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
                           setModalTab('catalog');
                           setAddFoodModalOpen(true);
                         }}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/15 border border-white/15 text-white text-xs font-bold transition-all hover:scale-105 active:scale-95"
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/15 border border-white/15 text-white text-xs font-bold transition-all hover:scale-105 active:scale-95 cursor-pointer"
                       >
                         <Plus className="w-3.5 h-3.5 text-cyan-400 stroke-[2.5]" />
                         <span>Añadir</span>
@@ -770,20 +790,25 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
                   </div>
 
                   {/* Quick Suggestions Chips (1-tap add directly from screen) */}
-                  <div className="pt-2.5 pb-1 flex items-center gap-1.5 overflow-x-auto text-[11px]">
-                    <span className="text-neutral-500 font-mono text-[10px] shrink-0 uppercase tracking-wider">
+                  <div className="pt-2.5 pb-1 flex flex-wrap items-center gap-1.5 text-xs">
+                    <span className="text-neutral-400 font-mono text-[10px] shrink-0 uppercase tracking-wider font-bold mr-1">
                       Sugeridos:
                     </span>
                     {slot.suggestedFoods.slice(0, 3).map((item, idx) => (
                       <button
                         key={idx}
-                        onClick={() => handleAddFoodItem(item, slot.type, 1)}
-                        className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white/5 hover:bg-cyan-500/10 border border-white/5 hover:border-cyan-500/30 text-neutral-300 hover:text-cyan-300 whitespace-nowrap transition-colors"
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleAddFoodItem(item, slot.type, 1);
+                        }}
+                        className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-white/5 hover:bg-cyan-500/15 border border-white/10 hover:border-cyan-500/40 text-neutral-200 hover:text-cyan-300 transition-all active:scale-95 cursor-pointer text-xs font-medium"
                         title={`Añadir 1x ${item.name} (${item.calories} kcal)`}
                       >
-                        <Plus className="w-3 h-3 text-cyan-400" />
+                        <Plus className="w-3 h-3 text-cyan-400 shrink-0 stroke-[2.5]" />
                         <span>{item.name.split('(')[0].trim()}</span>
-                        <span className="text-[10px] text-neutral-500 font-mono font-bold">
+                        <span className="text-[10px] text-cyan-400 font-mono font-bold bg-cyan-500/10 px-1 rounded ml-0.5">
                           {item.calories}k
                         </span>
                       </button>
@@ -895,7 +920,7 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
 
               <button
                 onClick={() => {
-                  sound.playClick();
+                  safePlayClick();
                   setWeighInForm({
                     date: todayStr,
                     weightKg: String(currentWeight),
@@ -1069,7 +1094,7 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
       {/* 🍲 MODAL: AÑADIR ALIMENTO CON SELECTOR INTERACTIVO       */}
       {/* ======================================================== */}
       {addFoodModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-md animate-in fade-in">
+        <div className="fixed inset-0 z-[70] pointer-events-auto flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-md animate-in fade-in">
           <div className="bg-[#121214] border border-white/10 rounded-3xl w-full max-w-lg p-4 sm:p-6 shadow-2xl max-h-[92vh] flex flex-col">
             
             {/* Modal Header */}
@@ -1106,7 +1131,7 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
                       key={slot.type}
                       type="button"
                       onClick={() => {
-                        sound.playClick();
+                        safePlayClick();
                         setTargetMealType(slot.type);
                       }}
                       className={`py-1.5 px-1 rounded-xl text-[10px] sm:text-xs font-bold transition-all truncate text-center ${
@@ -1128,7 +1153,7 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
               <button
                 type="button"
                 onClick={() => {
-                  sound.playClick();
+                  safePlayClick();
                   setModalTab('catalog');
                 }}
                 className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-colors ${
@@ -1142,7 +1167,7 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
               <button
                 type="button"
                 onClick={() => {
-                  sound.playClick();
+                  safePlayClick();
                   setModalTab('custom');
                 }}
                 className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-colors ${
@@ -1214,7 +1239,7 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
                         <div
                           key={idx}
                           onClick={() => {
-                            sound.playClick();
+                            safePlayClick();
                             setSelectedCatalogFood(item);
                           }}
                           className={`w-full flex items-center justify-between p-2.5 rounded-xl border text-left text-xs transition-all cursor-pointer ${
@@ -1446,7 +1471,7 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
       {/* ⚖️ MODAL: REGISTRAR PESAJE DEL SÁBADO                    */}
       {/* ======================================================== */}
       {weighInModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in">
+        <div className="fixed inset-0 z-[70] pointer-events-auto flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in">
           <div className="bg-[#121214] border border-white/10 rounded-3xl w-full max-w-md p-5 sm:p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between pb-3 border-b border-white/10">
               <h3 className="text-lg font-black text-white flex items-center gap-2">

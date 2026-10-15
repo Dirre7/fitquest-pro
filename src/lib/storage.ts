@@ -977,7 +977,19 @@ export class FitStorage {
       const logsRaw = localStorage.getItem(KEYS.NUTRITION_LOGS);
       const logs: Record<string, DailyNutritionLog> = logsRaw ? JSON.parse(logsRaw) : {};
       if (logs[dateStr]) {
-        return logs[dateStr];
+        const found = logs[dateStr];
+        return {
+          ...found,
+          date: dateStr,
+          dayType: found.dayType === 'rest' ? 'rest' : 'workout',
+          foods: Array.isArray(found.foods) ? found.foods : [],
+          waterMl: Number(found.waterMl) || 0,
+          targetCalories: Number(found.targetCalories) || (found.dayType === 'rest' ? RENATO_PLAN_CONFIG.targets.rest.calories : RENATO_PLAN_CONFIG.targets.workout.calories),
+          targetProtein: Number(found.targetProtein) || RENATO_PLAN_CONFIG.targets.workout.protein,
+          targetCarbs: Number(found.targetCarbs) || (found.dayType === 'rest' ? RENATO_PLAN_CONFIG.targets.rest.carbs : RENATO_PLAN_CONFIG.targets.workout.carbs),
+          targetFat: Number(found.targetFat) || RENATO_PLAN_CONFIG.targets.workout.fat,
+          waterGoalMl: Number(found.waterGoalMl) || RENATO_PLAN_CONFIG.waterGoalMl,
+        };
       }
       return {
         date: dateStr,

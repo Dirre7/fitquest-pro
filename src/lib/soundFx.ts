@@ -62,6 +62,18 @@ class SoundManager {
     }
   }
 
+  public playClick() {
+    try {
+      this.playBeep(650, 40, 'sine');
+    } catch {}
+  }
+
+  public playSuccess() {
+    try {
+      this.playBeep(880, 90, 'sine');
+    } catch {}
+  }
+
   public playSetComplete() {
     const ctx = this.getContext();
     if (!ctx) return;
