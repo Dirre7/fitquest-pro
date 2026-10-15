@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   UserProfile,
   WorkoutRoutine,
@@ -42,6 +42,8 @@ import { AuthModal } from './components/AuthModal';
 import { AuthScreen } from './components/AuthScreen';
 import { ProfileEditModal } from './components/ProfileEditModal';
 import { QuickStartModal } from './components/QuickStartModal';
+import { LevelRoadmapModal } from './components/LevelRoadmapModal';
+import { LevelUpCelebrationModal } from './components/LevelUpCelebrationModal';
 
 // Helper para identificar este dispositivo y forzar la exclusión mutua (Móvil vs Tablet)
 function getDeviceSessionId(): string {
@@ -93,6 +95,34 @@ export default function App() {
   const [isSessionRevoked, setIsSessionRevoked] = useState<boolean>(false);
   const [revokingDeviceName, setRevokingDeviceName] = useState<string>('Tablet / Móvil');
 
+  // Level Progression Roadmap & Epic Level Up Celebration
+  const [levelRoadmapModalOpen, setLevelRoadmapModalOpen] = useState<boolean>(false);
+  const [levelUpModalOpen, setLevelUpModalOpen] = useState<boolean>(false);
+  const [celebrationLevel, setCelebrationLevel] = useState<number>(user.level || 1);
+  const prevLevelRef = useRef<number>(user.level || 1);
+
+  // Trigger Level Up Celebration when level increases
+  useEffect(() => {
+    if (user.level && user.level > prevLevelRef.current) {
+      setCelebrationLevel(user.level);
+      setLevelUpModalOpen(true);
+      try {
+        sound.playLevelUp();
+      } catch {}
+    }
+    prevLevelRef.current = user.level || 1;
+  }, [user.level]);
+
+  const handleEquipTitle = async (newTitle: string) => {
+    const updatedUser: UserProfile = {
+      ...user,
+      rankTitle: newTitle,
+    };
+    setUser(updatedUser);
+    FitStorage.saveUser(updatedUser);
+    await FitStorage.syncUserToCloud(updatedUser);
+  };
+
   const t = translations[lang];
 
   // Screen Orientation Lock & Landscape Detection for Mobile
@@ -122,7 +152,7 @@ export default function App() {
 
   // Purge outdated service worker caches on version bump
   useEffect(() => {
-    const CURRENT_PWA_BUILD = 'v3.4';
+    const CURRENT_PWA_BUILD = 'v3.5';
     const storedBuild = localStorage.getItem('fitquest_pwa_build');
     if (storedBuild && storedBuild !== CURRENT_PWA_BUILD) {
       localStorage.setItem('fitquest_pwa_build', CURRENT_PWA_BUILD);
@@ -834,6 +864,7 @@ export default function App() {
         unreadNotifications={reminders.filter((r) => r.enabled).length}
         onOpenNotifications={() => setActiveTab('settings')}
         onOpenProfileModal={() => setProfileModalOpen(true)}
+        onOpenLevelRoadmap={() => setLevelRoadmapModalOpen(true)}
         onOpenQuickStart={() => setQuickStartModalOpen(true)}
         lang={lang}
         setLang={(l) => {
@@ -886,6 +917,7 @@ export default function App() {
             onNavigateTab={setActiveTab}
             onOpenQuickStart={() => setQuickStartModalOpen(true)}
             onOpenProfileModal={() => setProfileModalOpen(true)}
+            onOpenLevelRoadmap={() => setLevelRoadmapModalOpen(true)}
           />
         )}
 
@@ -1059,6 +1091,26 @@ export default function App() {
         onStartRoutine={handleStartRoutine}
         onNavigateCatalog={() => setActiveTab('routines')}
       />
+
+      {/* Interactive Level Progression Roadmap Modal */}
+      {levelRoadmapModalOpen && (
+        <LevelRoadmapModal
+          user={user}
+          lang={lang}
+          onClose={() => setLevelRoadmapModalOpen(false)}
+          onEquipTitle={handleEquipTitle}
+        />
+      )}
+
+      {/* Epic Level Up Celebration Modal */}
+      {levelUpModalOpen && (
+        <LevelUpCelebrationModal
+          user={user}
+          newLevel={celebrationLevel}
+          onClose={() => setLevelUpModalOpen(false)}
+          onEquipTitle={handleEquipTitle}
+        />
+      )}
 
       {/* Mobile Landscape Orientation Guard Overlay */}
       {isMobileLandscape && (

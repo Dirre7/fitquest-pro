@@ -18,6 +18,8 @@ import {
 import { UserProfile, Achievement, Language } from '../types';
 import { sound } from '../lib/soundFx';
 
+import { LEVEL_MILESTONES } from '../lib/progressionEngine';
+
 interface ProfileEditModalProps {
   user: UserProfile;
   achievements?: Achievement[];
@@ -52,16 +54,12 @@ export const ProfileEditModal: React.FC<ProfileEditModalProps> = ({
     `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(name || 'FitQuest')}&backgroundColor=06b6d4,3b82f6`,
   ];
 
-  // Available Titles
-  const levelTitles = [
-    { title: 'Recluta Inicial', minLevel: 1, icon: '🥉' },
-    { title: 'Iniciado del Hierro', minLevel: 3, icon: '⚡' },
-    { title: 'Guerrero de Bronce', minLevel: 5, icon: '🛡️' },
-    { title: 'Atleta de Plata', minLevel: 10, icon: '🥈' },
-    { title: 'Maestro de Oro', minLevel: 15, icon: '🥇' },
-    { title: 'Titán Legendario', minLevel: 20, icon: '👑' },
-    { title: 'Deidad FitQuest', minLevel: 30, icon: '🌌' },
-  ];
+  // Available Titles from Unified Progression Milestones
+  const levelTitles = LEVEL_MILESTONES.map((m) => ({
+    title: m.title,
+    minLevel: m.level,
+    icon: m.icon,
+  }));
 
   const achievementTitles = achievements
     .filter((a) => a.rewardTitle)

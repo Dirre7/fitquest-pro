@@ -23,6 +23,7 @@ import {
 import { UserProfile, ThemeMode, Language, SmartwatchDevice } from '../types';
 import { translations } from '../lib/i18n';
 import { sound } from '../lib/soundFx';
+import { getLevelTier, getXpProgressPercent } from '../lib/progressionEngine';
 
 interface NavbarProps {
   currentTab?: string;
@@ -45,6 +46,7 @@ interface NavbarProps {
   onOpenNotifications?: () => void;
   onOpenQuickStart?: () => void;
   onOpenProfileModal?: () => void;
+  onOpenLevelRoadmap?: () => void;
   isAuthenticated?: boolean;
   onOpenAuthModal?: () => void;
   onSignOut?: () => void;
@@ -71,6 +73,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenNotifications,
   onOpenQuickStart,
   onOpenProfileModal,
+  onOpenLevelRoadmap,
   isAuthenticated = false,
   onOpenAuthModal,
   onSignOut,
@@ -109,7 +112,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   const t = translations[lang];
   const [langMenuOpen, setLangMenuOpen] = useState(false);
 
-  const xpPercent = user?.nextLevelXp ? Math.min(100, Math.round((user.currentLevelXp / user.nextLevelXp) * 100)) : 0;
+  const tier = getLevelTier(user?.level || 1);
+  const xpPercent = getXpProgressPercent(user?.currentLevelXp || 0, user?.nextLevelXp || 500);
 
   // 5 Core Master Sections for maximum comfort & zero clutter
   const dockItems = [
@@ -152,27 +156,43 @@ export const Navbar: React.FC<NavbarProps> = ({
               </div>
             </button>
 
-            {/* User Level & Avatar (Interactive Profile Button) */}
+            {/* User Level & Avatar (Interactive Level & Profile Button) */}
             <button
               id="btn-nav-profile-edit"
-              onClick={onOpenProfileModal}
-              className="flex items-center gap-1.5 sm:gap-2.5 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-cyan-500/40 rounded-xl sm:rounded-2xl px-2 py-1 sm:px-3 sm:py-1.5 shadow-inner transition-all hover:scale-105 shrink min-w-0 max-w-[120px] xs:max-w-[150px] sm:max-w-none"
-              title="Editar Perfil, Avatar y Títulos"
+              onClick={onOpenLevelRoadmap || onOpenProfileModal}
+              className="flex items-center gap-1.5 sm:gap-2.5 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-cyan-500/40 rounded-xl sm:rounded-2xl px-2 py-1 sm:px-3 sm:py-1.5 shadow-inner transition-all hover:scale-105 shrink min-w-0 max-w-[125px] xs:max-w-[160px] sm:max-w-none cursor-pointer"
+              title="Ver Ruta de Rangos, Niveles y Perfil"
             >
-              <img
-                src={user.avatar || `https://api.dicebear.com/7.x/initials/svg?seed=${user.name}`}
-                alt={user.name}
-                className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg sm:rounded-xl object-cover border border-cyan-500/50 shrink-0"
-              />
+              <div className="relative shrink-0">
+                <img
+                  src={user.avatar || `https://api.dicebear.com/7.x/initials/svg?seed=${user.name}`}
+                  alt={user.name}
+                  className={`w-6 h-6 sm:w-7 sm:h-7 rounded-lg sm:rounded-xl object-cover border ${tier.borderColor} ${tier.frameClass}`}
+                />
+                <span className="absolute -bottom-1 -right-1 text-[8px] sm:text-[9px] leading-none drop-shadow">
+                  {tier.badgeIcon}
+                </span>
+              </div>
               <div className="text-left min-w-0">
                 <div className="flex items-center gap-1 text-[10px] sm:text-[11px] font-bold">
                   <span className="text-white truncate max-w-[45px] xs:max-w-[65px] sm:max-w-[110px]">{user.name}</span>
-                  <span className="text-cyan-400 font-mono text-[9px] sm:text-[10px] shrink-0">Nvl {user.level}</span>
+                  <span
+                    className="font-mono text-[9px] sm:text-[10px] font-black shrink-0 px-1 py-0.2 rounded"
+                    style={{
+                      color: tier.accentColor,
+                      backgroundColor: `${tier.accentColor}20`,
+                    }}
+                  >
+                    Nvl {user.level}
+                  </span>
                 </div>
                 <div className="h-1 sm:h-1.5 bg-neutral-800 rounded-full overflow-hidden mt-0.5 hidden xs:block">
                   <div 
-                    className="h-full bg-gradient-to-r from-cyan-500 to-blue-500 rounded-full shadow-[0_0_8px_rgba(6,182,212,0.5)] transition-all duration-500"
-                    style={{ width: `${xpPercent}%` }}
+                    className="h-full rounded-full transition-all duration-500 shadow-sm"
+                    style={{
+                      width: `${xpPercent}%`,
+                      backgroundColor: tier.accentColor,
+                    }}
                   />
                 </div>
               </div>

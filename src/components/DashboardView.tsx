@@ -32,6 +32,11 @@ import {
 } from '../types';
 import { translations } from '../lib/i18n';
 import { FitStorage } from '../lib/storage';
+import {
+  getLevelTier,
+  getNextMilestone,
+  getXpProgressPercent,
+} from '../lib/progressionEngine';
 
 interface DashboardViewProps {
   user: UserProfile;
@@ -44,6 +49,7 @@ interface DashboardViewProps {
   onNavigateTab: (tab: string) => void;
   onOpenQuickStart?: () => void;
   onOpenProfileModal?: () => void;
+  onOpenLevelRoadmap?: () => void;
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
@@ -57,6 +63,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onNavigateTab,
   onOpenQuickStart,
   onOpenProfileModal,
+  onOpenLevelRoadmap,
 }) => {
   const t = translations[lang];
 
@@ -67,7 +74,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   const currentRoutine = routines.find((r) => r.id === selectedRoutineId) || routines[0];
   const activeChallenge = challenges[0];
-  const xpPercent = Math.min(100, Math.round((user.currentLevelXp / user.nextLevelXp) * 100));
+  
+  // Dynamic Athlete Progression calculations
+  const currentTier = getLevelTier(user.level || 1);
+  const nextMilestone = getNextMilestone(user.level || 1);
+  const xpPercent = getXpProgressPercent(user.currentLevelXp, user.nextLevelXp);
+  const remainingXp = Math.max(0, (user.nextLevelXp || 500) - (user.currentLevelXp || 0));
 
   // Determine target muscles for preview badges
   const targetMuscles = Array.from(
@@ -202,10 +214,23 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 <img
                   src={user.avatar}
                   alt={user.name}
-                  className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl object-cover border-2 border-cyan-500/40 shadow-xl shadow-cyan-500/20 group-hover:border-cyan-400 group-hover:shadow-cyan-500/40 transition-all"
+                  className={`w-16 h-16 sm:w-20 sm:h-20 rounded-2xl object-cover border-2 shadow-xl group-hover:scale-105 transition-all ${currentTier.frameClass} ${currentTier.borderColor}`}
                 />
-                <div className="absolute -bottom-2 -right-2 bg-cyan-500 text-neutral-950 text-[10px] font-black px-2 py-0.5 rounded-lg shadow-md font-mono">
-                  LV.{user.level}
+                <div
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (onOpenLevelRoadmap) onOpenLevelRoadmap();
+                    else if (onOpenProfileModal) onOpenProfileModal();
+                  }}
+                  className="absolute -bottom-2.5 -right-2.5 px-2.5 py-1 rounded-xl text-neutral-950 text-xs font-black font-mono flex items-center gap-1 shadow-2xl cursor-pointer hover:scale-110 transition-transform border border-black/40"
+                  style={{
+                    backgroundColor: currentTier.accentColor,
+                    boxShadow: `0 0 16px ${currentTier.glowColor}`,
+                  }}
+                  title="Ver Ruta de Rangos y Recompensas"
+                >
+                  <span>{currentTier.badgeIcon}</span>
+                  <span>NVL {user.level}</span>
                 </div>
               </div>
 
@@ -214,14 +239,37 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   <h2 className="font-display font-extrabold text-2xl sm:text-3xl text-white tracking-tight group-hover:text-cyan-300 transition-colors">
                     {user.name}
                   </h2>
+                  <span
+                    className="text-[10px] font-mono font-black px-2.5 py-0.5 rounded-full border uppercase tracking-wider flex items-center gap-1 shadow-sm"
+                    style={{
+                      color: currentTier.accentColor,
+                      borderColor: `${currentTier.accentColor}50`,
+                      backgroundColor: `${currentTier.accentColor}15`,
+                    }}
+                  >
+                    <span>{currentTier.badgeIcon}</span>
+                    <span>{currentTier.name}</span>
+                  </span>
                   <span className="text-[10px] font-mono font-black px-2.5 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 uppercase tracking-wider">
                     LIGA {user.league}
                   </span>
                 </div>
-                <p className="text-xs sm:text-sm font-semibold text-cyan-400 mt-1 flex items-center gap-1.5 font-mono">
-                  <Shield className="w-3.5 h-3.5" />
-                  {user.rankTitle}
-                </p>
+                <div className="flex items-center gap-2 mt-1">
+                  <p className="text-xs sm:text-sm font-semibold text-cyan-400 flex items-center gap-1.5 font-mono">
+                    <Shield className="w-3.5 h-3.5 text-cyan-400" />
+                    {user.rankTitle || 'Recluta Inicial'}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (onOpenLevelRoadmap) onOpenLevelRoadmap();
+                    }}
+                    className="text-[10px] text-neutral-400 hover:text-cyan-300 underline font-mono cursor-pointer"
+                  >
+                    Ver títulos
+                  </button>
+                </div>
                 <p className="text-xs text-neutral-400 mt-1">
                   {user.stats.totalWorkouts} misiones completadas • {Math.round(user.stats.totalVolumeKg / 1000)}t tonelaje total
                 </p>
@@ -241,25 +289,64 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           {/* Goal Ring + Metrics Grid */}
           <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center flex-1 relative z-10 pt-4 border-t border-white/5">
             
-            {/* Circular Goal Ring */}
-            <div className="md:col-span-4 flex flex-col items-center justify-center gap-2 p-2">
-              <div className="w-32 h-32 rounded-full border-4 border-cyan-500/20 flex items-center justify-center relative shadow-[0_0_20px_rgba(6,182,212,0.15)]">
+            {/* Circular Mastery Ring & Level Progress */}
+            <div className="md:col-span-5 flex flex-col items-center justify-center gap-2 p-3 bg-black/30 rounded-2xl border border-white/5 shadow-inner">
+              <div
+                onClick={onOpenLevelRoadmap}
+                className="w-28 h-28 sm:w-32 sm:h-32 rounded-full border-4 flex items-center justify-center relative cursor-pointer hover:scale-105 transition-transform"
+                style={{
+                  borderColor: `${currentTier.accentColor}25`,
+                  boxShadow: `0 0 25px ${currentTier.glowColor}`,
+                }}
+                title="Haz clic para explorar la Ruta de Niveles"
+              >
                 <div 
-                  className="absolute inset-0 border-4 border-cyan-500 rounded-full"
+                  className="absolute inset-0 border-4 rounded-full transition-all duration-700"
                   style={{
+                    borderColor: currentTier.accentColor,
                     clipPath: xpPercent >= 75 ? 'polygon(50% 0%, 100% 0%, 100% 100%, 0% 100%, 0% 50%, 50% 50%)' : 'polygon(50% 0%, 100% 0%, 100% 75%, 50% 50%)'
                   }}
                 />
                 <div className="text-center">
-                  <span className="text-3xl font-bold font-mono text-white tracking-tight">{xpPercent}<span className="text-sm font-normal opacity-50">%</span></span>
-                  <p className="text-[9px] uppercase tracking-widest text-neutral-400 font-mono">META XP</p>
+                  <span className="text-2xl sm:text-3xl font-black font-mono text-white tracking-tight block">
+                    {xpPercent}<span className="text-xs font-normal opacity-50">%</span>
+                  </span>
+                  <span
+                    className="text-[9px] uppercase tracking-widest font-mono font-black block"
+                    style={{ color: currentTier.accentColor }}
+                  >
+                    NIVEL {user.level}
+                  </span>
                 </div>
               </div>
-              <p className="text-xs font-mono text-cyan-400 font-bold">{user.currentLevelXp} / {user.nextLevelXp} XP</p>
+
+              <div className="text-center w-full px-1">
+                <p className="text-xs font-mono font-bold" style={{ color: currentTier.accentColor }}>
+                  {user.currentLevelXp} / {user.nextLevelXp} XP
+                </p>
+                <p className="text-[10px] text-neutral-400 font-mono mt-0.5">
+                  Faltan <span className="text-white font-bold">{remainingXp} XP</span> para Nivel {user.level + 1}
+                </p>
+                {nextMilestone && (
+                  <p className="text-[10px] text-cyan-300 font-mono mt-1 truncate">
+                    🎁 Hito Nvl {nextMilestone.level}: {nextMilestone.rewardLabel}
+                  </p>
+                )}
+
+                <button
+                  type="button"
+                  onClick={onOpenLevelRoadmap}
+                  className="mt-2.5 w-full py-1.5 px-2.5 rounded-xl bg-white/10 hover:bg-white/15 border border-white/10 hover:border-cyan-400/50 text-white text-[11px] font-mono font-bold flex items-center justify-center gap-1.5 transition-all shadow-sm cursor-pointer"
+                >
+                  <Trophy className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Ruta de Rangos y Recompensas</span>
+                  <ChevronRight className="w-3 h-3 text-cyan-400" />
+                </button>
+              </div>
             </div>
 
             {/* Live Telemetry Inner Cards */}
-            <div className="md:col-span-8 space-y-3.5">
+            <div className="md:col-span-7 space-y-3.5">
               <div className="bg-white/5 border border-white/5 p-4 rounded-2xl flex justify-between items-center hover:border-cyan-500/30 transition-colors">
                 <div>
                   <p className="text-xs text-neutral-400 font-medium">Distancia Recorrida (Cardio & Running)</p>

@@ -15,6 +15,7 @@ import {
   SaturdayWeighIn,
 } from '../types';
 import { RENATO_PLAN_CONFIG } from './nutritionData';
+import { LEVEL_MILESTONES } from './progressionEngine';
 import {
   createFreshUser,
   createFreshAchievements,
@@ -673,12 +674,16 @@ export class FitStorage {
     let currentXp = user.currentLevelXp + amount;
     let nextXp = user.nextLevelXp;
     let level = user.level;
-    const rankTitle = user.rankTitle || 'Recluta Inicial';
+    let rankTitle = user.rankTitle || 'Recluta Inicial';
 
     while (currentXp >= nextXp) {
       currentXp -= nextXp;
       level += 1;
       nextXp = Math.round(nextXp * 1.3);
+      const milestone = LEVEL_MILESTONES.find((m) => m.level === level);
+      if (milestone?.title && (!user.rankTitle || user.rankTitle === 'Recluta Inicial')) {
+        rankTitle = milestone.title;
+      }
     }
 
     const updatedUser: UserProfile = {
@@ -748,12 +753,16 @@ export class FitStorage {
     let currentXp = user.currentLevelXp + rewardXp;
     let nextXp = user.nextLevelXp;
     let level = user.level;
-    const rankTitle = user.rankTitle || 'Recluta Inicial';
+    let rankTitle = user.rankTitle || 'Recluta Inicial';
 
     while (currentXp >= nextXp) {
       currentXp -= nextXp;
       level += 1;
       nextXp = Math.round(nextXp * 1.3);
+      const milestone = LEVEL_MILESTONES.find((m) => m.level === level);
+      if (milestone?.title && (!user.rankTitle || user.rankTitle === 'Recluta Inicial')) {
+        rankTitle = milestone.title;
+      }
     }
 
     const updatedUser: UserProfile = {
