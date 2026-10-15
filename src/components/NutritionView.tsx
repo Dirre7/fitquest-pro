@@ -5,10 +5,12 @@ import {
   Flame,
   Scale,
   Plus,
+  Minus,
   Trash2,
   Calendar,
   Sparkles,
   CheckCircle2,
+  Check,
   ChevronRight,
   TrendingDown,
   Info,
@@ -16,7 +18,6 @@ import {
   Search,
   X,
   Target,
-  ArrowRight,
   Zap,
 } from 'lucide-react';
 import {
@@ -63,10 +64,18 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
   // Active view tab: 'meals' or 'weighin'
   const [activeSubTab, setActiveSubTab] = useState<'meals' | 'weighin'>('meals');
 
-  // Modal states
+  // Modal states for adding food
   const [addFoodModalOpen, setAddFoodModalOpen] = useState(false);
-  const [targetMealType, setTargetMealType] = useState<MealType>('breakfast');
+  const [targetMealType, setTargetMealType] = useState<MealType>('lunch');
+  const [modalTab, setModalTab] = useState<'catalog' | 'custom'>('catalog');
   const [foodSearchQuery, setFoodSearchQuery] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState<'all' | 'protein' | 'carbs' | 'fats' | 'fruits'>('all');
+  
+  // Selected food state in modal
+  const [selectedCatalogFood, setSelectedCatalogFood] = useState<Omit<FoodItem, 'id'> | null>(null);
+  const [modalQuantity, setModalQuantity] = useState<number>(1);
+
+  // Custom food form state
   const [customFoodForm, setCustomFoodForm] = useState({
     name: '',
     calories: '',
@@ -74,7 +83,18 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
     carbs: '',
     fat: '',
     servingSize: '1 ración',
+    quantity: 1,
   });
+
+  // Success toast feedback
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => {
+      setToastMessage(null);
+    }, 2500);
+  };
 
   // Weigh-in modal state
   const [weighInModalOpen, setWeighInModalOpen] = useState(false);
@@ -100,27 +120,37 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
     FitStorage.saveNutritionLog(newLog);
   };
 
-  // Calculations for current day
+  // Safe numerical calculations for current day
   const totals = useMemo(() => {
-    return log.foods.reduce(
+    return (log.foods || []).reduce(
       (acc, item) => {
-        const qty = item.quantity || 1;
-        acc.calories += Math.round(item.calories * qty);
-        acc.protein += Math.round(item.protein * qty);
-        acc.carbs += Math.round(item.carbs * qty);
-        acc.fat += Math.round(item.fat * qty);
+        const qty = Number(item.quantity) || 1;
+        const cal = Number(item.calories) || 0;
+        const prot = Number(item.protein) || 0;
+        const carb = Number(item.carbs) || 0;
+        const fat = Number(item.fat) || 0;
+        acc.calories += Math.round(cal * qty);
+        acc.protein += Math.round(prot * qty);
+        acc.carbs += Math.round(carb * qty);
+        acc.fat += Math.round(fat * qty);
         return acc;
       },
       { calories: 0, protein: 0, carbs: 0, fat: 0 }
     );
   }, [log.foods]);
 
-  const caloriesRemaining = Math.max(0, log.targetCalories - totals.calories);
-  const caloriesPercent = Math.min(100, Math.round((totals.calories / log.targetCalories) * 100));
-  const proteinPercent = Math.min(100, Math.round((totals.protein / log.targetProtein) * 100));
-  const carbsPercent = Math.min(100, Math.round((totals.carbs / log.targetCarbs) * 100));
-  const fatPercent = Math.min(100, Math.round((totals.fat / log.targetFat) * 100));
-  const waterPercent = Math.min(100, Math.round((log.waterMl / log.waterGoalMl) * 100));
+  const targetKcal = Number(log.targetCalories) || 2300;
+  const targetProt = Number(log.targetProtein) || 180;
+  const targetCarb = Number(log.targetCarbs) || 220;
+  const targetFat = Number(log.targetFat) || 70;
+  const targetWater = Number(log.waterGoalMl) || 3500;
+
+  const caloriesRemaining = Math.max(0, targetKcal - totals.calories);
+  const caloriesPercent = Math.min(100, Math.round((totals.calories / targetKcal) * 100));
+  const proteinPercent = Math.min(100, Math.round((totals.protein / targetProt) * 100));
+  const carbsPercent = Math.min(100, Math.round((totals.carbs / targetCarb) * 100));
+  const fatPercent = Math.min(100, Math.round((totals.fat / targetFat) * 100));
+  const waterPercent = Math.min(100, Math.round(((log.waterMl || 0) / targetWater) * 100));
 
   // Toggle Day Type (Workout vs Rest)
   const handleToggleDayType = (type: 'workout' | 'rest') => {
@@ -135,66 +165,111 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
       targetFat: targetConfig.fat,
     };
     updateLog(newLog);
+    showToast(`Día cambiado a ${type === 'workout' ? 'Entreno (2.300 kcal)' : 'Descanso (2.100 kcal)'}`);
   };
 
   // Hydration modification
   const handleAddWater = (deltaMl: number) => {
     sound.playClick();
-    const newWater = Math.max(0, log.waterMl + deltaMl);
+    const newWater = Math.max(0, (log.waterMl || 0) + deltaMl);
     const newLog: DailyNutritionLog = {
       ...log,
       waterMl: newWater,
     };
     updateLog(newLog);
 
-    // Reward XP if reached water goal for the first time today
-    if (log.waterMl < log.waterGoalMl && newWater >= log.waterGoalMl && onGrantXp) {
+    if ((log.waterMl || 0) < targetWater && newWater >= targetWater && onGrantXp) {
       onGrantXp(25, 'Meta de hidratación diaria (3.5L)');
       sound.playSuccess();
+      showToast('🎉 ¡Objetivo de hidratación alcanzado (3.5L)! +25 XP');
     }
   };
 
-  // Add food item to a meal slot
-  const handleAddFoodItem = (food: Omit<FoodItem, 'id'>, mealType: MealType) => {
-    sound.playClick();
+  // Add food item with explicit quantity
+  const handleAddFoodItem = (
+    food: Omit<FoodItem, 'id'>,
+    mealType: MealType,
+    quantity = 1
+  ) => {
+    sound.playSuccess();
+    const safeQty = Math.max(0.25, Number(quantity) || 1);
     const newItem: LoggedFoodItem = {
       ...food,
+      calories: Math.round(Number(food.calories) || 0),
+      protein: Math.round(Number(food.protein) || 0),
+      carbs: Math.round(Number(food.carbs) || 0),
+      fat: Math.round(Number(food.fat) || 0),
       id: `food_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
       loggedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       mealType,
-      quantity: 1,
+      quantity: safeQty,
     };
-    const updatedFoods = [...log.foods, newItem];
-    const updatedLog = { ...log, foods: updatedFoods };
+
+    const updatedFoods = [...(log.foods || []), newItem];
+    const updatedLog: DailyNutritionLog = { ...log, foods: updatedFoods };
     updateLog(updatedLog);
 
-    // Grant 15 XP for logging food
+    const mealName = MEAL_SLOTS.find((s) => s.type === mealType)?.title || mealType;
+    showToast(`✓ ${food.name} (${safeQty}x) añadido a ${mealName}`);
+
+    // Grant XP for logging foods
     if (onGrantXp && updatedFoods.length === 3) {
       onGrantXp(25, 'Registro nutricional diario activo');
     }
   };
 
+  // Update quantity of an existing food item
+  const handleUpdateItemQuantity = (itemId: string, delta: number) => {
+    sound.playClick();
+    const updatedFoods = (log.foods || [])
+      .map((item) => {
+        if (item.id === itemId) {
+          const currentQty = Number(item.quantity) || 1;
+          const nextQty = Math.round((currentQty + delta) * 10) / 10;
+          return nextQty > 0 ? { ...item, quantity: nextQty } : null;
+        }
+        return item;
+      })
+      .filter((item): item is LoggedFoodItem => item !== null);
+
+    updateLog({ ...log, foods: updatedFoods });
+  };
+
   // Remove food item
   const handleRemoveFoodItem = (itemId: string) => {
     sound.playClick();
-    const updatedFoods = log.foods.filter((f) => f.id !== itemId);
+    const updatedFoods = (log.foods || []).filter((f) => f.id !== itemId);
     updateLog({ ...log, foods: updatedFoods });
+    showToast('Alimento eliminado');
   };
 
   // Load complete preloaded meal template from Renato's plan
   const handleLoadMealTemplate = (slot: MealSlotConfig) => {
-    sound.playClick();
+    sound.playSuccess();
     const timeNow = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     const newItems: LoggedFoodItem[] = slot.suggestedFoods.slice(0, 3).map((food, idx) => ({
       ...food,
+      calories: Math.round(Number(food.calories) || 0),
+      protein: Math.round(Number(food.protein) || 0),
+      carbs: Math.round(Number(food.carbs) || 0),
+      fat: Math.round(Number(food.fat) || 0),
       id: `plan_${Date.now()}_${idx}`,
       loggedAt: timeNow,
       mealType: slot.type,
       quantity: 1,
     }));
-    const updatedFoods = [...log.foods, ...newItems];
+    const updatedFoods = [...(log.foods || []), ...newItems];
     updateLog({ ...log, foods: updatedFoods });
-    sound.playSuccess();
+    showToast(`✓ Menú del plan cargado en ${slot.title}`);
+  };
+
+  // Save selected catalog food from modal
+  const handleConfirmSaveSelectedCatalogFood = () => {
+    if (!selectedCatalogFood) return;
+    handleAddFoodItem(selectedCatalogFood, targetMealType, modalQuantity);
+    setAddFoodModalOpen(false);
+    setSelectedCatalogFood(null);
+    setModalQuantity(1);
   };
 
   // Submit custom food
@@ -211,7 +286,8 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
         fat: Number(customFoodForm.fat) || 0,
         servingSize: customFoodForm.servingSize || '1 ración',
       },
-      targetMealType
+      targetMealType,
+      customFoodForm.quantity || 1
     );
 
     setCustomFoodForm({
@@ -221,6 +297,7 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
       carbs: '',
       fat: '',
       servingSize: '1 ración',
+      quantity: 1,
     });
     setAddFoodModalOpen(false);
   };
@@ -246,7 +323,6 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
     FitStorage.saveSaturdayWeighIn(newEntry);
     setWeighIns(FitStorage.getSaturdayWeighIns());
 
-    // Update user weight in parent state if newest
     if (onUpdateUser) {
       const updatedUser = FitStorage.logWeight(weightNum, newEntry.date, user);
       onUpdateUser(updatedUser);
@@ -256,6 +332,7 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
       onGrantXp(50, 'Pesaje y control de composición corporal');
     }
 
+    showToast(`✓ Pesaje registrado: ${weightNum} kg`);
     setWeighInModalOpen(false);
   };
 
@@ -263,14 +340,27 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
     sound.playClick();
     FitStorage.deleteSaturdayWeighIn(id);
     setWeighIns(FitStorage.getSaturdayWeighIns());
+    showToast('Pesaje eliminado');
   };
 
   // Filtered food catalog
   const filteredCatalog = useMemo(() => {
-    if (!foodSearchQuery.trim()) return QUICK_ADD_FOODS.slice(0, 10);
-    const q = foodSearchQuery.toLowerCase().trim();
-    return QUICK_ADD_FOODS.filter((f) => f.name.toLowerCase().includes(q));
-  }, [foodSearchQuery]);
+    let list = QUICK_ADD_FOODS;
+    if (foodSearchQuery.trim()) {
+      const q = foodSearchQuery.toLowerCase().trim();
+      list = list.filter((f) => f.name.toLowerCase().includes(q));
+    }
+    if (categoryFilter === 'protein') {
+      list = list.filter((f) => f.protein >= 15);
+    } else if (categoryFilter === 'carbs') {
+      list = list.filter((f) => f.carbs >= 15);
+    } else if (categoryFilter === 'fats') {
+      list = list.filter((f) => f.fat >= 8);
+    } else if (categoryFilter === 'fruits') {
+      list = list.filter((f) => f.name.includes('Manzana') || f.name.includes('Plátano') || f.carbs > 15 && f.fat === 0);
+    }
+    return list;
+  }, [foodSearchQuery, categoryFilter]);
 
   // Latest Weigh In & Progress
   const latestWeighIn = weighIns[0] || null;
@@ -280,26 +370,34 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
   const targetProgressPercent = Math.min(100, Math.max(0, Math.round((lostKgSoFar / totalKgToLose) * 100)));
 
   return (
-    <div className="space-y-6 animate-in fade-in pb-10">
+    <div className="space-y-6 animate-in fade-in pb-12 relative">
+      {/* Toast Notification */}
+      {toastMessage && (
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 bg-neutral-900 border border-cyan-500/50 text-white px-4 py-2.5 rounded-2xl shadow-2xl flex items-center gap-2 animate-in fade-in slide-in-from-top-4">
+          <CheckCircle2 className="w-4 h-4 text-cyan-400 shrink-0" />
+          <span className="text-xs font-bold font-mono">{toastMessage}</span>
+        </div>
+      )}
+
       {/* Top Banner: Athlete Identity & Plan Reference */}
       <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-neutral-900 via-neutral-900/90 to-neutral-950 border border-white/10 p-4 sm:p-6 shadow-xl">
         <div className="absolute top-0 right-0 w-80 h-80 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20" />
         <div className="relative flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <div className="flex items-center gap-2 mb-2">
+            <div className="flex items-center gap-2 mb-2 flex-wrap">
               <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-cyan-500/20 text-cyan-400 border border-cyan-500/30">
                 Plan Personalizado Renato Cabrera
               </span>
               <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-white/5 text-neutral-400 border border-white/10">
-                Protección Lumbar
+                Protección Lumbar & Rendimiento
               </span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight flex items-center gap-2.5">
               <UtensilsCrossed className="w-7 h-7 text-cyan-400" />
               Nutrición & Macros
             </h1>
-            <p className="text-xs sm:text-sm text-neutral-400 mt-1 max-w-2xl">
-              Déficit calórico estratégico (~550 kcal) para alcanzar <strong className="text-white">90.0 kg</strong> manteniendo 63-64 kg de músculo. Prioridad de hidratación continua en carretera.
+            <p className="text-xs sm:text-sm text-neutral-400 mt-1 max-w-2xl leading-relaxed">
+              Déficit calórico estratégico (~550 kcal) para alcanzar <strong className="text-white">90.0 kg</strong> protegiendo 63-64 kg de músculo. Prioridad de hidratación continua en carretera.
             </p>
           </div>
 
@@ -363,7 +461,7 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
                 onClick={() => handleToggleDayType('workout')}
                 className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
                   log.dayType === 'workout'
-                    ? 'bg-cyan-500 text-neutral-950'
+                    ? 'bg-cyan-500 text-neutral-950 shadow-sm'
                     : 'text-neutral-400 hover:text-white'
                 }`}
               >
@@ -373,7 +471,7 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
                 onClick={() => handleToggleDayType('rest')}
                 className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
                   log.dayType === 'rest'
-                    ? 'bg-cyan-500 text-neutral-950'
+                    ? 'bg-cyan-500 text-neutral-950 shadow-sm'
                     : 'text-neutral-400 hover:text-white'
                 }`}
               >
@@ -383,7 +481,7 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
           </div>
 
           {/* Macro Summary Dashboard */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-3 sm:gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             {/* Total Calories Card */}
             <div className="bg-gradient-to-br from-neutral-900 to-neutral-900/60 border border-white/10 rounded-2xl p-4 flex flex-col justify-between shadow-sm">
               <div className="flex items-center justify-between">
@@ -401,13 +499,13 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
                     {totals.calories}
                   </span>
                   <span className="text-xs text-neutral-400 font-mono">
-                    / {log.targetCalories} kcal
+                    / {targetKcal} kcal
                   </span>
                 </div>
                 <div className="w-full h-2 bg-neutral-800 rounded-full overflow-hidden mt-2">
                   <div
                     className={`h-full rounded-full transition-all duration-500 ${
-                      totals.calories > log.targetCalories
+                      totals.calories > targetKcal
                         ? 'bg-red-500'
                         : 'bg-gradient-to-r from-amber-500 to-orange-500'
                     }`}
@@ -416,7 +514,7 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
                 </div>
               </div>
               <span className="text-[11px] text-neutral-500">
-                {totals.calories > log.targetCalories ? '⚠️ Superaste la meta' : 'En zona de déficit quema grasa'}
+                {totals.calories > targetKcal ? '⚠️ Superaste la meta calórica' : 'Déficit controlado para quemar grasa'}
               </span>
             </div>
 
@@ -428,7 +526,7 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
                   Proteína (Clave)
                 </span>
                 <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
-                  {totals.protein >= log.targetProtein ? '100% Meta' : `${Math.round(log.targetProtein - totals.protein)}g faltan`}
+                  {totals.protein >= targetProt ? '✓ 100% Meta' : `${Math.round(targetProt - totals.protein)}g faltan`}
                 </span>
               </div>
               <div className="my-3">
@@ -437,7 +535,7 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
                     {totals.protein}g
                   </span>
                   <span className="text-xs text-neutral-400 font-mono">
-                    / {log.targetProtein}g
+                    / {targetProt}g
                   </span>
                 </div>
                 <div className="w-full h-2 bg-neutral-800 rounded-full overflow-hidden mt-2">
@@ -460,7 +558,7 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
                   Carbohidratos
                 </span>
                 <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-white/5 text-neutral-400 border border-white/5">
-                  {Math.round(log.targetCarbs - totals.carbs)}g
+                  {Math.max(0, targetCarb - totals.carbs)}g restantes
                 </span>
               </div>
               <div className="my-3">
@@ -469,7 +567,7 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
                     {totals.carbs}g
                   </span>
                   <span className="text-xs text-neutral-400 font-mono">
-                    / {log.targetCarbs}g
+                    / {targetCarb}g
                   </span>
                 </div>
                 <div className="w-full h-2 bg-neutral-800 rounded-full overflow-hidden mt-2">
@@ -480,7 +578,7 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
                 </div>
               </div>
               <span className="text-[11px] text-neutral-500">
-                {log.dayType === 'workout' ? 'Energía para el entreno' : 'Moderado en descanso'}
+                {log.dayType === 'workout' ? 'Energía para entreno de fuerza' : 'Moderado en día de descanso'}
               </span>
             </div>
 
@@ -492,7 +590,7 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
                   Grasas Saludables
                 </span>
                 <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-white/5 text-neutral-400 border border-white/5">
-                  {Math.round(log.targetFat - totals.fat)}g
+                  {Math.max(0, targetFat - totals.fat)}g restantes
                 </span>
               </div>
               <div className="my-3">
@@ -501,7 +599,7 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
                     {totals.fat}g
                   </span>
                   <span className="text-xs text-neutral-400 font-mono">
-                    / {log.targetFat}g
+                    / {targetFat}g
                   </span>
                 </div>
                 <div className="w-full h-2 bg-neutral-800 rounded-full overflow-hidden mt-2">
@@ -512,7 +610,7 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
                 </div>
               </div>
               <span className="text-[11px] text-neutral-500">
-                AOVE, aguacate, nueces
+                AOVE (10g), aguacate, frutos secos
               </span>
             </div>
           </div>
@@ -541,32 +639,32 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
               <div className="flex flex-wrap items-center gap-2">
                 <div className="text-right mr-2">
                   <div className="text-xl font-black font-mono text-blue-400">
-                    {(log.waterMl / 1000).toFixed(2)} L
+                    {((log.waterMl || 0) / 1000).toFixed(2)} L
                   </div>
                   <div className="text-[10px] text-neutral-400 font-mono">
-                    de {(log.waterGoalMl / 1000).toFixed(1)} L ({waterPercent}%)
+                    de {(targetWater / 1000).toFixed(1)} L ({waterPercent}%)
                   </div>
                 </div>
 
                 <button
                   onClick={() => handleAddWater(250)}
-                  className="px-2.5 py-1.5 rounded-xl bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/30 text-blue-300 text-xs font-bold transition-all hover:scale-105"
+                  className="px-2.5 py-1.5 rounded-xl bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/30 text-blue-300 text-xs font-bold transition-all hover:scale-105 active:scale-95"
                 >
                   +250ml
                 </button>
                 <button
                   onClick={() => handleAddWater(500)}
-                  className="px-2.5 py-1.5 rounded-xl bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/30 text-blue-300 text-xs font-bold transition-all hover:scale-105"
+                  className="px-2.5 py-1.5 rounded-xl bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/30 text-blue-300 text-xs font-bold transition-all hover:scale-105 active:scale-95"
                 >
                   +500ml
                 </button>
                 <button
                   onClick={() => handleAddWater(1000)}
-                  className="px-3 py-1.5 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/40 text-cyan-300 text-xs font-bold transition-all hover:scale-105"
+                  className="px-3 py-1.5 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/40 text-cyan-300 text-xs font-bold transition-all hover:scale-105 active:scale-95"
                 >
                   +1.0L (Termo Coche)
                 </button>
-                {log.waterMl > 0 && (
+                {(log.waterMl || 0) > 0 && (
                   <button
                     onClick={() => handleAddWater(-250)}
                     className="p-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-neutral-400 text-xs transition-colors"
@@ -595,22 +693,28 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
                 Las 5 Comidas del Día
               </h2>
               <span className="text-xs text-neutral-400 font-mono">
-                {log.foods.length} alimentos registrados
+                {(log.foods || []).length} alimentos registrados
               </span>
             </div>
 
             {MEAL_SLOTS.map((slot) => {
-              const slotFoods = log.foods.filter((f) => f.mealType === slot.type);
-              const slotKcal = slotFoods.reduce((sum, f) => sum + (f.calories * (f.quantity || 1)), 0);
-              const slotProtein = slotFoods.reduce((sum, f) => sum + (f.protein * (f.quantity || 1)), 0);
+              const slotFoods = (log.foods || []).filter((f) => f.mealType === slot.type);
+              const slotKcal = slotFoods.reduce(
+                (sum, f) => sum + Math.round((Number(f.calories) || 0) * (Number(f.quantity) || 1)),
+                0
+              );
+              const slotProtein = slotFoods.reduce(
+                (sum, f) => sum + Math.round((Number(f.protein) || 0) * (Number(f.quantity) || 1)),
+                0
+              );
 
               return (
                 <div
                   key={slot.type}
-                  className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4 transition-all hover:border-white/20"
+                  className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4 transition-all hover:border-white/20 shadow-sm"
                 >
                   {/* Slot Header */}
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-white/5">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-white/5">
                     <div>
                       <div className="flex items-center gap-2">
                         <h3 className="text-base font-bold text-white">{slot.title}</h3>
@@ -623,10 +727,10 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
                     </div>
 
                     {/* Target & current count */}
-                    <div className="flex items-center gap-2 self-start sm:self-auto">
-                      <div className="text-right">
+                    <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
+                      <div className="text-right mr-1">
                         <div className="text-xs font-mono font-bold text-white">
-                          <span className={slotKcal > slot.targetKcal * 1.2 ? 'text-amber-400' : 'text-cyan-400'}>
+                          <span className={slotKcal > slot.targetKcal * 1.15 ? 'text-amber-400' : 'text-cyan-400'}>
                             {slotKcal}
                           </span>{' '}
                           / {slot.targetKcal} kcal
@@ -640,76 +744,130 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
                       <button
                         onClick={() => handleLoadMealTemplate(slot)}
                         title="Cargar menú sugerido de tu plan de nutrición con 1 click"
-                        className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-400 text-xs font-bold transition-all hover:scale-105"
+                        className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-400 text-xs font-bold transition-all hover:scale-105 active:scale-95"
                       >
-                        <Sparkles className="w-3 h-3" />
-                        <span className="hidden xs:inline">Cargar Menú Plan</span>
+                        <Sparkles className="w-3.5 h-3.5" />
+                        <span>Cargar Menú Plan</span>
                       </button>
 
                       {/* Add Food Button */}
                       <button
                         onClick={() => {
+                          sound.playClick();
                           setTargetMealType(slot.type);
+                          setSelectedCatalogFood(null);
+                          setModalQuantity(1);
                           setFoodSearchQuery('');
+                          setModalTab('catalog');
                           setAddFoodModalOpen(true);
                         }}
-                        className="p-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white transition-colors"
-                        title="Añadir alimento manual o frecuente"
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/15 border border-white/15 text-white text-xs font-bold transition-all hover:scale-105 active:scale-95"
                       >
-                        <Plus className="w-4 h-4" />
+                        <Plus className="w-3.5 h-3.5 text-cyan-400 stroke-[2.5]" />
+                        <span>Añadir</span>
                       </button>
                     </div>
+                  </div>
+
+                  {/* Quick Suggestions Chips (1-tap add directly from screen) */}
+                  <div className="pt-2.5 pb-1 flex items-center gap-1.5 overflow-x-auto text-[11px]">
+                    <span className="text-neutral-500 font-mono text-[10px] shrink-0 uppercase tracking-wider">
+                      Sugeridos:
+                    </span>
+                    {slot.suggestedFoods.slice(0, 3).map((item, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => handleAddFoodItem(item, slot.type, 1)}
+                        className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white/5 hover:bg-cyan-500/10 border border-white/5 hover:border-cyan-500/30 text-neutral-300 hover:text-cyan-300 whitespace-nowrap transition-colors"
+                        title={`Añadir 1x ${item.name} (${item.calories} kcal)`}
+                      >
+                        <Plus className="w-3 h-3 text-cyan-400" />
+                        <span>{item.name.split('(')[0].trim()}</span>
+                        <span className="text-[10px] text-neutral-500 font-mono font-bold">
+                          {item.calories}k
+                        </span>
+                      </button>
+                    ))}
                   </div>
 
                   {/* Slot Items List */}
                   {slotFoods.length > 0 ? (
                     <div className="divide-y divide-white/5 mt-2">
-                      {slotFoods.map((item) => (
-                        <div
-                          key={item.id}
-                          className="py-2.5 flex items-center justify-between gap-2 text-xs"
-                        >
-                          <div className="min-w-0 flex-1">
-                            <div className="font-semibold text-neutral-100 truncate">
-                              {item.name}
-                            </div>
-                            <div className="flex items-center gap-2 text-[10px] text-neutral-400 font-mono mt-0.5">
-                              {item.servingSize && <span>{item.servingSize}</span>}
-                              <span>•</span>
-                              <span className="text-cyan-400 font-bold">{item.protein}g prot</span>
-                              <span>•</span>
-                              <span>{item.carbs}g carb</span>
-                              <span>•</span>
-                              <span>{item.fat}g gra</span>
-                            </div>
-                          </div>
+                      {slotFoods.map((item) => {
+                        const qty = Number(item.quantity) || 1;
+                        const itemKcal = Math.round((Number(item.calories) || 0) * qty);
+                        const itemProt = Math.round((Number(item.protein) || 0) * qty);
+                        const itemCarb = Math.round((Number(item.carbs) || 0) * qty);
+                        const itemFat = Math.round((Number(item.fat) || 0) * qty);
 
-                          <div className="flex items-center gap-3 shrink-0">
-                            <span className="font-mono font-bold text-neutral-200">
-                              {item.calories} kcal
-                            </span>
-                            <button
-                              onClick={() => handleRemoveFoodItem(item.id)}
-                              className="p-1 text-neutral-500 hover:text-red-400 transition-colors"
-                              title="Eliminar alimento"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
+                        return (
+                          <div
+                            key={item.id}
+                            className="py-2.5 flex items-center justify-between gap-3 text-xs"
+                          >
+                            <div className="min-w-0 flex-1">
+                              <div className="font-semibold text-neutral-100 truncate flex items-center gap-2">
+                                <span>{item.name}</span>
+                                {qty !== 1 && (
+                                  <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 font-bold">
+                                    {qty}x
+                                  </span>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-2 text-[10px] text-neutral-400 font-mono mt-0.5">
+                                {item.servingSize && <span>{item.servingSize}</span>}
+                                <span>•</span>
+                                <span className="text-cyan-400 font-bold">{itemProt}g prot</span>
+                                <span>•</span>
+                                <span>{itemCarb}g carb</span>
+                                <span>•</span>
+                                <span>{itemFat}g gra</span>
+                              </div>
+                            </div>
+
+                            {/* Quantity Controls & Calories */}
+                            <div className="flex items-center gap-2 shrink-0">
+                              <div className="flex items-center bg-black/40 border border-white/10 rounded-xl p-0.5">
+                                <button
+                                  onClick={() => handleUpdateItemQuantity(item.id, -0.5)}
+                                  className="w-5 h-5 flex items-center justify-center text-neutral-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+                                  title="Disminuir ración"
+                                >
+                                  <Minus className="w-3 h-3" />
+                                </button>
+                                <span className="w-8 text-center font-mono font-bold text-[11px] text-white">
+                                  {qty}x
+                                </span>
+                                <button
+                                  onClick={() => handleUpdateItemQuantity(item.id, 0.5)}
+                                  className="w-5 h-5 flex items-center justify-center text-neutral-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+                                  title="Aumentar ración"
+                                >
+                                  <Plus className="w-3 h-3" />
+                                </button>
+                              </div>
+
+                              <span className="font-mono font-bold text-neutral-200 w-16 text-right">
+                                {itemKcal} kcal
+                              </span>
+
+                              <button
+                                onClick={() => handleRemoveFoodItem(item.id)}
+                                className="p-1.5 text-neutral-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
+                                title="Eliminar alimento"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   ) : (
-                    <div className="py-4 text-center">
+                    <div className="py-3 text-center">
                       <p className="text-xs text-neutral-500">
-                        Aún no has registrado nada en {slot.title.toLowerCase()}.
+                        Aún no has registrado ningún alimento en {slot.title.toLowerCase()}.
                       </p>
-                      <button
-                        onClick={() => handleLoadMealTemplate(slot)}
-                        className="mt-2 text-xs font-bold text-cyan-400 hover:text-cyan-300 underline underline-offset-4"
-                      >
-                        Cargar recomendación del plan ({slot.targetKcal} kcal)
-                      </button>
                     </div>
                   )}
                 </div>
@@ -749,7 +907,7 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
                   });
                   setWeighInModalOpen(true);
                 }}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-neutral-950 font-bold text-xs shadow-lg transition-all hover:scale-105 shrink-0 self-start sm:self-auto"
+                className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-neutral-950 font-bold text-xs shadow-lg transition-all hover:scale-105 active:scale-95 shrink-0 self-start sm:self-auto"
               >
                 <Plus className="w-4 h-4 stroke-[2.5]" />
                 <span>Nuevo Pesaje</span>
@@ -907,152 +1065,388 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
         </div>
       )}
 
-      {/* MODAL: Add Food Item */}
+      {/* ======================================================== */}
+      {/* 🍲 MODAL: AÑADIR ALIMENTO CON SELECTOR INTERACTIVO       */}
+      {/* ======================================================== */}
       {addFoodModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-[#121214] border border-white/10 rounded-3xl w-full max-w-lg p-5 sm:p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between pb-3 border-b border-white/10">
-              <div>
-                <h3 className="text-lg font-black text-white">Añadir Alimento</h3>
-                <span className="text-xs text-cyan-400 font-bold capitalize">
-                  {MEAL_SLOTS.find((s) => s.type === targetMealType)?.title || targetMealType}
-                </span>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-md animate-in fade-in">
+          <div className="bg-[#121214] border border-white/10 rounded-3xl w-full max-w-lg p-4 sm:p-6 shadow-2xl max-h-[92vh] flex flex-col">
+            
+            {/* Modal Header */}
+            <div className="flex items-center justify-between pb-3 border-b border-white/10 shrink-0">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400">
+                  <UtensilsCrossed className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-base sm:text-lg font-black text-white">Añadir Alimento</h3>
+                  <p className="text-[11px] text-neutral-400">
+                    Selecciona un alimento del plan o escribe uno libre
+                  </p>
+                </div>
               </div>
               <button
                 onClick={() => setAddFoodModalOpen(false)}
-                className="p-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-neutral-400 hover:text-white"
+                className="p-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-neutral-400 hover:text-white transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            {/* Quick search from database */}
-            <div className="my-4">
-              <label className="text-[11px] font-bold text-neutral-400 uppercase tracking-wider block mb-1.5">
-                Buscar en Alimentos Frecuentes
+            {/* Target Meal Selector Bar */}
+            <div className="mt-3 shrink-0">
+              <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider block mb-1.5">
+                Comida de destino:
               </label>
-              <div className="relative">
-                <Search className="w-4 h-4 text-neutral-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                <input
-                  type="text"
-                  placeholder="Ej: Pollo, Arroz, Merluza, Yogur, Avena..."
-                  value={foodSearchQuery}
-                  onChange={(e) => setFoodSearchQuery(e.target.value)}
-                  className="w-full bg-black/50 border border-white/10 rounded-xl pl-9 pr-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-400"
-                />
-              </div>
-
-              {/* Suggestions chips */}
-              <div className="mt-2.5 max-h-48 overflow-y-auto space-y-1.5">
-                {filteredCatalog.map((item, idx) => (
-                  <button
-                    key={idx}
-                    type="button"
-                    onClick={() => {
-                      handleAddFoodItem(item, targetMealType);
-                      setAddFoodModalOpen(false);
-                    }}
-                    className="w-full flex items-center justify-between p-2 rounded-xl bg-white/5 hover:bg-cyan-500/10 hover:border-cyan-500/30 border border-transparent text-left text-xs transition-colors group"
-                  >
-                    <div>
-                      <span className="font-semibold text-white group-hover:text-cyan-300">
-                        {item.name}
-                      </span>
-                      <div className="text-[10px] text-neutral-400 font-mono mt-0.5">
-                        {item.protein}g prot • {item.carbs}g carb • {item.fat}g gra
-                      </div>
-                    </div>
-                    <span className="font-mono font-bold text-cyan-400">
-                      {item.calories} kcal
-                    </span>
-                  </button>
-                ))}
+              <div className="grid grid-cols-5 gap-1 bg-black/40 border border-white/10 rounded-2xl p-1">
+                {MEAL_SLOTS.map((slot) => {
+                  const isSelected = targetMealType === slot.type;
+                  return (
+                    <button
+                      key={slot.type}
+                      type="button"
+                      onClick={() => {
+                        sound.playClick();
+                        setTargetMealType(slot.type);
+                      }}
+                      className={`py-1.5 px-1 rounded-xl text-[10px] sm:text-xs font-bold transition-all truncate text-center ${
+                        isSelected
+                          ? 'bg-cyan-500 text-neutral-950 shadow-md font-black'
+                          : 'text-neutral-400 hover:text-white hover:bg-white/5'
+                      }`}
+                      title={slot.title}
+                    >
+                      {slot.title.split(' ')[0]}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
-            {/* Custom food entry */}
-            <form onSubmit={handleSaveCustomFood} className="pt-4 border-t border-white/10 space-y-3">
-              <span className="text-[11px] font-bold text-neutral-400 uppercase tracking-wider block">
-                O escribe un Alimento Personalizado
-              </span>
-              <div>
-                <input
-                  type="text"
-                  placeholder="Nombre del alimento o plato"
-                  value={customFoodForm.name}
-                  onChange={(e) => setCustomFoodForm({ ...customFoodForm, name: e.target.value })}
-                  required
-                  className="w-full bg-black/50 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-400"
-                />
-              </div>
+            {/* Catalog vs Custom Tabs Switcher */}
+            <div className="flex items-center gap-2 mt-3 p-1 bg-black/30 border border-white/5 rounded-xl shrink-0">
+              <button
+                type="button"
+                onClick={() => {
+                  sound.playClick();
+                  setModalTab('catalog');
+                }}
+                className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-colors ${
+                  modalTab === 'catalog'
+                    ? 'bg-white/10 text-white border border-white/10 shadow-sm'
+                    : 'text-neutral-400 hover:text-white'
+                }`}
+              >
+                🔍 Alimentos Frecuentes ({QUICK_ADD_FOODS.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  sound.playClick();
+                  setModalTab('custom');
+                }}
+                className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-colors ${
+                  modalTab === 'custom'
+                    ? 'bg-white/10 text-white border border-white/10 shadow-sm'
+                    : 'text-neutral-400 hover:text-white'
+                }`}
+              >
+                ✍️ Crear Personalizado
+              </button>
+            </div>
 
-              <div className="grid grid-cols-4 gap-2 font-mono">
-                <div>
-                  <label className="text-[10px] text-neutral-400 block mb-1">Kcal</label>
-                  <input
-                    type="number"
-                    placeholder="250"
-                    value={customFoodForm.calories}
-                    onChange={(e) => setCustomFoodForm({ ...customFoodForm, calories: e.target.value })}
-                    required
-                    className="w-full bg-black/50 border border-white/10 rounded-xl px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-cyan-400"
-                  />
-                </div>
-                <div>
-                  <label className="text-[10px] text-cyan-400 block mb-1">Prot (g)</label>
-                  <input
-                    type="number"
-                    placeholder="25"
-                    value={customFoodForm.protein}
-                    onChange={(e) => setCustomFoodForm({ ...customFoodForm, protein: e.target.value })}
-                    className="w-full bg-black/50 border border-white/10 rounded-xl px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-cyan-400"
-                  />
-                </div>
-                <div>
-                  <label className="text-[10px] text-blue-400 block mb-1">Carb (g)</label>
-                  <input
-                    type="number"
-                    placeholder="30"
-                    value={customFoodForm.carbs}
-                    onChange={(e) => setCustomFoodForm({ ...customFoodForm, carbs: e.target.value })}
-                    className="w-full bg-black/50 border border-white/10 rounded-xl px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-cyan-400"
-                  />
-                </div>
-                <div>
-                  <label className="text-[10px] text-emerald-400 block mb-1">Grasa (g)</label>
-                  <input
-                    type="number"
-                    placeholder="8"
-                    value={customFoodForm.fat}
-                    onChange={(e) => setCustomFoodForm({ ...customFoodForm, fat: e.target.value })}
-                    className="w-full bg-black/50 border border-white/10 rounded-xl px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-cyan-400"
-                  />
-                </div>
-              </div>
+            {/* Tab 1: Catalog Selector */}
+            {modalTab === 'catalog' && (
+              <div className="flex-1 flex flex-col min-h-0 mt-3">
+                {/* Search & Category Pills */}
+                <div className="space-y-2 shrink-0">
+                  <div className="relative">
+                    <Search className="w-4 h-4 text-neutral-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="text"
+                      placeholder="Buscar pollo, arroz, huevos, avena, salmón..."
+                      value={foodSearchQuery}
+                      onChange={(e) => setFoodSearchQuery(e.target.value)}
+                      className="w-full bg-black/50 border border-white/10 rounded-xl pl-9 pr-8 py-2 text-xs text-white focus:outline-none focus:border-cyan-400"
+                    />
+                    {foodSearchQuery && (
+                      <button
+                        onClick={() => setFoodSearchQuery('')}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-white"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
 
-              <div className="flex justify-end gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setAddFoodModalOpen(false)}
-                  className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-neutral-300 text-xs font-bold"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-neutral-950 text-xs font-bold shadow-md"
-                >
-                  Guardar Alimento
-                </button>
+                  <div className="flex items-center gap-1.5 overflow-x-auto text-[10px] pb-1">
+                    {(
+                      [
+                        { id: 'all', label: 'Todos' },
+                        { id: 'protein', label: '🥩 +Proteína' },
+                        { id: 'carbs', label: '🍚 +Carbohidratos' },
+                        { id: 'fats', label: '🥑 +Grasas' },
+                        { id: 'fruits', label: '🍎 Frutas' },
+                      ] as const
+                    ).map((c) => (
+                      <button
+                        key={c.id}
+                        type="button"
+                        onClick={() => setCategoryFilter(c.id)}
+                        className={`px-2.5 py-1 rounded-lg font-bold whitespace-nowrap transition-colors ${
+                          categoryFilter === c.id
+                            ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40'
+                            : 'bg-white/5 text-neutral-400 hover:text-white border border-transparent'
+                        }`}
+                      >
+                        {c.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Scrollable Food Items List */}
+                <div className="flex-1 overflow-y-auto space-y-1.5 mt-2 pr-1 min-h-[140px] max-h-[220px] sm:max-h-[260px]">
+                  {filteredCatalog.length > 0 ? (
+                    filteredCatalog.map((item, idx) => {
+                      const isSelected = selectedCatalogFood?.name === item.name;
+                      return (
+                        <div
+                          key={idx}
+                          onClick={() => {
+                            sound.playClick();
+                            setSelectedCatalogFood(item);
+                          }}
+                          className={`w-full flex items-center justify-between p-2.5 rounded-xl border text-left text-xs transition-all cursor-pointer ${
+                            isSelected
+                              ? 'bg-cyan-500/15 border-cyan-500 text-white shadow-[0_0_15px_rgba(6,182,212,0.15)] ring-1 ring-cyan-500/30'
+                              : 'bg-white/5 border-white/5 text-neutral-300 hover:bg-white/10 hover:border-white/15'
+                          }`}
+                        >
+                          <div className="min-w-0 flex-1 pr-2">
+                            <div className="flex items-center gap-2">
+                              <span
+                                className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 ${
+                                  isSelected
+                                    ? 'border-cyan-400 bg-cyan-500 text-neutral-950 font-black'
+                                    : 'border-neutral-500 bg-transparent'
+                                }`}
+                              >
+                                {isSelected && <Check className="w-3 h-3 stroke-[3]" />}
+                              </span>
+                              <span className="font-bold text-white truncate">{item.name}</span>
+                            </div>
+                            <div className="flex items-center gap-2 text-[10px] text-neutral-400 font-mono mt-0.5 ml-6">
+                              <span className="text-cyan-400 font-bold">{item.protein}g P</span>
+                              <span>•</span>
+                              <span className="text-blue-400">{item.carbs}g C</span>
+                              <span>•</span>
+                              <span className="text-emerald-400">{item.fat}g G</span>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className="font-mono font-bold text-cyan-400 text-xs">
+                              {item.calories} kcal
+                            </span>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleAddFoodItem(item, targetMealType, 1);
+                                setAddFoodModalOpen(false);
+                              }}
+                              className="px-2 py-1 rounded-lg bg-cyan-500/20 hover:bg-cyan-500 text-cyan-300 hover:text-neutral-950 text-[10px] font-bold border border-cyan-500/30 transition-colors"
+                              title="Añadir inmediatamente 1 ración"
+                            >
+                              + Añadir
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <div className="py-6 text-center text-xs text-neutral-500">
+                      No se encontraron alimentos con ese filtro.
+                    </div>
+                  )}
+                </div>
+
+                {/* Selected Food Action Bar (When an item is chosen) */}
+                <div className="pt-3 border-t border-white/10 mt-3 shrink-0">
+                  {selectedCatalogFood ? (
+                    <div className="bg-cyan-500/10 border border-cyan-500/30 rounded-2xl p-3">
+                      <div className="flex items-center justify-between text-xs mb-2">
+                        <div className="min-w-0">
+                          <span className="text-[10px] uppercase font-bold text-cyan-400 font-mono block">
+                            Alimento Seleccionado:
+                          </span>
+                          <span className="font-bold text-white truncate block">
+                            {selectedCatalogFood.name}
+                          </span>
+                        </div>
+
+                        {/* Quantity Multiplier */}
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <span className="text-[10px] text-neutral-400 font-mono">Ración:</span>
+                          <div className="flex items-center bg-black/50 border border-white/10 rounded-xl p-0.5">
+                            <button
+                              type="button"
+                              onClick={() => setModalQuantity(Math.max(0.5, modalQuantity - 0.5))}
+                              className="w-5 h-5 flex items-center justify-center text-neutral-400 hover:text-white"
+                            >
+                              <Minus className="w-3 h-3" />
+                            </button>
+                            <span className="w-8 text-center font-mono font-bold text-xs text-white">
+                              {modalQuantity}x
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => setModalQuantity(modalQuantity + 0.5)}
+                              className="w-5 h-5 flex items-center justify-center text-neutral-400 hover:text-white"
+                            >
+                              <Plus className="w-3 h-3" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Primary Save Button */}
+                      <button
+                        type="button"
+                        onClick={handleConfirmSaveSelectedCatalogFood}
+                        className="w-full py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-neutral-950 font-black text-xs shadow-lg transition-all hover:scale-[1.01] active:scale-98 flex items-center justify-center gap-2 cursor-pointer"
+                      >
+                        <Check className="w-4 h-4 stroke-[3]" />
+                        <span>
+                          Guardar en {MEAL_SLOTS.find((s) => s.type === targetMealType)?.title || targetMealType} (+{Math.round(selectedCatalogFood.calories * modalQuantity)} kcal)
+                        </span>
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="text-center py-2 text-xs text-neutral-400">
+                      Toca cualquier alimento de la lista para seleccionarlo y guardarlo
+                    </div>
+                  )}
+                </div>
               </div>
-            </form>
+            )}
+
+            {/* Tab 2: Custom Food Form */}
+            {modalTab === 'custom' && (
+              <form onSubmit={handleSaveCustomFood} className="flex-1 flex flex-col justify-between mt-3 space-y-3">
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider block mb-1">
+                      Nombre del plato o alimento *
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Ej: Menú del día Kerakoll, Ensalada de pasta..."
+                      value={customFoodForm.name}
+                      onChange={(e) => setCustomFoodForm({ ...customFoodForm, name: e.target.value })}
+                      required
+                      className="w-full bg-black/50 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-400"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-4 gap-2 font-mono">
+                    <div>
+                      <label className="text-[10px] text-neutral-400 block mb-1">Calorías *</label>
+                      <input
+                        type="number"
+                        placeholder="250"
+                        value={customFoodForm.calories}
+                        onChange={(e) => setCustomFoodForm({ ...customFoodForm, calories: e.target.value })}
+                        required
+                        className="w-full bg-black/50 border border-white/10 rounded-xl px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-cyan-400"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] text-cyan-400 block mb-1">Prot (g)</label>
+                      <input
+                        type="number"
+                        placeholder="25"
+                        value={customFoodForm.protein}
+                        onChange={(e) => setCustomFoodForm({ ...customFoodForm, protein: e.target.value })}
+                        className="w-full bg-black/50 border border-white/10 rounded-xl px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-cyan-400"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] text-blue-400 block mb-1">Carb (g)</label>
+                      <input
+                        type="number"
+                        placeholder="30"
+                        value={customFoodForm.carbs}
+                        onChange={(e) => setCustomFoodForm({ ...customFoodForm, carbs: e.target.value })}
+                        className="w-full bg-black/50 border border-white/10 rounded-xl px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-cyan-400"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] text-emerald-400 block mb-1">Grasa (g)</label>
+                      <input
+                        type="number"
+                        placeholder="8"
+                        value={customFoodForm.fat}
+                        onChange={(e) => setCustomFoodForm({ ...customFoodForm, fat: e.target.value })}
+                        className="w-full bg-black/50 border border-white/10 rounded-xl px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-cyan-400"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-[10px] text-neutral-400 block mb-1">Ración / Descripción</label>
+                      <input
+                        type="text"
+                        placeholder="Ej: 1 plato, 200g, 1 rebanada"
+                        value={customFoodForm.servingSize}
+                        onChange={(e) => setCustomFoodForm({ ...customFoodForm, servingSize: e.target.value })}
+                        className="w-full bg-black/50 border border-white/10 rounded-xl px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-cyan-400"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-[10px] text-neutral-400 block mb-1">Cantidad / Multiplicador</label>
+                      <input
+                        type="number"
+                        step="0.5"
+                        min="0.5"
+                        value={customFoodForm.quantity}
+                        onChange={(e) => setCustomFoodForm({ ...customFoodForm, quantity: Number(e.target.value) || 1 })}
+                        className="w-full bg-black/50 border border-white/10 rounded-xl px-2.5 py-1.5 text-xs font-mono text-white focus:outline-none focus:border-cyan-400"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="pt-3 border-t border-white/10 flex justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setAddFoodModalOpen(false)}
+                    className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-neutral-300 text-xs font-bold"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-5 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-neutral-950 text-xs font-black shadow-md flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <Check className="w-4 h-4 stroke-[3]" />
+                    <span>Guardar Alimento Personalizado</span>
+                  </button>
+                </div>
+              </form>
+            )}
           </div>
         </div>
       )}
 
-      {/* MODAL: Saturday Weigh-In */}
+      {/* ======================================================== */}
+      {/* ⚖️ MODAL: REGISTRAR PESAJE DEL SÁBADO                    */}
+      {/* ======================================================== */}
       {weighInModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in">
           <div className="bg-[#121214] border border-white/10 rounded-3xl w-full max-w-md p-5 sm:p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between pb-3 border-b border-white/10">
               <h3 className="text-lg font-black text-white flex items-center gap-2">
@@ -1178,7 +1572,7 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-neutral-950 text-xs font-bold shadow-md"
+                  className="px-5 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-neutral-950 text-xs font-black shadow-md"
                 >
                   Guardar Pesaje
                 </button>
