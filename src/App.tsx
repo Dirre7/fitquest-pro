@@ -17,10 +17,10 @@ import { createFreshAchievements, defaultChallenges } from './lib/initialData';
 import { translations } from './lib/i18n';
 import { sound } from './lib/soundFx';
 import { auth, db, onAuthStateChanged, signOut as fbSignOut } from './lib/firebase';
-import { onSnapshot, doc } from 'firebase/firestore';
+import { onSnapshot, doc, updateDoc } from 'firebase/firestore';
 import { evaluateWeeklyLeagueReset, calculateRealStreak, calculateAthleteAttributes } from './lib/leagueEngine';
 import { evaluateAllAchievements } from './lib/achievementEngine';
-import { Smartphone } from 'lucide-react';
+import { Smartphone, ShieldAlert } from 'lucide-react';
 
 // Components
 import { Navbar } from './components/Navbar';
@@ -39,6 +39,23 @@ import { AuthModal } from './components/AuthModal';
 import { AuthScreen } from './components/AuthScreen';
 import { ProfileEditModal } from './components/ProfileEditModal';
 import { QuickStartModal } from './components/QuickStartModal';
+
+// Helper para identificar este dispositivo y forzar la exclusión mutua (Móvil vs Tablet)
+function getDeviceSessionId(): string {
+  let id = localStorage.getItem('fitquest_device_session_id');
+  if (!id) {
+    id = 'dev_' + Math.random().toString(36).substring(2, 9) + '_' + Date.now();
+    localStorage.setItem('fitquest_device_session_id', id);
+  }
+  return id;
+}
+
+function getDeviceName(): string {
+  const ua = navigator.userAgent;
+  if (/ipad|tablet/i.test(ua)) return 'Tablet';
+  if (/mobile|android|iphone/i.test(ua)) return 'Móvil';
+  return 'Navegador Web / Escritorio';
+}
 
 export default function App() {
   // Global States loaded from FitStorage
@@ -63,13 +80,15 @@ export default function App() {
   const [highContrast, setHighContrast] = useState<boolean>(FitStorage.getHighContrast());
   const [textSize, setTextSize] = useState<'normal' | 'large' | 'xlarge'>(FitStorage.getTextSize());
 
-  // Cloud Auth State
+  // Cloud Auth State & Single Active Session Control
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [isGuestMode, setIsGuestMode] = useState<boolean>(false);
   const [authModalOpen, setAuthModalOpen] = useState<boolean>(false);
   const [authLoading, setAuthLoading] = useState<boolean>(true);
   const [quickStartModalOpen, setQuickStartModalOpen] = useState<boolean>(false);
   const [isMobileLandscape, setIsMobileLandscape] = useState<boolean>(false);
+  const [isSessionRevoked, setIsSessionRevoked] = useState<boolean>(false);
+  const [revokingDeviceName, setRevokingDeviceName] = useState<string>('Tablet / Móvil');
 
   const t = translations[lang];
 
@@ -152,11 +171,39 @@ export default function App() {
         setChallenges(cloudData.challenges);
         setRoutines(cloudData.routines);
 
-        // Real-time Firestore Live Sync for instant multi-device synchronization
+        // Claim exclusive active session for this device
+        const currentDeviceId = getDeviceSessionId();
+        const currentDeviceName = getDeviceName();
         const userDocRef = doc(db, 'users', firebaseUser.uid);
+        try {
+          await updateDoc(userDocRef, {
+            activeSessionDeviceId: currentDeviceId,
+            activeSessionDeviceName: currentDeviceName,
+            activeSessionClaimedAt: new Date().toISOString()
+          });
+        } catch (e) {
+          // Document may not exist yet or offline
+        }
+
+        // Real-time Firestore Live Sync for instant multi-device synchronization
         unsubSnapshot = onSnapshot(userDocRef, (docSnap) => {
           if (docSnap.exists()) {
-            const data = docSnap.data() as Partial<UserProfile>;
+            const data = docSnap.data() as Partial<UserProfile> & {
+              activeSessionDeviceId?: string;
+              activeSessionDeviceName?: string;
+              activeSessionClaimedAt?: string;
+            };
+
+            // Single Active Session Exclusion Check (Móvil vs Tablet)
+            if (
+              data.activeSessionDeviceId &&
+              data.activeSessionDeviceId !== currentDeviceId
+            ) {
+              setIsSessionRevoked(true);
+              setRevokingDeviceName(data.activeSessionDeviceName || 'Tablet / Móvil');
+              sound.play('error');
+              return;
+            }
             
             const localResetAt = localStorage.getItem('fitquest_last_reset_at');
             const isSnapshotReset = Boolean(
@@ -865,6 +912,68 @@ export default function App() {
           <div className="mt-3 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-[10px] font-mono text-cyan-400 flex items-center gap-1.5">
             <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-ping" />
             <span>FITQUEST PRO • EXPERIENCIA MÓVIL EN VERTICAL</span>
+          </div>
+        </div>
+      )}
+
+      {/* Single Active Session Revocation Dialog (Exclusión Mutua Móvil / Tablet) */}
+      {isSessionRevoked && (
+        <div className="fixed inset-0 z-[99999] bg-[#09090b]/95 backdrop-blur-2xl flex flex-col items-center justify-center p-6 text-center animate-in fade-in">
+          <div className="max-w-md w-full bg-neutral-900/90 border border-red-500/40 rounded-3xl p-6 sm:p-8 text-center shadow-[0_0_50px_rgba(239,68,68,0.25)] space-y-5">
+            <div className="w-16 h-16 rounded-2xl bg-red-500/10 border border-red-500/30 flex items-center justify-center text-red-500 mx-auto shadow-lg animate-pulse">
+              <ShieldAlert className="w-8 h-8" />
+            </div>
+
+            <div className="space-y-2">
+              <h3 className="font-display font-black text-xl text-white tracking-tight">
+                Sesión Cerrada en este Dispositivo
+              </h3>
+              <p className="text-xs text-neutral-300 leading-relaxed">
+                Se ha iniciado sesión desde otro dispositivo (<strong className="text-white">{revokingDeviceName}</strong>).
+              </p>
+              <p className="text-xs text-neutral-400 leading-relaxed">
+                Para asegurar la integridad total de tus series y pesos y evitar conflictos de sincronización, la cuenta solo puede estar activa en un único dispositivo a la vez.
+              </p>
+            </div>
+
+            <div className="p-3.5 rounded-2xl bg-white/[0.03] border border-white/5 text-left text-[11px] text-neutral-400 space-y-1">
+              <div className="flex items-center gap-2 text-white font-bold">
+                <span className="w-2 h-2 rounded-full bg-red-400" />
+                <span>Exclusión Mutua Activa</span>
+              </div>
+              <p>Tus datos, entrenamientos e historial están seguros y respaldados en la nube.</p>
+            </div>
+
+            <div className="flex flex-col gap-2 pt-2">
+              <button
+                onClick={async () => {
+                  if (auth.currentUser) {
+                    const currentDeviceId = getDeviceSessionId();
+                    const currentDeviceName = getDeviceName();
+                    const ref = doc(db, 'users', auth.currentUser.uid);
+                    await updateDoc(ref, {
+                      activeSessionDeviceId: currentDeviceId,
+                      activeSessionDeviceName: currentDeviceName,
+                      activeSessionClaimedAt: new Date().toISOString()
+                    });
+                    setIsSessionRevoked(false);
+                  }
+                }}
+                className="w-full py-3 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-black font-extrabold text-xs shadow-lg transition-transform hover:scale-[1.02] cursor-pointer"
+              >
+                Tomar el Control en este Dispositivo
+              </button>
+              <button
+                onClick={async () => {
+                  setIsSessionRevoked(false);
+                  await fbSignOut(auth);
+                  localStorage.removeItem('fitquest_device_session_id');
+                }}
+                className="w-full py-2.5 rounded-2xl bg-white/5 hover:bg-white/10 text-neutral-300 border border-white/10 font-bold text-xs transition-colors cursor-pointer"
+              >
+                Cerrar Sesión
+              </button>
+            </div>
           </div>
         </div>
       )}

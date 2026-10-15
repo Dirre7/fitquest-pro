@@ -36,7 +36,8 @@ import {
 import { translations } from '../lib/i18n';
 import { FitStorage } from '../lib/storage';
 import { sound } from '../lib/soundFx';
-import { auth, signOut } from '../lib/firebase';
+import { auth, db, signOut } from '../lib/firebase';
+import { doc, updateDoc } from 'firebase/firestore';
 
 interface CloudAndSettingsViewProps {
   user: UserProfile;
@@ -262,7 +263,39 @@ export const CloudAndSettingsView: React.FC<CloudAndSettingsViewProps> = ({
           </div>
         )}
 
+        {/* Single Active Session Control (Exclusión Mutua Móvil / Tablet) */}
+        <div className="p-4 sm:p-5 rounded-2xl bg-neutral-950/70 border border-neutral-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              <h4 className="text-xs font-bold text-white uppercase tracking-wider">
+                Sesión Única Activa (Móvil vs Tablet)
+              </h4>
+              <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                EXCLUSIÓN MUTUA
+              </span>
+            </div>
+            <p className="text-xs text-neutral-400 max-w-lg leading-relaxed">
+              Para asegurar la integridad total de tus series y pesos y evitar conflictos de sincronización, la cuenta solo puede estar activa en un único dispositivo a la vez. Si abres tu cuenta en la tablet o móvil, la sesión anterior se cerrará automáticamente.
+            </p>
+          </div>
 
+          <button
+            onClick={async () => {
+              if (auth.currentUser) {
+                const userRef = doc(db, 'users', auth.currentUser.uid);
+                await updateDoc(userRef, {
+                  activeSessionDeviceId: 'dev_simulated_tablet_' + Date.now(),
+                  activeSessionDeviceName: 'Tablet Galaxy Tab S9 (Prueba)',
+                  activeSessionClaimedAt: new Date().toISOString()
+                });
+              }
+            }}
+            className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-neutral-200 border border-white/10 text-xs font-bold flex items-center gap-2 transition-all hover:scale-105 shrink-0 cursor-pointer"
+          >
+            <span>Simular Inicio en Tablet</span>
+          </button>
+        </div>
 
         {/* Data Portability: Backup Export & Restore */}
         <div className="pt-4 border-t border-neutral-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
