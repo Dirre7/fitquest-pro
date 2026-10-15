@@ -300,6 +300,91 @@ export class FitStorage {
         },
       };
 
+      // Load and bidirectional merge nutrition subcollection (multi-device real-time sync)
+      try {
+        const nutritionRef = collection(db, 'users', uid, 'nutrition');
+        const nutritionSnap = await getDocs(nutritionRef);
+        const localLogsRaw = localStorage.getItem(KEYS.NUTRITION_LOGS);
+        const localLogs: Record<string, DailyNutritionLog> = localLogsRaw ? JSON.parse(localLogsRaw) : {};
+        const mergedNutrition: Record<string, DailyNutritionLog> = { ...localLogs };
+
+        if (!nutritionSnap.empty) {
+          nutritionSnap.docs.forEach((docSnap) => {
+            const cloudLog = docSnap.data() as DailyNutritionLog;
+            const dateKey = docSnap.id;
+            const localLog = localLogs[dateKey];
+
+            if (!localLog) {
+              mergedNutrition[dateKey] = cloudLog;
+            } else {
+              // Intelligent merge between devices:
+              // Combine foods by unique id or name so no logged meal is lost across devices
+              const localFoods = Array.isArray(localLog.foods) ? localLog.foods : [];
+              const cloudFoods = Array.isArray(cloudLog.foods) ? cloudLog.foods : [];
+              const foodsMap = new Map<string, any>();
+
+              localFoods.forEach((f) => foodsMap.set(f.id || f.name, f));
+              cloudFoods.forEach((f) => foodsMap.set(f.id || f.name, f));
+
+              const mergedFoods = Array.from(foodsMap.values());
+              const mergedWater = Math.max(Number(localLog.waterMl) || 0, Number(cloudLog.waterMl) || 0);
+
+              mergedNutrition[dateKey] = {
+                ...localLog,
+                ...cloudLog,
+                date: dateKey,
+                foods: mergedFoods.length > 0 ? mergedFoods : (cloudFoods.length > 0 ? cloudFoods : localFoods),
+                waterMl: mergedWater,
+              };
+
+              // Keep cloud updated with merged state
+              setDoc(doc(db, 'users', uid, 'nutrition', dateKey), mergedNutrition[dateKey], { merge: true }).catch(() => {});
+            }
+          });
+        }
+
+        // Upload any local date logs that don't exist in cloud yet
+        for (const [dateKey, log] of Object.entries(localLogs)) {
+          if (!nutritionSnap.docs.some((d) => d.id === dateKey)) {
+            setDoc(doc(db, 'users', uid, 'nutrition', dateKey), log, { merge: true }).catch(() => {});
+          }
+        }
+
+        localStorage.setItem(KEYS.NUTRITION_LOGS, JSON.stringify(mergedNutrition));
+      } catch (err) {
+        console.warn('Could not sync nutrition subcollection', err);
+      }
+
+      // Load and bidirectional merge weighIns subcollection (multi-device real-time sync)
+      try {
+        const weighInsRef = collection(db, 'users', uid, 'weighIns');
+        const weighInsSnap = await getDocs(weighInsRef);
+        const localWeighIns = this.getSaturdayWeighIns();
+        const weighInsMap = new Map<string, SaturdayWeighIn>();
+
+        if (!weighInsSnap.empty) {
+          weighInsSnap.docs.forEach((docSnap) => {
+            const data = docSnap.data() as SaturdayWeighIn;
+            weighInsMap.set(docSnap.id, { ...data, id: docSnap.id });
+          });
+        }
+
+        localWeighIns.forEach((entry) => {
+          if (!weighInsMap.has(entry.id)) {
+            weighInsMap.set(entry.id, entry);
+            // Sync local entry up to cloud
+            setDoc(doc(db, 'users', uid, 'weighIns', entry.id), entry, { merge: true }).catch(() => {});
+          }
+        });
+
+        const mergedWeighIns = Array.from(weighInsMap.values()).sort((a, b) => b.date.localeCompare(a.date));
+        if (mergedWeighIns.length > 0) {
+          localStorage.setItem(KEYS.SATURDAY_WEIGH_INS, JSON.stringify(mergedWeighIns));
+        }
+      } catch (err) {
+        console.warn('Could not sync weighIns subcollection', err);
+      }
+
       // Update local storage with combined sanitized history & user, and sync clean stats to cloud
       this.saveHistory(finalHistory);
       this.saveUser(userProfile);
@@ -1024,6 +1109,11 @@ export class FitStorage {
       logs[log.date] = log;
       localStorage.setItem(KEYS.NUTRITION_LOGS, JSON.stringify(logs));
 
+      // Dispatch local event for instant UI update across Dashboard and Nutrition tabs
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('fitquest_nutrition_updated'));
+      }
+
       const uid = auth.currentUser?.uid;
       if (uid) {
         setDoc(doc(db, 'users', uid, 'nutrition', log.date), log, { merge: true }).catch((err) =>
@@ -1075,6 +1165,11 @@ export class FitStorage {
       weighIns.sort((a, b) => b.date.localeCompare(a.date));
       localStorage.setItem(KEYS.SATURDAY_WEIGH_INS, JSON.stringify(weighIns));
 
+      // Dispatch local event for instant UI update
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('fitquest_weighins_updated'));
+      }
+
       const latest = weighIns[0];
       if (latest) {
         this.logWeight(latest.weightKg, latest.date);
@@ -1095,6 +1190,11 @@ export class FitStorage {
     try {
       const weighIns = this.getSaturdayWeighIns().filter((w) => w.id !== id);
       localStorage.setItem(KEYS.SATURDAY_WEIGH_INS, JSON.stringify(weighIns));
+
+      // Dispatch local event for instant UI update
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('fitquest_weighins_updated'));
+      }
 
       const uid = auth.currentUser?.uid;
       if (uid) {

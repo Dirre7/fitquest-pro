@@ -74,6 +74,18 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     new Set(currentRoutine?.exercises?.map((e) => e.muscleGroup) || ['Pecho', 'Tríceps'])
   ).slice(0, 3);
 
+  // Real-time synchronization for the Nutrition & Macros telemetry card
+  const [, setNutritionVersion] = useState<number>(0);
+  useEffect(() => {
+    const handleNutritionUpdate = () => {
+      setNutritionVersion((v) => v + 1);
+    };
+    window.addEventListener('fitquest_nutrition_updated', handleNutritionUpdate);
+    return () => {
+      window.removeEventListener('fitquest_nutrition_updated', handleNutritionUpdate);
+    };
+  }, []);
+
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
       

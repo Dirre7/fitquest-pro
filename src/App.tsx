@@ -11,13 +11,15 @@ import {
   ActiveWorkoutState,
   Language,
   ThemeMode,
+  DailyNutritionLog,
+  SaturdayWeighIn,
 } from './types';
 import { FitStorage } from './lib/storage';
 import { createFreshAchievements, defaultChallenges } from './lib/initialData';
 import { translations } from './lib/i18n';
 import { sound } from './lib/soundFx';
 import { auth, db, onAuthStateChanged, signOut as fbSignOut } from './lib/firebase';
-import { onSnapshot, doc, updateDoc } from 'firebase/firestore';
+import { onSnapshot, doc, updateDoc, collection } from 'firebase/firestore';
 import { evaluateWeeklyLeagueReset, calculateRealStreak, calculateAthleteAttributes } from './lib/leagueEngine';
 import { evaluateAllAchievements } from './lib/achievementEngine';
 import { Smartphone, ShieldAlert } from 'lucide-react';
@@ -120,7 +122,7 @@ export default function App() {
 
   // Purge outdated service worker caches on version bump
   useEffect(() => {
-    const CURRENT_PWA_BUILD = 'v3.0';
+    const CURRENT_PWA_BUILD = 'v3.1';
     const storedBuild = localStorage.getItem('fitquest_pwa_build');
     if (storedBuild && storedBuild !== CURRENT_PWA_BUILD) {
       localStorage.setItem('fitquest_pwa_build', CURRENT_PWA_BUILD);
@@ -144,21 +146,37 @@ export default function App() {
   // Listen to Firebase Auth state and attach real-time Firestore sync
   useEffect(() => {
     let unsubSnapshot: (() => void) | null = null;
+    let unsubNutrition: (() => void) | null = null;
+    let unsubWeighIns: (() => void) | null = null;
 
     const unsubscribeAuth = onAuthStateChanged(auth, async (firebaseUser) => {
       if (unsubSnapshot) {
         unsubSnapshot();
         unsubSnapshot = null;
       }
+      if (unsubNutrition) {
+        unsubNutrition();
+        unsubNutrition = null;
+      }
+      if (unsubWeighIns) {
+        unsubWeighIns();
+        unsubWeighIns = null;
+      }
 
       if (firebaseUser) {
         setIsAuthenticated(true);
-        // Initial load of cloud data
+        // Initial load of cloud data (including bidirectional nutrition & weighIns sync)
         const cloudData = await FitStorage.loadUserFromCloud(
           firebaseUser.uid,
           firebaseUser.email || undefined,
           firebaseUser.displayName || undefined
         );
+
+        // Notify local UI tabs immediately that fresh cloud nutrition and weighIns are loaded
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('fitquest_nutrition_updated'));
+          window.dispatchEvent(new CustomEvent('fitquest_weighins_updated'));
+        }
         const evaluated = evaluateWeeklyLeagueReset(cloudData.user, cloudData.history);
         const realStreak = calculateRealStreak(cloudData.history);
         const dynamicAttributes = calculateAthleteAttributes(cloudData.history, realStreak.currentStreak);
@@ -319,6 +337,68 @@ export default function App() {
             });
           }
         });
+
+        // Real-time Firestore Live Sync for nutrition subcollection across all devices
+        try {
+          const nutritionColRef = collection(db, 'users', firebaseUser.uid, 'nutrition');
+          unsubNutrition = onSnapshot(nutritionColRef, (snapshot) => {
+            if (!snapshot.empty) {
+              const currentLogsRaw = localStorage.getItem('fitquest_nutrition_logs');
+              const currentLogs: Record<string, DailyNutritionLog> = currentLogsRaw ? JSON.parse(currentLogsRaw) : {};
+              let hasChanges = false;
+
+              snapshot.docChanges().forEach((change) => {
+                const dateKey = change.doc.id;
+                const cloudLog = change.doc.data() as DailyNutritionLog;
+                if (change.type === 'added' || change.type === 'modified') {
+                  currentLogs[dateKey] = {
+                    ...currentLogs[dateKey],
+                    ...cloudLog,
+                    date: dateKey,
+                  };
+                  hasChanges = true;
+                } else if (change.type === 'removed') {
+                  delete currentLogs[dateKey];
+                  hasChanges = true;
+                }
+              });
+
+              if (hasChanges) {
+                localStorage.setItem('fitquest_nutrition_logs', JSON.stringify(currentLogs));
+                window.dispatchEvent(new CustomEvent('fitquest_nutrition_updated'));
+              }
+            }
+          });
+        } catch (e) {
+          console.warn('Could not attach nutrition real-time listener', e);
+        }
+
+        // Real-time Firestore Live Sync for Saturday weigh-ins subcollection across all devices
+        try {
+          const weighInsColRef = collection(db, 'users', firebaseUser.uid, 'weighIns');
+          unsubWeighIns = onSnapshot(weighInsColRef, (snapshot) => {
+            if (!snapshot.empty) {
+              const currentList = FitStorage.getSaturdayWeighIns();
+              const map = new Map<string, SaturdayWeighIn>();
+              currentList.forEach((w) => map.set(w.id, w));
+
+              snapshot.docChanges().forEach((change) => {
+                const id = change.doc.id;
+                if (change.type === 'added' || change.type === 'modified') {
+                  map.set(id, { ...(change.doc.data() as SaturdayWeighIn), id });
+                } else if (change.type === 'removed') {
+                  map.delete(id);
+                }
+              });
+
+              const updatedList = Array.from(map.values()).sort((a, b) => b.date.localeCompare(a.date));
+              localStorage.setItem('fitquest_saturday_weigh_ins', JSON.stringify(updatedList));
+              window.dispatchEvent(new CustomEvent('fitquest_weighins_updated'));
+            }
+          });
+        } catch (e) {
+          console.warn('Could not attach weigh-ins real-time listener', e);
+        }
       } else {
         setIsAuthenticated(false);
         const localUser = FitStorage.getUser();
@@ -354,6 +434,8 @@ export default function App() {
     return () => {
       unsubscribeAuth();
       if (unsubSnapshot) unsubSnapshot();
+      if (unsubNutrition) unsubNutrition();
+      if (unsubWeighIns) unsubWeighIns();
     };
   }, []);
 

@@ -126,6 +126,22 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
     setLog(loadedLog);
   }, [selectedDate]);
 
+  // Listen for real-time remote updates from other devices via Firestore onSnapshot
+  useEffect(() => {
+    const handleRemoteNutritionUpdate = () => {
+      setLog(FitStorage.getNutritionLog(selectedDate));
+    };
+    const handleRemoteWeighInsUpdate = () => {
+      setWeighIns(FitStorage.getSaturdayWeighIns());
+    };
+    window.addEventListener('fitquest_nutrition_updated', handleRemoteNutritionUpdate);
+    window.addEventListener('fitquest_weighins_updated', handleRemoteWeighInsUpdate);
+    return () => {
+      window.removeEventListener('fitquest_nutrition_updated', handleRemoteNutritionUpdate);
+      window.removeEventListener('fitquest_weighins_updated', handleRemoteWeighInsUpdate);
+    };
+  }, [selectedDate]);
+
   // Save log whenever it changes
   const updateLog = (newLog: DailyNutritionLog) => {
     setLog(newLog);
