@@ -57,6 +57,8 @@ export interface UserProfile {
   bio?: string;
   following?: string[];
   followers?: string[];
+  nutritionLogs?: Record<string, DailyNutritionLog>;
+  saturdayWeighIns?: SaturdayWeighIn[];
 }
 
 export interface ExerciseSet {

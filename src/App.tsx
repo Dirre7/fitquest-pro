@@ -122,7 +122,7 @@ export default function App() {
 
   // Purge outdated service worker caches on version bump
   useEffect(() => {
-    const CURRENT_PWA_BUILD = 'v3.2';
+    const CURRENT_PWA_BUILD = 'v3.3';
     const storedBuild = localStorage.getItem('fitquest_pwa_build');
     if (storedBuild && storedBuild !== CURRENT_PWA_BUILD) {
       localStorage.setItem('fitquest_pwa_build', CURRENT_PWA_BUILD);
@@ -335,6 +335,52 @@ export default function App() {
               } catch {}
               return updated;
             });
+
+            // Real-time synchronization of nutrition logs from master user document (identical to XP, level, stats)
+            if (data.nutritionLogs && typeof data.nutritionLogs === 'object') {
+              try {
+                const currentLogsRaw = localStorage.getItem('fitquest_nutrition_logs');
+                const currentLogs: Record<string, DailyNutritionLog> = currentLogsRaw ? JSON.parse(currentLogsRaw) : {};
+                let hasChanges = false;
+
+                for (const [dateKey, cloudLog] of Object.entries(data.nutritionLogs)) {
+                  const local = currentLogs[dateKey];
+                  const cloudFoodsCount = cloudLog?.foods?.length || 0;
+                  const localFoodsCount = local?.foods?.length || 0;
+                  const cloudWater = Number(cloudLog?.waterMl) || 0;
+                  const localWater = Number(local?.waterMl) || 0;
+
+                  if (!local || cloudFoodsCount !== localFoodsCount || cloudWater !== localWater) {
+                    currentLogs[dateKey] = {
+                      ...(local || {}),
+                      ...cloudLog,
+                      date: dateKey,
+                    };
+                    hasChanges = true;
+                  }
+                }
+
+                if (hasChanges) {
+                  localStorage.setItem('fitquest_nutrition_logs', JSON.stringify(currentLogs));
+                  window.dispatchEvent(new CustomEvent('fitquest_nutrition_updated'));
+                }
+              } catch (e) {
+                console.warn('Live sync nutrition parsing notice:', e);
+              }
+            }
+
+            // Real-time synchronization of Saturday weigh-ins from master user document
+            if (Array.isArray(data.saturdayWeighIns) && data.saturdayWeighIns.length > 0) {
+              try {
+                const currentList = FitStorage.getSaturdayWeighIns();
+                if (data.saturdayWeighIns.length !== currentList.length || JSON.stringify(data.saturdayWeighIns) !== JSON.stringify(currentList)) {
+                  localStorage.setItem('fitquest_saturday_weigh_ins', JSON.stringify(data.saturdayWeighIns));
+                  window.dispatchEvent(new CustomEvent('fitquest_weighins_updated'));
+                }
+              } catch (e) {
+                console.warn('Live sync weigh-ins parsing notice:', e);
+              }
+            }
           }
         }, (error) => {
           console.warn('User live sync snapshot warning:', error);

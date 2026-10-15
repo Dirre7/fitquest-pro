@@ -80,8 +80,15 @@ export class FitStorage {
       const uid = auth.currentUser?.uid;
       if (!uid) return;
       const userRef = doc(db, 'users', uid);
+
+      const localLogsRaw = localStorage.getItem(KEYS.NUTRITION_LOGS);
+      const localNutritionLogs = localLogsRaw ? JSON.parse(localLogsRaw) : {};
+      const localWeighIns = this.getSaturdayWeighIns();
+
       await setDoc(userRef, {
         ...user,
+        nutritionLogs: localNutritionLogs,
+        saturdayWeighIns: localWeighIns,
         id: uid,
         level: user.level,
         xp: user.xp,
@@ -300,89 +307,100 @@ export class FitStorage {
         },
       };
 
-      // Load and bidirectional merge nutrition subcollection (multi-device real-time sync)
+      // 1. Primary Sync from Master User Document (Identical to XP, Level, Stats)
+      const localLogsRaw = localStorage.getItem(KEYS.NUTRITION_LOGS);
+      const localLogs: Record<string, DailyNutritionLog> = localLogsRaw ? JSON.parse(localLogsRaw) : {};
+      const mergedNutrition: Record<string, DailyNutritionLog> = { ...localLogs };
+
+      // Load nutritionLogs stored directly on user profile document
+      if (cloudData.nutritionLogs && typeof cloudData.nutritionLogs === 'object') {
+        for (const [dateKey, cloudLog] of Object.entries(cloudData.nutritionLogs)) {
+          const localLog = localLogs[dateKey];
+          if (!localLog) {
+            mergedNutrition[dateKey] = cloudLog;
+          } else {
+            const localFoods = Array.isArray(localLog.foods) ? localLog.foods : [];
+            const cloudFoods = Array.isArray(cloudLog.foods) ? cloudLog.foods : [];
+            const foodsMap = new Map<string, any>();
+            localFoods.forEach((f) => foodsMap.set(f.id || f.name, f));
+            cloudFoods.forEach((f) => foodsMap.set(f.id || f.name, f));
+            const mergedFoods = Array.from(foodsMap.values());
+            mergedNutrition[dateKey] = {
+              ...localLog,
+              ...cloudLog,
+              date: dateKey,
+              foods: mergedFoods.length > 0 ? mergedFoods : (cloudFoods.length > 0 ? cloudFoods : localFoods),
+              waterMl: Math.max(Number(localLog.waterMl) || 0, Number(cloudLog.waterMl) || 0),
+            };
+          }
+        }
+      }
+
+      // Also check subcollection as secondary backup
       try {
         const nutritionRef = collection(db, 'users', uid, 'nutrition');
         const nutritionSnap = await getDocs(nutritionRef);
-        const localLogsRaw = localStorage.getItem(KEYS.NUTRITION_LOGS);
-        const localLogs: Record<string, DailyNutritionLog> = localLogsRaw ? JSON.parse(localLogsRaw) : {};
-        const mergedNutrition: Record<string, DailyNutritionLog> = { ...localLogs };
-
         if (!nutritionSnap.empty) {
           nutritionSnap.docs.forEach((docSnap) => {
             const cloudLog = docSnap.data() as DailyNutritionLog;
             const dateKey = docSnap.id;
-            const localLog = localLogs[dateKey];
-
-            if (!localLog) {
+            const existing = mergedNutrition[dateKey];
+            if (!existing) {
               mergedNutrition[dateKey] = cloudLog;
             } else {
-              // Intelligent merge between devices:
-              // Combine foods by unique id or name so no logged meal is lost across devices
-              const localFoods = Array.isArray(localLog.foods) ? localLog.foods : [];
+              const localFoods = Array.isArray(existing.foods) ? existing.foods : [];
               const cloudFoods = Array.isArray(cloudLog.foods) ? cloudLog.foods : [];
               const foodsMap = new Map<string, any>();
-
               localFoods.forEach((f) => foodsMap.set(f.id || f.name, f));
               cloudFoods.forEach((f) => foodsMap.set(f.id || f.name, f));
-
               const mergedFoods = Array.from(foodsMap.values());
-              const mergedWater = Math.max(Number(localLog.waterMl) || 0, Number(cloudLog.waterMl) || 0);
-
               mergedNutrition[dateKey] = {
-                ...localLog,
+                ...existing,
                 ...cloudLog,
                 date: dateKey,
                 foods: mergedFoods.length > 0 ? mergedFoods : (cloudFoods.length > 0 ? cloudFoods : localFoods),
-                waterMl: mergedWater,
+                waterMl: Math.max(Number(existing.waterMl) || 0, Number(cloudLog.waterMl) || 0),
               };
-
-              // Keep cloud updated with merged state
-              setDoc(doc(db, 'users', uid, 'nutrition', dateKey), mergedNutrition[dateKey], { merge: true }).catch(() => {});
             }
           });
         }
-
-        // Upload any local date logs that don't exist in cloud yet
-        for (const [dateKey, log] of Object.entries(localLogs)) {
-          if (!nutritionSnap.docs.some((d) => d.id === dateKey)) {
-            setDoc(doc(db, 'users', uid, 'nutrition', dateKey), log, { merge: true }).catch(() => {});
-          }
-        }
-
-        localStorage.setItem(KEYS.NUTRITION_LOGS, JSON.stringify(mergedNutrition));
       } catch (err) {
-        console.warn('Could not sync nutrition subcollection', err);
+        console.warn('Subcollection nutrition notice:', err);
       }
 
-      // Load and bidirectional merge weighIns subcollection (multi-device real-time sync)
+      localStorage.setItem(KEYS.NUTRITION_LOGS, JSON.stringify(mergedNutrition));
+
+      // 2. Primary Saturday Weigh-Ins sync from Master Document
+      const localWeighIns = this.getSaturdayWeighIns();
+      const weighInsMap = new Map<string, SaturdayWeighIn>();
+
+      if (Array.isArray(cloudData.saturdayWeighIns) && cloudData.saturdayWeighIns.length > 0) {
+        cloudData.saturdayWeighIns.forEach((w) => weighInsMap.set(w.id, w));
+      }
+
+      // Also check weighIns subcollection as secondary backup
       try {
         const weighInsRef = collection(db, 'users', uid, 'weighIns');
         const weighInsSnap = await getDocs(weighInsRef);
-        const localWeighIns = this.getSaturdayWeighIns();
-        const weighInsMap = new Map<string, SaturdayWeighIn>();
-
         if (!weighInsSnap.empty) {
           weighInsSnap.docs.forEach((docSnap) => {
             const data = docSnap.data() as SaturdayWeighIn;
             weighInsMap.set(docSnap.id, { ...data, id: docSnap.id });
           });
         }
-
-        localWeighIns.forEach((entry) => {
-          if (!weighInsMap.has(entry.id)) {
-            weighInsMap.set(entry.id, entry);
-            // Sync local entry up to cloud
-            setDoc(doc(db, 'users', uid, 'weighIns', entry.id), entry, { merge: true }).catch(() => {});
-          }
-        });
-
-        const mergedWeighIns = Array.from(weighInsMap.values()).sort((a, b) => b.date.localeCompare(a.date));
-        if (mergedWeighIns.length > 0) {
-          localStorage.setItem(KEYS.SATURDAY_WEIGH_INS, JSON.stringify(mergedWeighIns));
-        }
       } catch (err) {
-        console.warn('Could not sync weighIns subcollection', err);
+        console.warn('Subcollection weigh-ins notice:', err);
+      }
+
+      localWeighIns.forEach((entry) => {
+        if (!weighInsMap.has(entry.id)) {
+          weighInsMap.set(entry.id, entry);
+        }
+      });
+
+      const mergedWeighIns = Array.from(weighInsMap.values()).sort((a, b) => b.date.localeCompare(a.date));
+      if (mergedWeighIns.length > 0) {
+        localStorage.setItem(KEYS.SATURDAY_WEIGH_INS, JSON.stringify(mergedWeighIns));
       }
 
       // Update local storage with combined sanitized history & user, and sync clean stats to cloud
@@ -1116,9 +1134,20 @@ export class FitStorage {
 
       const uid = auth.currentUser?.uid;
       if (uid) {
-        setDoc(doc(db, 'users', uid, 'nutrition', log.date), log, { merge: true }).catch((err) =>
-          console.warn('Nutrition cloud sync warning:', err)
-        );
+        // 1. Primary Sync: Write directly to the master user document (identical to XP, level, rank)
+        setDoc(
+          doc(db, 'users', uid),
+          {
+            nutritionLogs: {
+              [log.date]: log,
+            },
+            updatedAt: new Date().toISOString(),
+          },
+          { merge: true }
+        ).catch((err) => console.warn('Master user doc nutrition sync warning:', err));
+
+        // 2. Secondary backup: Also write to subcollection
+        setDoc(doc(db, 'users', uid, 'nutrition', log.date), log, { merge: true }).catch(() => {});
       }
     } catch (e) {
       console.error('Failed to save nutrition log', e);
@@ -1177,9 +1206,18 @@ export class FitStorage {
 
       const uid = auth.currentUser?.uid;
       if (uid) {
-        setDoc(doc(db, 'users', uid, 'weighIns', entry.id), entry, { merge: true }).catch((err) =>
-          console.warn('Weigh-in cloud sync warning:', err)
-        );
+        // 1. Primary Sync: Write directly to the master user document
+        setDoc(
+          doc(db, 'users', uid),
+          {
+            saturdayWeighIns: weighIns,
+            updatedAt: new Date().toISOString(),
+          },
+          { merge: true }
+        ).catch((err) => console.warn('Master user doc weigh-ins sync warning:', err));
+
+        // 2. Secondary backup: Also write to subcollection
+        setDoc(doc(db, 'users', uid, 'weighIns', entry.id), entry, { merge: true }).catch(() => {});
       }
     } catch (e) {
       console.error('Failed to save Saturday weigh-in', e);
@@ -1198,9 +1236,18 @@ export class FitStorage {
 
       const uid = auth.currentUser?.uid;
       if (uid) {
-        deleteDoc(doc(db, 'users', uid, 'weighIns', id)).catch((err) =>
-          console.warn('Weigh-in cloud delete warning:', err)
-        );
+        // 1. Primary Sync: Update master user document
+        setDoc(
+          doc(db, 'users', uid),
+          {
+            saturdayWeighIns: weighIns,
+            updatedAt: new Date().toISOString(),
+          },
+          { merge: true }
+        ).catch((err) => console.warn('Master user doc weigh-ins delete sync warning:', err));
+
+        // 2. Secondary backup: Delete from subcollection
+        deleteDoc(doc(db, 'users', uid, 'weighIns', id)).catch(() => {});
       }
     } catch (e) {
       console.error('Failed to delete Saturday weigh-in', e);
