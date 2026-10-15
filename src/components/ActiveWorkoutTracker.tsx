@@ -147,6 +147,18 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
     setAddExerciseModalOpen(false);
   };
 
+  // Lock background body scrolling while active workout modal is open
+  useEffect(() => {
+    const originalOverflow = document.body.style.overflow;
+    const originalTouchAction = document.body.style.touchAction;
+    document.body.style.overflow = 'hidden';
+    document.body.style.touchAction = 'none';
+    return () => {
+      document.body.style.overflow = originalOverflow;
+      document.body.style.touchAction = originalTouchAction;
+    };
+  }, []);
+
   // Sync state continuously to FitStorage for safe background persistence
   useEffect(() => {
     if (isFinishedRef.current) return;
@@ -674,13 +686,12 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
 
   return (
     <div 
-      style={{ WebkitOverflowScrolling: 'touch' }}
-      className="fixed inset-0 z-50 bg-[#09090b] flex flex-col overflow-y-auto overflow-x-hidden w-full max-w-full overscroll-contain"
+      className="fixed inset-0 z-50 bg-[#09090b] flex flex-col h-screen h-[100dvh] w-full max-w-full overflow-hidden"
     >
       {/* Top Session HUD Bar with iOS Safe Area */}
-      <div 
-        style={{ paddingTop: 'max(0.6rem, env(safe-area-inset-top, 0px))' }}
-        className="sticky top-0 z-20 bg-[#121214] border-b border-white/5 px-2.5 sm:px-6 pb-2 sm:pb-3 w-full max-w-full shadow-2xl"
+      <header 
+        style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 0.65rem)' }}
+        className="shrink-0 z-20 bg-[#121214] border-b border-white/5 px-2.5 sm:px-6 pb-2.5 sm:pb-3 w-full max-w-full shadow-2xl"
       >
         <div className="max-w-4xl mx-auto flex items-center justify-between gap-1.5 sm:gap-4">
           
@@ -756,7 +767,7 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
             </button>
           </div>
         </div>
-      </div>
+      </header>
 
       {/* PR Celebration Floating Toast Notification */}
       {showPrNotification && (
@@ -777,13 +788,15 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
         </div>
       )}
 
-      {/* Main Content Area */}
+      {/* Scrollable Workout Content Container */}
       <div 
         style={{
-          paddingBottom: 'max(18rem, calc(env(safe-area-inset-bottom, 0px) + 16rem))',
+          WebkitOverflowScrolling: 'touch',
+          paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 8rem)',
         }}
-        className="max-w-4xl mx-auto w-full px-3 sm:px-6 pt-3 sm:pt-6 flex-1 flex flex-col gap-4 sm:gap-6 overflow-x-hidden"
+        className="flex-1 overflow-y-auto overflow-x-hidden min-h-0 w-full px-3 sm:px-6 pt-3 sm:pt-5"
       >
+        <div className="max-w-4xl mx-auto flex flex-col gap-4 sm:gap-6">
         
         {/* Exercise Switcher Tab Strip */}
         <div className="flex items-center gap-2 overflow-x-auto pb-1.5 no-scrollbar max-w-full">
@@ -1037,11 +1050,11 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
                       </div>
                     )}
 
-                    <div className="grid grid-cols-12 gap-1 sm:gap-2 text-[10px] sm:text-[11px] font-mono font-bold text-neutral-400 uppercase tracking-wider px-2 sm:px-3 pb-2 text-center">
-                      <div className="col-span-2 sm:col-span-2 text-left">{t.set}</div>
-                      <div className="col-span-4 sm:col-span-4">{isCardio ? 'Distancia (km)' : t.weight}</div>
-                      <div className="col-span-3 sm:col-span-3">{isCardio ? 'Tiempo (min)' : t.reps}</div>
-                      <div className="col-span-3 sm:col-span-3">{t.completedSet}</div>
+                    <div className="grid grid-cols-[auto_1fr_1fr_auto] gap-2 sm:gap-3 text-[10px] sm:text-[11px] font-mono font-bold text-neutral-400 uppercase tracking-wider px-2 sm:px-3 pb-2 text-center items-center">
+                      <div className="w-8 sm:w-11 text-left">{t.set}</div>
+                      <div>{isCardio ? 'Distancia (km)' : t.weight}</div>
+                      <div>{isCardio ? 'Tiempo (min)' : t.reps}</div>
+                      <div className="w-9 sm:w-12 text-center">{t.completedSet}</div>
                     </div>
 
                     <div className="space-y-2.5 sm:space-y-3">
@@ -1077,10 +1090,10 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
                                 : 'bg-white/5 border-white/5 text-white'
                             }`}
                           >
-                            <div className="grid grid-cols-12 gap-1 sm:gap-2 items-center">
+                            <div className="grid grid-cols-[auto_1fr_1fr_auto] gap-1.5 sm:gap-3 items-center">
                               {/* Set Number & Badge */}
-                              <div className="col-span-2 sm:col-span-2 flex items-center gap-1 sm:gap-1.5">
-                                <span className={`w-5 h-5 sm:w-6 sm:h-6 rounded-lg font-mono font-bold text-[11px] sm:text-xs flex items-center justify-center ${
+                              <div className="w-8 sm:w-11 flex items-center gap-1 shrink-0">
+                                <span className={`w-5 h-5 sm:w-6 sm:h-6 rounded-lg font-mono font-bold text-[11px] sm:text-xs flex items-center justify-center shrink-0 ${
                                   isCurrentActive && !isResting
                                     ? 'bg-cyan-500 text-neutral-950 shadow-md shadow-cyan-500/40'
                                     : isWaitingRest
@@ -1090,22 +1103,23 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
                                   {setIdx + 1}
                                 </span>
                                 {set.isWarmup && (
-                                  <span className="text-[8px] sm:text-[9px] font-mono font-extrabold px-1 sm:px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                                  <span className="text-[8px] sm:text-[9px] font-mono font-extrabold px-1 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30 shrink-0">
                                     W
                                   </span>
                                 )}
                               </div>
 
                               {/* Weight or Distance Adjuster */}
-                              <div className="col-span-4 sm:col-span-4 flex items-center justify-center gap-1 sm:gap-1.5">
+                              <div className="flex items-center justify-center gap-0.5 sm:gap-1.5 min-w-0">
                                 <button
+                                  type="button"
                                   onClick={() => handleUpdateSetVal(set.id, 'actualWeightKg', -stepVal)}
-                                  className="w-6 h-6 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-white/5 hover:bg-white/10 text-white flex items-center justify-center font-bold border border-white/5 shrink-0"
+                                  className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-white/5 hover:bg-white/10 text-white flex items-center justify-center font-bold border border-white/5 shrink-0 active:scale-95 transition-transform"
                                   title={isCardio ? "-0.5 km" : "-2.5 kg"}
                                 >
                                   <Minus className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
                                 </button>
-                                <div className="w-12 sm:w-18 text-center min-w-0">
+                                <div className="flex-1 max-w-[64px] sm:max-w-[80px] text-center min-w-0">
                                   <input
                                     type="number"
                                     step={isCardio ? "0.1" : "0.5"}
@@ -1117,15 +1131,16 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
                                     className="w-full bg-[#09090b] text-center font-mono font-bold text-xs sm:text-sm rounded-lg sm:rounded-xl py-1 sm:py-1.5 border border-white/10 focus:border-cyan-500 focus:outline-none text-white px-0.5"
                                   />
                                   {!isCardio && set.actualWeightKg > 0 && (
-                                    <span className="text-[8px] sm:text-[9px] text-neutral-400 block font-mono mt-0.5 hidden xs:block">1RM:{estimated1rm}k</span>
+                                    <span className="text-[7.5px] sm:text-[9px] text-neutral-400 block font-mono mt-0.5 truncate">1RM:{estimated1rm}k</span>
                                   )}
                                   {isCardio && (
-                                    <span className="text-[8px] sm:text-[9px] text-purple-400 block font-mono mt-0.5">km</span>
+                                    <span className="text-[7.5px] sm:text-[9px] text-purple-400 block font-mono mt-0.5">km</span>
                                   )}
                                 </div>
                                 <button
+                                  type="button"
                                   onClick={() => handleUpdateSetVal(set.id, 'actualWeightKg', stepVal)}
-                                  className="w-6 h-6 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-white/5 hover:bg-white/10 text-white flex items-center justify-center font-bold border border-white/5 shrink-0"
+                                  className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-white/5 hover:bg-white/10 text-white flex items-center justify-center font-bold border border-white/5 shrink-0 active:scale-95 transition-transform"
                                   title={isCardio ? "+0.5 km" : "+2.5 kg"}
                                 >
                                   <Plus className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
@@ -1133,37 +1148,41 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
                               </div>
 
                               {/* Reps or Minutes Adjuster */}
-                              <div className="col-span-3 sm:col-span-3 flex items-center justify-center gap-1 sm:gap-1.5">
+                              <div className="flex items-center justify-center gap-0.5 sm:gap-1.5 min-w-0">
                                 <button
+                                  type="button"
                                   onClick={() => handleUpdateSetVal(set.id, 'actualReps', -1)}
-                                  className="w-6 h-6 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-white/5 hover:bg-white/10 text-white flex items-center justify-center font-bold border border-white/5 shrink-0"
+                                  className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-white/5 hover:bg-white/10 text-white flex items-center justify-center font-bold border border-white/5 shrink-0 active:scale-95 transition-transform"
                                 >
                                   <Minus className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
                                 </button>
-                                <input
-                                  type="number"
-                                  value={set.actualReps}
-                                  onChange={(e) => {
-                                    const val = parseInt(e.target.value) || 0;
-                                    handleUpdateSetVal(set.id, 'actualReps', val - set.actualReps);
-                                  }}
-                                  className="w-9 sm:w-12 bg-[#09090b] text-center font-mono font-bold text-xs sm:text-sm rounded-lg sm:rounded-xl py-1 sm:py-1.5 border border-white/10 focus:border-cyan-500 focus:outline-none text-white px-0.5"
-                                />
+                                <div className="flex-1 max-w-[50px] sm:max-w-[62px] text-center min-w-0">
+                                  <input
+                                    type="number"
+                                    value={set.actualReps}
+                                    onChange={(e) => {
+                                      const val = parseInt(e.target.value) || 0;
+                                      handleUpdateSetVal(set.id, 'actualReps', val - set.actualReps);
+                                    }}
+                                    className="w-full bg-[#09090b] text-center font-mono font-bold text-xs sm:text-sm rounded-lg sm:rounded-xl py-1 sm:py-1.5 border border-white/10 focus:border-cyan-500 focus:outline-none text-white px-0.5"
+                                  />
+                                </div>
                                 <button
+                                  type="button"
                                   onClick={() => handleUpdateSetVal(set.id, 'actualReps', 1)}
-                                  className="w-6 h-6 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-white/5 hover:bg-white/10 text-white flex items-center justify-center font-bold border border-white/5 shrink-0"
+                                  className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-white/5 hover:bg-white/10 text-white flex items-center justify-center font-bold border border-white/5 shrink-0 active:scale-95 transition-transform"
                                 >
                                   <Plus className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
                                 </button>
                               </div>
 
                               {/* Complete Checkbox */}
-                              <div className="col-span-3 sm:col-span-3 flex justify-center">
+                              <div className="w-9 sm:w-12 flex justify-center shrink-0">
                                 <button
                                   id={`btn-complete-set-${setIdx}`}
                                   disabled={!set.completed && (isLocked || isWaitingRest)}
                                   onClick={() => handleToggleSet(set.id)}
-                                  className={`w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl flex items-center justify-center transition-all ${
+                                  className={`w-8 h-8 sm:w-9 sm:h-9 rounded-xl sm:rounded-2xl flex items-center justify-center transition-all ${
                                     set.completed
                                       ? 'bg-cyan-500 text-neutral-950 shadow-[0_0_15px_rgba(6,182,212,0.4)] scale-105 hover:bg-cyan-400'
                                       : isWaitingRest
@@ -1315,6 +1334,7 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
             </div>
           </div>
         )}
+        </div>
       </div>
 
       {/* Finish Workout Summary Modal */}
