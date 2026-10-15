@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Flame,
   Zap,
@@ -451,9 +451,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       {(() => {
         const todayStr = new Date().toISOString().split('T')[0];
         const todayLog = FitStorage.getNutritionLog(todayStr);
-        const totalCalories = todayLog.foods.reduce((sum, f) => sum + f.calories * (f.quantity || 1), 0);
-        const totalProtein = todayLog.foods.reduce((sum, f) => sum + f.protein * (f.quantity || 1), 0);
-        const waterLiters = (todayLog.waterMl / 1000).toFixed(1);
+        const safeFoods = Array.isArray(todayLog?.foods) ? todayLog.foods : [];
+        const totalCalories = safeFoods.reduce((sum, f) => sum + (Number(f.calories) || 0) * (Number(f.quantity) || 1), 0);
+        const totalProtein = safeFoods.reduce((sum, f) => sum + (Number(f.protein) || 0) * (Number(f.quantity) || 1), 0);
+        const waterLiters = ((Number(todayLog?.waterMl) || 0) / 1000).toFixed(1);
 
         return (
           <div

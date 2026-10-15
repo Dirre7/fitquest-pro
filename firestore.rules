@@ -2,6 +2,37 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
+    // ===============================================================
+    // Assumed Data Model & Access Control Overview
+    // ===============================================================
+    // Collection: /users/{userId}
+    //   - Read: Authenticated users (for leaderboards and duels)
+    //   - Write: Authenticated owner (request.auth.uid == userId)
+    //
+    // Subcollection: /users/{userId}/history/{historyId}
+    //   - Read: Authenticated users (workout logs)
+    //   - Write: Authenticated owner
+    //
+    // Subcollection: /users/{userId}/routines/{routineId}
+    //   - Read: Authenticated users (workout templates)
+    //   - Write: Authenticated owner
+    //
+    // Subcollection: /users/{userId}/nutrition/{date}
+    //   - Read & Write: Authenticated owner only (private meal logs, macros, hydration)
+    //
+    // Subcollection: /users/{userId}/weighIns/{weighInId}
+    //   - Read & Write: Authenticated owner only (private weight, body fat %, metrics)
+    //
+    // Collection: /challenges/{challengeId}
+    //   - Read & Write: Authenticated users
+    //
+    // Collection: /duelRooms/{roomId}
+    //   - Read & Write: Authenticated users
+    //
+    // Collection: /leaderboards/{league}
+    //   - Read & Write: Authenticated users
+    // ===============================================================
+
     // User profile documents: Any authenticated user can read profiles (for leaderboards/duels); only the user can write their own profile
     match /users/{userId} {
       allow read: if request.auth != null;
@@ -17,6 +48,16 @@ service cloud.firestore {
       match /routines/{routineId} {
         allow read: if request.auth != null;
         allow write: if request.auth != null && request.auth.uid == userId;
+      }
+
+      // User daily nutrition logs (meals, macro targets, water intake)
+      match /nutrition/{date} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+
+      // User Saturday weigh-in logs (weight, body fat %, waist, notes)
+      match /weighIns/{weighInId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
       }
     }
 

@@ -122,7 +122,7 @@ export default function App() {
 
   // Purge outdated service worker caches on version bump
   useEffect(() => {
-    const CURRENT_PWA_BUILD = 'v3.1';
+    const CURRENT_PWA_BUILD = 'v3.2';
     const storedBuild = localStorage.getItem('fitquest_pwa_build');
     if (storedBuild && storedBuild !== CURRENT_PWA_BUILD) {
       localStorage.setItem('fitquest_pwa_build', CURRENT_PWA_BUILD);
@@ -336,6 +336,8 @@ export default function App() {
               return updated;
             });
           }
+        }, (error) => {
+          console.warn('User live sync snapshot warning:', error);
         });
 
         // Real-time Firestore Live Sync for nutrition subcollection across all devices
@@ -368,6 +370,8 @@ export default function App() {
                 window.dispatchEvent(new CustomEvent('fitquest_nutrition_updated'));
               }
             }
+          }, (err) => {
+            console.warn('Nutrition onSnapshot safe warning:', err);
           });
         } catch (e) {
           console.warn('Could not attach nutrition real-time listener', e);
@@ -395,6 +399,8 @@ export default function App() {
               localStorage.setItem('fitquest_saturday_weigh_ins', JSON.stringify(updatedList));
               window.dispatchEvent(new CustomEvent('fitquest_weighins_updated'));
             }
+          }, (err) => {
+            console.warn('Weigh-ins onSnapshot safe warning:', err);
           });
         } catch (e) {
           console.warn('Could not attach weigh-ins real-time listener', e);
