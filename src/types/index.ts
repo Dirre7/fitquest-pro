@@ -301,6 +301,7 @@ export interface FoodItem {
   carbs: number;
   fat: number;
   servingSize?: string;
+  category?: 'protein' | 'carbs' | 'fats' | 'fruits' | 'vegetables' | 'dairy' | 'supplement';
 }
 
 export interface LoggedFoodItem extends FoodItem {

@@ -69,7 +69,9 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
   const [targetMealType, setTargetMealType] = useState<MealType>('lunch');
   const [modalTab, setModalTab] = useState<'catalog' | 'custom'>('catalog');
   const [foodSearchQuery, setFoodSearchQuery] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState<'all' | 'protein' | 'carbs' | 'fats' | 'fruits'>('all');
+  const [categoryFilter, setCategoryFilter] = useState<
+    'all' | 'protein' | 'carbs' | 'dairy' | 'fats' | 'fruits' | 'vegetables' | 'supplement'
+  >('all');
   
   // Selected food state in modal
   const [selectedCatalogFood, setSelectedCatalogFood] = useState<Omit<FoodItem, 'id'> | null>(null);
@@ -378,14 +380,29 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
       const q = foodSearchQuery.toLowerCase().trim();
       list = list.filter((f) => f.name.toLowerCase().includes(q));
     }
+    if (categoryFilter === 'all') {
+      return list;
+    }
     if (categoryFilter === 'protein') {
-      list = list.filter((f) => f.protein >= 15);
-    } else if (categoryFilter === 'carbs') {
-      list = list.filter((f) => f.carbs >= 15);
-    } else if (categoryFilter === 'fats') {
-      list = list.filter((f) => f.fat >= 8);
-    } else if (categoryFilter === 'fruits') {
-      list = list.filter((f) => f.name.includes('Manzana') || f.name.includes('Plátano') || f.carbs > 15 && f.fat === 0);
+      return list.filter((f) => f.category === 'protein' || (!f.category && f.protein >= 15));
+    }
+    if (categoryFilter === 'carbs') {
+      return list.filter((f) => f.category === 'carbs' || (!f.category && f.carbs >= 15));
+    }
+    if (categoryFilter === 'dairy') {
+      return list.filter((f) => f.category === 'dairy');
+    }
+    if (categoryFilter === 'fats') {
+      return list.filter((f) => f.category === 'fats' || (!f.category && f.fat >= 8));
+    }
+    if (categoryFilter === 'fruits') {
+      return list.filter((f) => f.category === 'fruits' || (!f.category && (f.name.includes('Manzana') || f.name.includes('Plátano'))));
+    }
+    if (categoryFilter === 'vegetables') {
+      return list.filter((f) => f.category === 'vegetables');
+    }
+    if (categoryFilter === 'supplement') {
+      return list.filter((f) => f.category === 'supplement');
     }
     return list;
   }, [foodSearchQuery, categoryFilter]);
@@ -1178,7 +1195,7 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
                     : 'text-neutral-400 hover:text-white'
                 }`}
               >
-                🔍 Alimentos Frecuentes ({QUICK_ADD_FOODS.length})
+                🔍 Catálogo de Alimentos ({QUICK_ADD_FOODS.length})
               </button>
               <button
                 type="button"
@@ -1220,20 +1237,26 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
                     )}
                   </div>
 
-                  <div className="flex items-center gap-1.5 overflow-x-auto text-[10px] pb-1">
+                  <div className="flex items-center gap-1.5 overflow-x-auto text-[10px] pb-1 no-scrollbar">
                     {(
                       [
                         { id: 'all', label: 'Todos' },
-                        { id: 'protein', label: '🥩 +Proteína' },
-                        { id: 'carbs', label: '🍚 +Carbohidratos' },
-                        { id: 'fats', label: '🥑 +Grasas' },
+                        { id: 'protein', label: '🥩 Carnes y Pescados' },
+                        { id: 'carbs', label: '🍚 Carbohidratos' },
+                        { id: 'dairy', label: '🥛 Lácteos y Huevos' },
+                        { id: 'fats', label: '🥑 Grasas / Frutos Secos' },
                         { id: 'fruits', label: '🍎 Frutas' },
+                        { id: 'vegetables', label: '🥦 Verduras' },
+                        { id: 'supplement', label: '⚡ Suplementos' },
                       ] as const
                     ).map((c) => (
                       <button
                         key={c.id}
                         type="button"
-                        onClick={() => setCategoryFilter(c.id)}
+                        onClick={() => {
+                          safePlayClick();
+                          setCategoryFilter(c.id);
+                        }}
                         className={`px-2.5 py-1 rounded-lg font-bold whitespace-nowrap transition-colors ${
                           categoryFilter === c.id
                             ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40'
