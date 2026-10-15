@@ -1,4 +1,4 @@
-const CACHE_NAME = 'fitquest-pro-v2.5';
+const CACHE_NAME = 'fitquest-pro-v2.6';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
@@ -9,7 +9,7 @@ const ASSETS_TO_CACHE = [
   '/icon-maskable-512.png'
 ];
 
-// Install event - cache core static shell
+// Install event - cache core static shell and immediately activate
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
@@ -18,7 +18,7 @@ self.addEventListener('install', (event) => {
   );
 });
 
-// Activate event - cleanup outdated caches
+// Activate event - cleanup ALL outdated caches and take control immediately
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((cacheNames) => {
@@ -33,16 +33,40 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Fetch event - network first with cache fallback
+// Fetch event - fresh network request for HTML navigation to ensure immediate updates
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
 
-  // Avoid caching cross-origin analytics or firebase auth calls
   const url = new URL(event.request.url);
   if (!url.origin.includes(self.location.origin)) {
     return;
   }
 
+  // For HTML pages / app shell navigation, always try network first with no-cache
+  const isHtmlNavigation = 
+    event.request.mode === 'navigate' || 
+    event.request.headers.get('accept')?.includes('text/html');
+
+  if (isHtmlNavigation) {
+    event.respondWith(
+      fetch(event.request, { cache: 'no-cache' })
+        .then((response) => {
+          if (response && response.status === 200) {
+            const responseToCache = response.clone();
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(event.request, responseToCache);
+            });
+          }
+          return response;
+        })
+        .catch(() => {
+          return caches.match('/index.html');
+        })
+    );
+    return;
+  }
+
+  // For hashed static assets (JS/CSS/images), try network then cache fallback
   event.respondWith(
     fetch(event.request)
       .then((response) => {
@@ -60,9 +84,7 @@ self.addEventListener('fetch', (event) => {
           if (cachedResponse) {
             return cachedResponse;
           }
-          if (event.request.headers.get('accept')?.includes('text/html')) {
-            return caches.match('/index.html');
-          }
+          return caches.match('/index.html');
         });
       })
   );

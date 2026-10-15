@@ -98,6 +98,23 @@ export const CloudAndSettingsView: React.FC<CloudAndSettingsViewProps> = ({
     window.location.reload();
   };
 
+  // Force App Update & Clear Cache
+  const handleForceUpdateApp = async () => {
+    sound.playBeep(550, 60);
+    try {
+      if ('caches' in window) {
+        const keys = await caches.keys();
+        await Promise.all(keys.map((k) => caches.delete(k)));
+      }
+      if ('serviceWorker' in navigator) {
+        const regs = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(regs.map((r) => r.unregister()));
+      }
+    } finally {
+      window.location.reload();
+    }
+  };
+
   // Reset progress handler (Reset to level 1 & empty history while keeping account)
   const handleResetProgressAction = async () => {
     setIsResettingProgress(true);
@@ -527,7 +544,28 @@ export const CloudAndSettingsView: React.FC<CloudAndSettingsViewProps> = ({
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* Force App Update & Cache Purge */}
+          <div className="p-4 rounded-2xl bg-cyan-950/20 border border-cyan-500/30 flex flex-col justify-between gap-3">
+            <div>
+              <h5 className="font-bold text-cyan-300 text-xs flex items-center gap-1.5">
+                <RefreshCw className="w-3.5 h-3.5 text-cyan-400" />
+                <span>Actualizar App</span>
+              </h5>
+              <p className="text-[11px] text-neutral-400 mt-0.5">
+                Limpia la caché de la PWA y descarga la última versión desde el servidor.
+              </p>
+            </div>
+            <button
+              id="btn-force-update-app"
+              onClick={handleForceUpdateApp}
+              className="w-full py-2.5 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 text-xs font-mono font-bold flex items-center justify-center gap-2 transition-colors cursor-pointer"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+              <span>Recargar Versión</span>
+            </button>
+          </div>
+
           {/* Sign Out Action */}
           <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 flex flex-col justify-between gap-3">
             <div>

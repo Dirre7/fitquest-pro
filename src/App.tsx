@@ -117,6 +117,22 @@ export default function App() {
     };
   }, []);
 
+  // Purge outdated service worker caches on version bump
+  useEffect(() => {
+    const CURRENT_PWA_BUILD = 'v2.6';
+    const storedBuild = localStorage.getItem('fitquest_pwa_build');
+    if (storedBuild && storedBuild !== CURRENT_PWA_BUILD) {
+      localStorage.setItem('fitquest_pwa_build', CURRENT_PWA_BUILD);
+      if ('caches' in window) {
+        caches.keys().then((names) => {
+          return Promise.all(names.map((name) => caches.delete(name)));
+        });
+      }
+    } else if (!storedBuild) {
+      localStorage.setItem('fitquest_pwa_build', CURRENT_PWA_BUILD);
+    }
+  }, []);
+
   // Always reset scroll to the very top when navigating between tabs
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: 'instant' });

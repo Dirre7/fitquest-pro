@@ -23,10 +23,17 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Outfit:wght@500;600;700;800;900&display=swap" rel="stylesheet">
   </head>
-  <body class="bg-[#09090b] text-neutral-100 antialiased selection:bg-cyan-500 selection:text-black min-h-screen">
+  <body style="background-color: #09090b; margin: 0;" class="bg-[#09090b] text-neutral-100 antialiased selection:bg-cyan-500 selection:text-black min-h-screen">
     <div id="root"></div>
     <script>
       if ('serviceWorker' in navigator) {
+        let isRefreshing = false;
+        navigator.serviceWorker.addEventListener('controllerchange', function() {
+          if (!isRefreshing) {
+            isRefreshing = true;
+            window.location.reload();
+          }
+        });
         window.addEventListener('load', function() {
           navigator.serviceWorker.register('/sw.js').then(function(reg) {
             reg.update();
