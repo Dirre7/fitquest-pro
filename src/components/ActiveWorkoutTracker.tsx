@@ -291,7 +291,7 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
         setRestRemaining(0);
       }
 
-      return prevExercises.map((exercise, exIdx) => {
+      const updatedAll = prevExercises.map((exercise, exIdx) => {
         if (exIdx !== currentExerciseIndex) return exercise;
 
         const updatedSets = exercise.sets.map((set, sIdx) => {
@@ -358,6 +358,18 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
 
         return { ...exercise, sets: updatedSets };
       });
+
+      // If the user just completed the very last set of the entire workout, auto-open summary modal
+      if (willBeCompleted) {
+        const isEntireWorkoutFinished = updatedAll.every((ex) => ex.sets.every((s) => s.completed));
+        if (isEntireWorkoutFinished) {
+          setTimeout(() => {
+            handleOpenFinish();
+          }, 600);
+        }
+      }
+
+      return updatedAll;
     });
   };
 

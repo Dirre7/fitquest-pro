@@ -89,6 +89,21 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     return diffDays <= 7;
   }).length;
 
+  // Resilient display stats that instantly reflect history entries
+  const displayTotalWorkouts = Math.max(user.stats?.totalWorkouts || 0, (history || []).length);
+  const displayTotalVolumeKg = Math.max(
+    user.stats?.totalVolumeKg || 0,
+    (history || []).reduce((s, h) => s + (h.totalVolumeKg || 0), 0)
+  );
+  const displayCaloriesBurned = Math.max(
+    user.stats?.caloriesBurned || 0,
+    (history || []).reduce((s, h) => s + (h.calories || 0), 0)
+  );
+  const displayDistanceKm = Math.max(
+    user.stats?.totalDistanceKm || 0,
+    (history || []).reduce((s, h) => s + (h.totalDistanceKm || 0), 0)
+  );
+
   // Determine target muscles for preview badges
   const targetMuscles = Array.from(
     new Set(currentRoutine?.exercises?.map((e) => e.muscleGroup) || ['Pecho', 'Tríceps'])
@@ -279,7 +294,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   </button>
                 </div>
                 <p className="text-xs text-neutral-400 mt-1">
-                  {user.stats.totalWorkouts} misiones completadas • {Math.round(user.stats.totalVolumeKg / 1000)}t tonelaje total
+                  {displayTotalWorkouts} misiones completadas • {Math.round(displayTotalVolumeKg / 1000)}t tonelaje total
                 </p>
               </div>
             </div>
@@ -359,7 +374,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 <div>
                   <p className="text-xs text-neutral-400 font-medium">Distancia Recorrida (Cardio & Running)</p>
                   <p className="text-2xl font-mono font-bold text-white mt-0.5">
-                    {(user.stats.totalDistanceKm || 0).toFixed(1)} <span className="text-xs text-cyan-400 font-semibold">KM</span>
+                    {displayDistanceKm.toFixed(1)} <span className="text-xs text-cyan-400 font-semibold">KM</span>
                   </p>
                 </div>
                 <div className="w-11 h-11 rounded-2xl border border-cyan-500/30 bg-cyan-500/10 flex items-center justify-center shadow-[0_0_12px_rgba(6,182,212,0.2)]">
@@ -371,7 +386,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 <div>
                   <p className="text-xs text-neutral-400 font-medium">Gasto Calórico en Entrenamientos</p>
                   <p className="text-2xl font-mono font-bold text-white mt-0.5">
-                    {user.stats.caloriesBurned.toLocaleString()} <span className="text-xs text-orange-400 font-semibold">KCAL</span>
+                    {displayCaloriesBurned.toLocaleString()} <span className="text-xs text-orange-400 font-semibold">KCAL</span>
                   </p>
                 </div>
                 <div className="w-11 h-11 rounded-2xl border border-orange-500/30 bg-orange-500/10 flex items-center justify-center shadow-[0_0_12px_rgba(249,115,22,0.2)]">
@@ -623,7 +638,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <span className="text-xs font-mono font-bold uppercase tracking-wider">{t.totalWorkouts}</span>
             <Dumbbell className="w-4 h-4 text-cyan-400" />
           </div>
-          <p className="font-mono font-extrabold text-3xl text-white">{user.stats.totalWorkouts}</p>
+          <p className="font-mono font-extrabold text-3xl text-white">{displayTotalWorkouts}</p>
           <span className="text-[11px] text-cyan-400 font-mono font-medium">
             {workoutsThisWeek > 0 ? `↑ +${workoutsThisWeek} esta semana` : '0 esta semana'}
           </span>
@@ -635,9 +650,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <TrendingUp className="w-4 h-4 text-cyan-400" />
           </div>
           <p className="font-mono font-extrabold text-3xl text-white">
-            {(user.stats.totalVolumeKg / 1000).toFixed(1)} <span className="text-sm font-sans font-normal text-neutral-400">ton</span>
+            {(displayTotalVolumeKg / 1000).toFixed(1)} <span className="text-sm font-sans font-normal text-neutral-400">ton</span>
           </p>
-          <span className="text-[11px] text-neutral-400 font-mono">{user.stats.totalVolumeKg.toLocaleString()} kg total</span>
+          <span className="text-[11px] text-neutral-400 font-mono">{displayTotalVolumeKg.toLocaleString()} kg total</span>
         </div>
 
         {/* Calories Burned Card (Entrenamientos) */}
@@ -647,20 +662,20 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <Flame className="w-4 h-4 text-orange-400" />
           </div>
           <p className="font-mono font-extrabold text-3xl text-white">
-            {user.stats.caloriesBurned >= 1000 ? (
+            {displayCaloriesBurned >= 1000 ? (
               <>
-                {(user.stats.caloriesBurned / 1000).toFixed(1)}k{' '}
+                {(displayCaloriesBurned / 1000).toFixed(1)}k{' '}
                 <span className="text-sm font-sans font-normal text-neutral-400">kcal</span>
               </>
             ) : (
               <>
-                {Math.round(user.stats.caloriesBurned)}{' '}
+                {Math.round(displayCaloriesBurned)}{' '}
                 <span className="text-sm font-sans font-normal text-neutral-400">kcal</span>
               </>
             )}
           </p>
           <span className="text-[11px] text-orange-400 font-mono font-medium">
-            ~{user.stats.totalWorkouts > 0 ? Math.round(user.stats.caloriesBurned / user.stats.totalWorkouts) : 0} kcal / sesión
+            ~{displayTotalWorkouts > 0 ? Math.round(displayCaloriesBurned / displayTotalWorkouts) : 0} kcal / sesión
           </span>
         </div>
 

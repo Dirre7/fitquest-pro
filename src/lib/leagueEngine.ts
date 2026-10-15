@@ -322,11 +322,20 @@ export function calculateRealStreak(history: WorkoutHistoryEntry[]): { currentSt
  */
 export function calculateAthleteAttributes(
   history: WorkoutHistoryEntry[],
-  currentStreak: number
+  currentStreak: number,
+  userLevel: number = 1,
+  existingAttributes?: { strength: number; endurance: number; agility: number; discipline: number }
 ): { strength: number; endurance: number; agility: number; discipline: number } {
-  const baseAttr = 10;
+  // Level floor ensures progressing athletes never have beginner 10 stats wiped
+  const levelFloor = Math.max(10, 10 + Math.floor(((userLevel || 1) - 1) * 3));
+
   if (!history || history.length === 0) {
-    return { strength: baseAttr, endurance: baseAttr, agility: baseAttr, discipline: baseAttr };
+    return {
+      strength: Math.max(levelFloor, existingAttributes?.strength || 10),
+      endurance: Math.max(levelFloor, existingAttributes?.endurance || 10),
+      agility: Math.max(levelFloor, existingAttributes?.agility || 10),
+      discipline: Math.max(levelFloor, existingAttributes?.discipline || 10),
+    };
   }
 
   const totalVolumeKg = history.reduce((sum, h) => sum + (h.totalVolumeKg || 0), 0);
@@ -345,23 +354,22 @@ export function calculateAthleteAttributes(
       h.routineTitle?.toLowerCase().includes('shred')
   ).length;
 
-  // 1. FUERZA: Volume lifted + heavy strength sessions (scale 10-100)
-  const strengthPoints = Math.floor(Math.min(90, (totalVolumeKg / 1000) * 1.5 + strengthWorkouts * 2.5));
-  const strength = Math.min(100, Math.max(baseAttr, baseAttr + strengthPoints));
+  // 1. FUERZA: Level floor + volume lifted + heavy strength sessions (scale up to 100)
+  const strengthPoints = Math.floor(Math.min(80, (totalVolumeKg / 1000) * 1.5 + strengthWorkouts * 2.5));
+  const strength = Math.min(100, Math.max(levelFloor, existingAttributes?.strength || 10, levelFloor + strengthPoints));
 
-  // 2. RESISTENCIA: Total distance (km) + cardio duration (scale 10-100)
-  // Sanitize distance per workout (ignore corrupted huge numbers)
+  // 2. RESISTENCIA: Level floor + total distance (km) + cardio duration (scale up to 100)
   const sanitizedDistance = history.reduce((sum, h) => sum + Math.min(30, h.totalDistanceKm || 0), 0);
-  const endurancePoints = Math.floor(Math.min(90, sanitizedDistance * 2.0 + (totalMinutes / 25) * 1.5 + cardioWorkouts * 3));
-  const endurance = Math.min(100, Math.max(baseAttr, baseAttr + endurancePoints));
+  const endurancePoints = Math.floor(Math.min(80, sanitizedDistance * 2.0 + (totalMinutes / 25) * 1.5 + cardioWorkouts * 3));
+  const endurance = Math.min(100, Math.max(levelFloor, existingAttributes?.endurance || 10, levelFloor + endurancePoints));
 
-  // 3. AGILIDAD: HIIT sessions, calisthenics & fast reps (scale 10-100)
-  const agilityPoints = Math.floor(Math.min(90, hiitWorkouts * 6 + history.length * 2.0));
-  const agility = Math.min(100, Math.max(baseAttr, baseAttr + agilityPoints));
+  // 3. AGILIDAD: Level floor + HIIT sessions, calisthenics & fast reps (scale up to 100)
+  const agilityPoints = Math.floor(Math.min(80, hiitWorkouts * 6 + history.length * 2.0));
+  const agility = Math.min(100, Math.max(levelFloor, existingAttributes?.agility || 10, levelFloor + agilityPoints));
 
-  // 4. DISCIPLINA: Real streak days + total workouts completed (scale 10-100)
-  const disciplinePoints = Math.floor(Math.min(90, currentStreak * 5.0 + history.length * 3.0));
-  const discipline = Math.min(100, Math.max(baseAttr, baseAttr + disciplinePoints));
+  // 4. DISCIPLINA: Level floor + real streak days + total workouts completed (scale up to 100)
+  const disciplinePoints = Math.floor(Math.min(80, currentStreak * 5.0 + history.length * 3.0));
+  const discipline = Math.min(100, Math.max(levelFloor, existingAttributes?.discipline || 10, levelFloor + disciplinePoints));
 
   return { strength, endurance, agility, discipline };
 }

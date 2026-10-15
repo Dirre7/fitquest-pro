@@ -152,7 +152,7 @@ export default function App() {
 
   // Purge outdated service worker caches on version bump
   useEffect(() => {
-    const CURRENT_PWA_BUILD = 'v3.5';
+    const CURRENT_PWA_BUILD = 'v3.6';
     const storedBuild = localStorage.getItem('fitquest_pwa_build');
     if (storedBuild && storedBuild !== CURRENT_PWA_BUILD) {
       localStorage.setItem('fitquest_pwa_build', CURRENT_PWA_BUILD);
@@ -202,14 +202,20 @@ export default function App() {
           firebaseUser.displayName || undefined
         );
 
-        // Notify local UI tabs immediately that fresh cloud nutrition and weighIns are loaded
+        // Notify local UI tabs immediately that fresh cloud nutrition, weighIns and history are loaded
         if (typeof window !== 'undefined') {
           window.dispatchEvent(new CustomEvent('fitquest_nutrition_updated'));
           window.dispatchEvent(new CustomEvent('fitquest_weighins_updated'));
+          window.dispatchEvent(new CustomEvent('fitquest_history_updated'));
         }
         const evaluated = evaluateWeeklyLeagueReset(cloudData.user, cloudData.history);
         const realStreak = calculateRealStreak(cloudData.history);
-        const dynamicAttributes = calculateAthleteAttributes(cloudData.history, realStreak.currentStreak);
+        const dynamicAttributes = calculateAthleteAttributes(
+          cloudData.history,
+          realStreak.currentStreak,
+          cloudData.user.level,
+          cloudData.user.attributes
+        );
         const syncedUser: UserProfile = {
           ...evaluated.updatedUser,
           attributes: dynamicAttributes,
@@ -266,14 +272,15 @@ export default function App() {
             ) {
               setIsSessionRevoked(true);
               setRevokingDeviceName(data.activeSessionDeviceName || 'Tablet / Móvil');
-              sound.play('error');
+              sound.playWarning();
               return;
             }
             
             const localResetAt = localStorage.getItem('fitquest_last_reset_at');
             const isSnapshotReset = Boolean(
-              (data.lastResetAt && (!localResetAt || new Date(data.lastResetAt).getTime() > new Date(localResetAt).getTime())) ||
-              (data.level === 1 && (data.xp === 0 || !data.xp) && user.level > 1)
+              (data.level === 1 && (data.xp === 0 || !data.xp)) &&
+              ((data.lastResetAt && (!localResetAt || new Date(data.lastResetAt).getTime() > new Date(localResetAt).getTime())) ||
+               (user.level > 1 && user.xp > 0))
             );
 
             if (isSnapshotReset) {
@@ -283,6 +290,27 @@ export default function App() {
               setHistory([]);
               setAchievements(createFreshAchievements());
               setChallenges(defaultChallenges.map(c => ({ ...c, currentProgress: 0, completed: false })));
+            }
+
+            // Real-time synchronization of workout history from master user document (identical to nutritionLogs)
+            if (Array.isArray((data as any).workoutHistory)) {
+              try {
+                const cloudHistory = (data as any).workoutHistory as WorkoutHistoryEntry[];
+                const localHistory = FitStorage.getHistory();
+                const historyMap = new Map<string, WorkoutHistoryEntry>();
+                localHistory.forEach((h) => historyMap.set(h.id, h));
+                cloudHistory.forEach((h) => historyMap.set(h.id, h));
+                const mergedHistory = Array.from(historyMap.values()).sort(
+                  (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+                );
+                if (mergedHistory.length !== localHistory.length) {
+                  FitStorage.saveHistory(mergedHistory);
+                  setHistory(mergedHistory);
+                  window.dispatchEvent(new CustomEvent('fitquest_history_updated'));
+                }
+              } catch (e) {
+                console.warn('Live sync history parsing notice:', e);
+              }
             }
 
             if (data.programProgress) {
@@ -315,10 +343,35 @@ export default function App() {
             setUser((prev) => {
               const currentHistory = isSnapshotReset ? [] : FitStorage.getHistory();
               const realStreak = calculateRealStreak(currentHistory);
-              const dynamicAttributes = calculateAthleteAttributes(currentHistory, realStreak.currentStreak);
-
               const effectiveLevel = isSnapshotReset ? (data.level || 1) : (data.level !== undefined ? data.level : prev.level);
               const effectiveXp = isSnapshotReset ? (data.xp || 0) : (data.xp !== undefined ? data.xp : prev.xp);
+              const dynamicAttributes = calculateAthleteAttributes(
+                currentHistory,
+                realStreak.currentStreak,
+                effectiveLevel,
+                prev.attributes
+              );
+
+              const calculatedVolume = currentHistory.reduce((s, h) => s + (h.totalVolumeKg || 0), 0);
+              const calculatedMinutes = currentHistory.reduce((s, h) => s + (h.durationMinutes || 0), 0);
+              const calculatedCalories = currentHistory.reduce((s, h) => s + (h.calories || 0), 0);
+              const calculatedDistance = currentHistory.reduce((s, h) => s + (h.totalDistanceKm || 0), 0);
+
+              const resolvedTotalWorkouts = currentHistory.length > 0
+                ? currentHistory.length
+                : Math.max(data.stats?.totalWorkouts || 0, prev.stats?.totalWorkouts || 0);
+              const resolvedVolume = currentHistory.length > 0
+                ? calculatedVolume
+                : Math.max(data.stats?.totalVolumeKg || 0, prev.stats?.totalVolumeKg || 0);
+              const resolvedMinutes = currentHistory.length > 0
+                ? calculatedMinutes
+                : Math.max(data.stats?.totalMinutes || 0, prev.stats?.totalMinutes || 0);
+              const resolvedCalories = currentHistory.length > 0
+                ? calculatedCalories
+                : Math.max(data.stats?.caloriesBurned || 0, prev.stats?.caloriesBurned || 0);
+              const resolvedDistance = currentHistory.length > 0
+                ? calculatedDistance
+                : Math.max(data.stats?.totalDistanceKm || 0, prev.stats?.totalDistanceKm || 0);
 
               const updated: UserProfile = {
                 ...prev,
@@ -337,23 +390,14 @@ export default function App() {
                 attributes: isSnapshotReset ? { strength: 10, endurance: 10, agility: 10, discipline: 10 } : dynamicAttributes,
                 programProgress: data.programProgress || prev.programProgress,
                 activeSession: data.activeSession !== undefined ? data.activeSession : prev.activeSession,
-                stats: data.stats ? {
+                stats: {
                   ...prev.stats,
-                  ...data.stats,
-                  totalWorkouts: currentHistory.length,
-                  totalVolumeKg: currentHistory.reduce((s, h) => s + (h.totalVolumeKg || 0), 0),
-                  totalMinutes: currentHistory.reduce((s, h) => s + (h.durationMinutes || 0), 0),
-                  caloriesBurned: currentHistory.reduce((s, h) => s + (h.calories || 0), 0),
-                  totalDistanceKm: currentHistory.reduce((s, h) => s + (h.totalDistanceKm || 0), 0),
-                  currentStreak: realStreak.currentStreak,
-                  bestStreak: Math.max(prev.stats?.bestStreak || 0, realStreak.bestStreak),
-                } : {
-                  ...prev.stats,
-                  totalWorkouts: currentHistory.length,
-                  totalVolumeKg: currentHistory.reduce((s, h) => s + (h.totalVolumeKg || 0), 0),
-                  totalMinutes: currentHistory.reduce((s, h) => s + (h.durationMinutes || 0), 0),
-                  caloriesBurned: currentHistory.reduce((s, h) => s + (h.calories || 0), 0),
-                  totalDistanceKm: currentHistory.reduce((s, h) => s + (h.totalDistanceKm || 0), 0),
+                  ...(data.stats || {}),
+                  totalWorkouts: resolvedTotalWorkouts,
+                  totalVolumeKg: resolvedVolume,
+                  totalMinutes: resolvedMinutes,
+                  caloriesBurned: resolvedCalories,
+                  totalDistanceKm: resolvedDistance,
                   currentStreak: realStreak.currentStreak,
                   bestStreak: Math.max(prev.stats?.bestStreak || 0, realStreak.bestStreak),
                 },
@@ -521,6 +565,18 @@ export default function App() {
     };
   }, []);
 
+  // Listen for local and cloud history updates to keep UI synchronized in real-time
+  useEffect(() => {
+    const handleHistoryUpdate = () => {
+      const h = FitStorage.getHistory();
+      setHistory(h);
+    };
+    window.addEventListener('fitquest_history_updated', handleHistoryUpdate);
+    return () => {
+      window.removeEventListener('fitquest_history_updated', handleHistoryUpdate);
+    };
+  }, []);
+
   // Sync theme to document root
   useEffect(() => {
     const root = document.documentElement;
@@ -668,7 +724,12 @@ export default function App() {
 
     // Calculate real streak and exact cumulative stats from complete history
     const realStreak = calculateRealStreak(updatedHistory);
-    const dynamicAttributes = calculateAthleteAttributes(updatedHistory, realStreak.currentStreak);
+    const dynamicAttributes = calculateAthleteAttributes(
+      updatedHistory,
+      realStreak.currentStreak,
+      updatedUser.level,
+      updatedUser.attributes
+    );
     const calculatedVolume = updatedHistory.reduce((sum, h) => sum + (h.totalVolumeKg || 0), 0);
     const calculatedMinutes = updatedHistory.reduce((sum, h) => sum + (h.durationMinutes || 0), 0);
     const calculatedCalories = updatedHistory.reduce((sum, h) => sum + (h.calories || 0), 0);
