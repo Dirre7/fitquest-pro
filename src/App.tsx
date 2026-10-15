@@ -35,6 +35,7 @@ import { CommunityView } from './components/CommunityView';
 import { AnalyticsView } from './components/AnalyticsView';
 import { SmartwatchView } from './components/SmartwatchView';
 import { CloudAndSettingsView } from './components/CloudAndSettingsView';
+import { NutritionView } from './components/NutritionView';
 import { AuthModal } from './components/AuthModal';
 import { AuthScreen } from './components/AuthScreen';
 import { ProfileEditModal } from './components/ProfileEditModal';
@@ -119,7 +120,7 @@ export default function App() {
 
   // Purge outdated service worker caches on version bump
   useEffect(() => {
-    const CURRENT_PWA_BUILD = 'v2.7';
+    const CURRENT_PWA_BUILD = 'v2.8';
     const storedBuild = localStorage.getItem('fitquest_pwa_build');
     if (storedBuild && storedBuild !== CURRENT_PWA_BUILD) {
       localStorage.setItem('fitquest_pwa_build', CURRENT_PWA_BUILD);
@@ -765,6 +766,18 @@ export default function App() {
               const updatedUser = { ...user, programProgress: progMap };
               setUser(updatedUser);
               FitStorage.saveUser(updatedUser);
+            }}
+          />
+        )}
+
+        {activeTab === 'nutrition' && (
+          <NutritionView
+            user={user}
+            lang={lang}
+            onUpdateUser={(updated) => setUser(updated)}
+            onGrantXp={(amount, _reason) => {
+              const updatedUser = FitStorage.addXp(amount, user);
+              setUser(updatedUser);
             }}
           />
         )}

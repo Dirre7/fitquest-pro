@@ -17,7 +17,8 @@ import {
   LogIn,
   LogOut,
   UserCheck,
-  Heart
+  Heart,
+  UtensilsCrossed
 } from 'lucide-react';
 import { UserProfile, ThemeMode, Language, SmartwatchDevice } from '../types';
 import { translations } from '../lib/i18n';
@@ -110,10 +111,11 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   const xpPercent = user?.nextLevelXp ? Math.min(100, Math.round((user.currentLevelXp / user.nextLevelXp) * 100)) : 0;
 
-  // 4 Core Master Sections for maximum comfort & zero clutter
+  // 5 Core Master Sections for maximum comfort & zero clutter
   const dockItems = [
     { id: 'dashboard', label: 'Inicio', icon: Activity },
     { id: 'routines', label: 'Entrenar', icon: Dumbbell },
+    { id: 'nutrition', label: 'Nutrición', icon: UtensilsCrossed },
     { id: 'analytics', label: 'Progreso', icon: BarChart3 },
     { id: 'community', label: 'Comunidad', icon: Trophy },
   ];

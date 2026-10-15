@@ -19,6 +19,8 @@ import {
   Play,
   Layers,
   ChevronDown,
+  UtensilsCrossed,
+  Droplet,
 } from 'lucide-react';
 import {
   UserProfile,
@@ -432,6 +434,79 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           )}
         </div>
       </div>
+
+      {/* 🥗 NUTRITION & HYDRATION SUMMARY BANNER */}
+      {(() => {
+        const todayStr = new Date().toISOString().split('T')[0];
+        const todayLog = FitStorage.getNutritionLog(todayStr);
+        const totalCalories = todayLog.foods.reduce((sum, f) => sum + f.calories * (f.quantity || 1), 0);
+        const totalProtein = todayLog.foods.reduce((sum, f) => sum + f.protein * (f.quantity || 1), 0);
+        const waterLiters = (todayLog.waterMl / 1000).toFixed(1);
+
+        return (
+          <div
+            onClick={() => onNavigateTab('nutrition')}
+            className="bg-gradient-to-r from-neutral-900 via-neutral-900/90 to-cyan-950/30 border border-white/10 hover:border-cyan-500/40 rounded-3xl p-5 sm:p-6 shadow-xl relative overflow-hidden group cursor-pointer transition-all hover:scale-[1.01]"
+          >
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 relative z-10">
+              <div className="flex items-start sm:items-center gap-3.5">
+                <div className="w-12 h-12 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400 shrink-0 group-hover:scale-105 transition-transform">
+                  <UtensilsCrossed className="w-6 h-6 stroke-[2]" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-400 border border-cyan-500/30">
+                      Nutrición & Macros
+                    </span>
+                    <span className="text-xs font-mono text-neutral-400">
+                      {todayLog.dayType === 'workout' ? 'Día de Entreno (2.300 kcal)' : 'Día de Descanso (2.100 kcal)'}
+                    </span>
+                  </div>
+                  <h3 className="text-lg font-black text-white tracking-tight mt-0.5">
+                    Plan Nutricional Renato Cabrera
+                  </h3>
+                  <p className="text-xs text-neutral-400">
+                    Control de déficit calórico, 180g proteína e hidratación prioritaria en carretera.
+                  </p>
+                </div>
+              </div>
+
+              {/* Progress Gauges */}
+              <div className="flex items-center gap-4 sm:gap-6 shrink-0 font-mono">
+                <div>
+                  <div className="text-[10px] text-neutral-400 uppercase font-bold">Calorías Hoy</div>
+                  <div className="text-lg font-black text-white">
+                    {totalCalories} <span className="text-xs text-neutral-400 font-normal">/ {todayLog.targetCalories}</span>
+                  </div>
+                </div>
+
+                <div className="h-8 w-px bg-white/10 hidden xs:block" />
+
+                <div>
+                  <div className="text-[10px] text-cyan-400 uppercase font-bold">Proteína</div>
+                  <div className="text-lg font-black text-cyan-400">
+                    {totalProtein}g <span className="text-xs text-neutral-400 font-normal">/ {todayLog.targetProtein}g</span>
+                  </div>
+                </div>
+
+                <div className="h-8 w-px bg-white/10 hidden xs:block" />
+
+                <div>
+                  <div className="text-[10px] text-blue-400 uppercase font-bold">Agua</div>
+                  <div className="text-lg font-black text-blue-400">
+                    {waterLiters}L <span className="text-xs text-neutral-400 font-normal">/ {(todayLog.waterGoalMl / 1000).toFixed(1)}L</span>
+                  </div>
+                </div>
+
+                <div className="hidden sm:flex items-center text-xs font-bold text-cyan-400 group-hover:translate-x-1 transition-transform">
+                  <span>Abrir</span>
+                  <ChevronRight className="w-4 h-4 ml-0.5" />
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Global Quick Stats Grid */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">

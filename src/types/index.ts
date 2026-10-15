@@ -288,3 +288,46 @@ export interface CloudSyncInfo {
     lastActive: string;
   }[];
 }
+
+export type MealType = 'breakfast' | 'mid_morning' | 'lunch' | 'snack' | 'dinner';
+
+export interface FoodItem {
+  id: string;
+  name: string;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  servingSize?: string;
+}
+
+export interface LoggedFoodItem extends FoodItem {
+  loggedAt: string;
+  mealType: MealType;
+  quantity?: number;
+}
+
+export interface DailyNutritionLog {
+  date: string; // YYYY-MM-DD
+  dayType: 'workout' | 'rest'; // workout: 2300 kcal, rest: 2100 kcal
+  targetCalories: number;
+  targetProtein: number; // 180g
+  targetCarbs: number; // 220g
+  targetFat: number; // 70g
+  waterMl: number;
+  waterGoalMl: number; // 3500 ml
+  foods: LoggedFoodItem[];
+  notes?: string;
+}
+
+export interface SaturdayWeighIn {
+  id: string;
+  date: string; // YYYY-MM-DD
+  weightKg: number;
+  fatPercent?: number;
+  muscleMassKg?: number;
+  visceralFat?: number;
+  waistCm?: number;
+  notes?: string;
+}
+

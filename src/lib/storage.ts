@@ -11,7 +11,10 @@ import {
   ActiveWorkoutState,
   ThemeMode,
   Language,
+  DailyNutritionLog,
+  SaturdayWeighIn,
 } from '../types';
+import { RENATO_PLAN_CONFIG } from './nutritionData';
 import {
   createFreshUser,
   createFreshAchievements,
@@ -44,6 +47,8 @@ const KEYS = {
   LAST_RESET_AT: 'fitquest_last_reset_at',
   IS_OFFLINE: 'fitquest_is_offline',
   ACTIVE_SESSION: 'fitquest_active_session',
+  NUTRITION_LOGS: 'fitquest_nutrition_logs',
+  SATURDAY_WEIGH_INS: 'fitquest_saturday_weigh_ins',
 };
 
 export class FitStorage {
@@ -777,7 +782,7 @@ export class FitStorage {
 
   public static exportAllData(): string {
     const backup = {
-      exportVersion: '2.0.0',
+      exportVersion: '2.1.0',
       exportedAt: new Date().toISOString(),
       user: this.getUser(),
       routines: this.getRoutines(),
@@ -787,6 +792,14 @@ export class FitStorage {
       smartwatch: this.getSmartwatch(),
       reminders: this.getReminders(),
       history: this.getHistory(),
+      nutritionLogs: (() => {
+        try {
+          return JSON.parse(localStorage.getItem(KEYS.NUTRITION_LOGS) || '{}');
+        } catch {
+          return {};
+        }
+      })(),
+      saturdayWeighIns: this.getSaturdayWeighIns(),
     };
     return JSON.stringify(backup, null, 2);
   }
@@ -802,6 +815,12 @@ export class FitStorage {
       if (parsed.smartwatch) this.saveSmartwatch(parsed.smartwatch);
       if (parsed.reminders) this.saveReminders(parsed.reminders);
       if (parsed.history) this.saveHistory(parsed.history);
+      if (parsed.nutritionLogs) {
+        localStorage.setItem(KEYS.NUTRITION_LOGS, JSON.stringify(parsed.nutritionLogs));
+      }
+      if (parsed.saturdayWeighIns && Array.isArray(parsed.saturdayWeighIns)) {
+        localStorage.setItem(KEYS.SATURDAY_WEIGH_INS, JSON.stringify(parsed.saturdayWeighIns));
+      }
       return true;
     } catch (e) {
       console.error('Import failed', e);
@@ -951,5 +970,128 @@ export class FitStorage {
     };
     this.saveUser(updatedUser);
     return updatedUser;
+  }
+
+  public static getNutritionLog(dateStr: string): DailyNutritionLog {
+    try {
+      const logsRaw = localStorage.getItem(KEYS.NUTRITION_LOGS);
+      const logs: Record<string, DailyNutritionLog> = logsRaw ? JSON.parse(logsRaw) : {};
+      if (logs[dateStr]) {
+        return logs[dateStr];
+      }
+      return {
+        date: dateStr,
+        dayType: 'workout',
+        targetCalories: RENATO_PLAN_CONFIG.targets.workout.calories,
+        targetProtein: RENATO_PLAN_CONFIG.targets.workout.protein,
+        targetCarbs: RENATO_PLAN_CONFIG.targets.workout.carbs,
+        targetFat: RENATO_PLAN_CONFIG.targets.workout.fat,
+        waterMl: 0,
+        waterGoalMl: RENATO_PLAN_CONFIG.waterGoalMl,
+        foods: [],
+      };
+    } catch {
+      return {
+        date: dateStr,
+        dayType: 'workout',
+        targetCalories: RENATO_PLAN_CONFIG.targets.workout.calories,
+        targetProtein: RENATO_PLAN_CONFIG.targets.workout.protein,
+        targetCarbs: RENATO_PLAN_CONFIG.targets.workout.carbs,
+        targetFat: RENATO_PLAN_CONFIG.targets.workout.fat,
+        waterMl: 0,
+        waterGoalMl: RENATO_PLAN_CONFIG.waterGoalMl,
+        foods: [],
+      };
+    }
+  }
+
+  public static saveNutritionLog(log: DailyNutritionLog) {
+    try {
+      const logsRaw = localStorage.getItem(KEYS.NUTRITION_LOGS);
+      const logs: Record<string, DailyNutritionLog> = logsRaw ? JSON.parse(logsRaw) : {};
+      logs[log.date] = log;
+      localStorage.setItem(KEYS.NUTRITION_LOGS, JSON.stringify(logs));
+
+      const uid = auth.currentUser?.uid;
+      if (uid) {
+        setDoc(doc(db, 'users', uid, 'nutrition', log.date), log, { merge: true }).catch((err) =>
+          console.warn('Nutrition cloud sync warning:', err)
+        );
+      }
+    } catch (e) {
+      console.error('Failed to save nutrition log', e);
+    }
+  }
+
+  public static getSaturdayWeighIns(): SaturdayWeighIn[] {
+    try {
+      const raw = localStorage.getItem(KEYS.SATURDAY_WEIGH_INS);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
+        }
+      }
+      const defaultInitial: SaturdayWeighIn[] = [
+        {
+          id: 'initial_renato_baseline',
+          date: '2026-10-10',
+          weightKg: RENATO_PLAN_CONFIG.initialWeightKg,
+          fatPercent: 29.5,
+          muscleMassKg: 63.8,
+          visceralFat: 11,
+          waistCm: 104,
+          notes: 'Inicio Plan Personal Renato Cabrera. Meta 90.0 kg protegiendo espalda lumbar.',
+        },
+      ];
+      localStorage.setItem(KEYS.SATURDAY_WEIGH_INS, JSON.stringify(defaultInitial));
+      return defaultInitial;
+    } catch {
+      return [];
+    }
+  }
+
+  public static saveSaturdayWeighIn(entry: SaturdayWeighIn) {
+    try {
+      const weighIns = this.getSaturdayWeighIns();
+      const existingIdx = weighIns.findIndex((w) => w.id === entry.id || w.date === entry.date);
+      if (existingIdx >= 0) {
+        weighIns[existingIdx] = entry;
+      } else {
+        weighIns.push(entry);
+      }
+      weighIns.sort((a, b) => b.date.localeCompare(a.date));
+      localStorage.setItem(KEYS.SATURDAY_WEIGH_INS, JSON.stringify(weighIns));
+
+      const latest = weighIns[0];
+      if (latest) {
+        this.logWeight(latest.weightKg, latest.date);
+      }
+
+      const uid = auth.currentUser?.uid;
+      if (uid) {
+        setDoc(doc(db, 'users', uid, 'weighIns', entry.id), entry, { merge: true }).catch((err) =>
+          console.warn('Weigh-in cloud sync warning:', err)
+        );
+      }
+    } catch (e) {
+      console.error('Failed to save Saturday weigh-in', e);
+    }
+  }
+
+  public static deleteSaturdayWeighIn(id: string) {
+    try {
+      const weighIns = this.getSaturdayWeighIns().filter((w) => w.id !== id);
+      localStorage.setItem(KEYS.SATURDAY_WEIGH_INS, JSON.stringify(weighIns));
+
+      const uid = auth.currentUser?.uid;
+      if (uid) {
+        deleteDoc(doc(db, 'users', uid, 'weighIns', id)).catch((err) =>
+          console.warn('Weigh-in cloud delete warning:', err)
+        );
+      }
+    } catch (e) {
+      console.error('Failed to delete Saturday weigh-in', e);
+    }
   }
 }
