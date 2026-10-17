@@ -14,7 +14,7 @@ import {
   DailyNutritionLog,
   SaturdayWeighIn,
 } from '../types';
-import { RENATO_PLAN_CONFIG } from './nutritionData';
+import { getActiveNutritionPlan } from './nutritionData';
 import { LEVEL_MILESTONES, calculateLevelFromTotalXp } from './progressionEngine';
 import {
   createFreshUser,
@@ -539,7 +539,7 @@ export class FitStorage {
           userProfile.weightKg = latestWeight;
         }
         if (!userProfile.targetWeightKg || userProfile.targetWeightKg === 72) {
-          userProfile.targetWeightKg = RENATO_PLAN_CONFIG.targetWeightKg;
+          userProfile.targetWeightKg = userProfile.weightKg ? Math.max(50, userProfile.weightKg - 5) : 75;
         }
       }
 
@@ -1400,46 +1400,84 @@ export class FitStorage {
     }
   }
 
+  public static setActiveNutritionPlan(planId: string, currentUser?: UserProfile): UserProfile {
+    const user = currentUser || this.getUser();
+    const updatedUser: UserProfile = {
+      ...user,
+      activeNutritionPlanId: planId,
+    };
+    this.saveUser(updatedUser);
+
+    const activePlan = getActiveNutritionPlan(planId);
+    // Align today's log targets with the newly activated plan
+    const todayStr = new Date().toISOString().split('T')[0];
+    const currentTodayLog = this.getNutritionLog(todayStr);
+    const dayType = currentTodayLog.dayType || 'workout';
+    const planTargets = dayType === 'rest' ? activePlan.targets.rest : activePlan.targets.workout;
+
+    const updatedTodayLog: DailyNutritionLog = {
+      ...currentTodayLog,
+      targetCalories: planTargets.calories,
+      targetProtein: planTargets.protein,
+      targetCarbs: planTargets.carbs,
+      targetFat: planTargets.fat,
+      waterGoalMl: activePlan.waterGoalMl,
+    };
+    this.saveNutritionLog(updatedTodayLog);
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('fitquest_user_updated', { detail: updatedUser }));
+    }
+
+    return updatedUser;
+  }
+
   public static getNutritionLog(dateStr: string): DailyNutritionLog {
     try {
       const logsRaw = localStorage.getItem(KEYS.NUTRITION_LOGS);
       const logs: Record<string, DailyNutritionLog> = logsRaw ? JSON.parse(logsRaw) : {};
+      const user = this.getUser();
+      const activePlan = getActiveNutritionPlan(user.activeNutritionPlanId);
+
       if (logs[dateStr]) {
         const found = logs[dateStr];
+        const dayType = found.dayType === 'rest' ? 'rest' : 'workout';
+        const planTargets = dayType === 'rest' ? activePlan.targets.rest : activePlan.targets.workout;
         return {
           ...found,
           date: dateStr,
-          dayType: found.dayType === 'rest' ? 'rest' : 'workout',
+          dayType,
           foods: Array.isArray(found.foods) ? found.foods : [],
           waterMl: Number(found.waterMl) || 0,
-          targetCalories: Number(found.targetCalories) || (found.dayType === 'rest' ? RENATO_PLAN_CONFIG.targets.rest.calories : RENATO_PLAN_CONFIG.targets.workout.calories),
-          targetProtein: Number(found.targetProtein) || RENATO_PLAN_CONFIG.targets.workout.protein,
-          targetCarbs: Number(found.targetCarbs) || (found.dayType === 'rest' ? RENATO_PLAN_CONFIG.targets.rest.carbs : RENATO_PLAN_CONFIG.targets.workout.carbs),
-          targetFat: Number(found.targetFat) || RENATO_PLAN_CONFIG.targets.workout.fat,
-          waterGoalMl: Number(found.waterGoalMl) || RENATO_PLAN_CONFIG.waterGoalMl,
+          targetCalories: Number(found.targetCalories) || planTargets.calories,
+          targetProtein: Number(found.targetProtein) || planTargets.protein,
+          targetCarbs: Number(found.targetCarbs) || planTargets.carbs,
+          targetFat: Number(found.targetFat) || planTargets.fat,
+          waterGoalMl: Number(found.waterGoalMl) || activePlan.waterGoalMl,
         };
       }
       return {
         date: dateStr,
         dayType: 'workout',
-        targetCalories: RENATO_PLAN_CONFIG.targets.workout.calories,
-        targetProtein: RENATO_PLAN_CONFIG.targets.workout.protein,
-        targetCarbs: RENATO_PLAN_CONFIG.targets.workout.carbs,
-        targetFat: RENATO_PLAN_CONFIG.targets.workout.fat,
+        targetCalories: activePlan.targets.workout.calories,
+        targetProtein: activePlan.targets.workout.protein,
+        targetCarbs: activePlan.targets.workout.carbs,
+        targetFat: activePlan.targets.workout.fat,
         waterMl: 0,
-        waterGoalMl: RENATO_PLAN_CONFIG.waterGoalMl,
+        waterGoalMl: activePlan.waterGoalMl,
         foods: [],
       };
     } catch {
+      const activePlan = getActiveNutritionPlan();
       return {
         date: dateStr,
         dayType: 'workout',
-        targetCalories: RENATO_PLAN_CONFIG.targets.workout.calories,
-        targetProtein: RENATO_PLAN_CONFIG.targets.workout.protein,
-        targetCarbs: RENATO_PLAN_CONFIG.targets.workout.carbs,
-        targetFat: RENATO_PLAN_CONFIG.targets.workout.fat,
+        targetCalories: activePlan.targets.workout.calories,
+        targetProtein: activePlan.targets.workout.protein,
+        targetCarbs: activePlan.targets.workout.carbs,
+        targetFat: activePlan.targets.workout.fat,
         waterMl: 0,
-        waterGoalMl: RENATO_PLAN_CONFIG.waterGoalMl,
+        waterGoalMl: activePlan.waterGoalMl,
         foods: [],
       };
     }
@@ -1488,16 +1526,20 @@ export class FitStorage {
           return parsed;
         }
       }
+      const user = this.getUser();
+      const currentWeight = user.weightKg || 80.0;
+      const targetWeight = user.targetWeightKg || Math.max(50, currentWeight - 5);
+      const userName = user.name || 'Atleta';
       const defaultInitial: SaturdayWeighIn[] = [
         {
-          id: 'initial_renato_baseline',
-          date: '2026-10-10',
-          weightKg: RENATO_PLAN_CONFIG.initialWeightKg,
-          fatPercent: 29.5,
-          muscleMassKg: 63.8,
-          visceralFat: 11,
-          waistCm: 104,
-          notes: 'Inicio Plan Personal Renato Cabrera. Meta 90.0 kg protegiendo espalda lumbar.',
+          id: 'initial_user_baseline',
+          date: new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0],
+          weightKg: currentWeight,
+          fatPercent: 25.0,
+          muscleMassKg: Number((currentWeight * 0.65).toFixed(1)),
+          visceralFat: 9,
+          waistCm: 95,
+          notes: `Inicio de seguimiento para ${userName}. Meta: ${targetWeight.toFixed(1)} kg.`,
         },
       ];
       localStorage.setItem(KEYS.SATURDAY_WEIGH_INS, JSON.stringify(defaultInitial));

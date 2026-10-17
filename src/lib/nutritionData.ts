@@ -1,4 +1,4 @@
-import { FoodItem, MealType } from '../types';
+import { FoodItem, MealType, NutritionPlanConfig } from '../types';
 
 export interface MealSlotConfig {
   type: MealType;
@@ -10,27 +10,148 @@ export interface MealSlotConfig {
   suggestedFoods: Omit<FoodItem, 'id'>[];
 }
 
-export const RENATO_PLAN_CONFIG = {
-  athleteName: 'Renato Cabrera',
-  initialWeightKg: 103.7,
-  targetWeightKg: 90.0,
-  targetMuscleKg: 63.5,
-  targetVisceralFatMax: 9,
-  waterGoalMl: 3500, // 3.5 Liters (3.0 - 3.5L priority)
-  targets: {
-    workout: {
-      calories: 2300,
-      protein: 180,
-      carbs: 220,
-      fat: 70,
-    },
-    rest: {
-      calories: 2100,
-      protein: 180,
-      carbs: 180,
-      fat: 70,
+export const NUTRITION_PLANS: NutritionPlanConfig[] = [
+  {
+    id: 'plan_fat_loss',
+    name: 'Definición & Pérdida de Grasa',
+    subtitle: 'Déficit Calórico & Protección Muscular',
+    badge: 'DÉFICIT',
+    icon: '🔥',
+    color: 'from-orange-500 to-rose-600',
+    description: 'Quema grasa corporal protegiendo la masa muscular magra con alta ingesta proteica y control estratégico de carbohidratos.',
+    idealFor: 'Bajar porcentaje graso, reducir perímetro abdominal y definir masa muscular.',
+    waterGoalMl: 3200,
+    targets: {
+      workout: {
+        calories: 1950,
+        protein: 175,
+        carbs: 170,
+        fat: 55,
+      },
+      rest: {
+        calories: 1750,
+        protein: 175,
+        carbs: 120,
+        fat: 55,
+      },
     },
   },
+  {
+    id: 'plan_recomp',
+    name: 'Recomposición Corporal',
+    subtitle: 'Atleta Híbrido & Ciclado de Carbos',
+    badge: 'RECOMP',
+    icon: '⚡',
+    color: 'from-cyan-500 to-blue-600',
+    description: 'Pierde grasa y construye masa magra simultáneamente mediante ciclado de carbohidratos entre días de entreno y descanso.',
+    idealFor: 'Composición corporal atlética, fuerza progresiva y energía constante.',
+    waterGoalMl: 3500,
+    targets: {
+      workout: {
+        calories: 2300,
+        protein: 180,
+        carbs: 220,
+        fat: 70,
+      },
+      rest: {
+        calories: 2050,
+        protein: 180,
+        carbs: 170,
+        fat: 65,
+      },
+    },
+  },
+  {
+    id: 'plan_hypertrophy',
+    name: 'Hipertrofia & Volumen Limpio',
+    subtitle: 'Superávit Calórico Controlado',
+    badge: 'VOLUMEN',
+    icon: '💥',
+    color: 'from-purple-500 to-indigo-600',
+    description: 'Aumenta al máximo la masa muscular y fuerza con abundantes carbohidratos complejos y superávit controlado.',
+    idealFor: 'Ganar tamaño muscular, fuerza máxima y peso magro sin grasa excesiva.',
+    waterGoalMl: 3500,
+    targets: {
+      workout: {
+        calories: 2750,
+        protein: 185,
+        carbs: 320,
+        fat: 75,
+      },
+      rest: {
+        calories: 2400,
+        protein: 185,
+        carbs: 240,
+        fat: 70,
+      },
+    },
+  },
+  {
+    id: 'plan_performance',
+    name: 'Rendimiento & Resistencia',
+    subtitle: 'Combustible de Alta Intensidad & Running',
+    badge: 'CARDIO & RESISTENCIA',
+    icon: '🏃',
+    color: 'from-emerald-500 to-teal-600',
+    description: 'Recarga rápida de glucógeno y recuperación muscular optimizada para corredores, ciclistas y entrenamientos HIIT.',
+    idealFor: 'Corredores, pruebas aeróbicas, cross-training y deportes de alta demanda.',
+    waterGoalMl: 3800,
+    targets: {
+      workout: {
+        calories: 2550,
+        protein: 165,
+        carbs: 310,
+        fat: 65,
+      },
+      rest: {
+        calories: 2200,
+        protein: 165,
+        carbs: 220,
+        fat: 65,
+      },
+    },
+  },
+  {
+    id: 'plan_wellness',
+    name: 'Salud & Dieta Mediterránea',
+    subtitle: 'Longevidad, Digestión Ligera & Vitalidad',
+    badge: 'SALUD & VITALIDAD',
+    icon: '🌿',
+    color: 'from-amber-500 to-emerald-600',
+    description: 'Nutrición balanceada basada en alimentos reales, grasas saludables (AOVE, frutos secos) y saciedad duradera.',
+    idealFor: 'Estilo de vida saludable, constancia sin obsesión y digestiones ligeras.',
+    waterGoalMl: 3000,
+    targets: {
+      workout: {
+        calories: 2150,
+        protein: 150,
+        carbs: 220,
+        fat: 70,
+      },
+      rest: {
+        calories: 1950,
+        protein: 150,
+        carbs: 180,
+        fat: 65,
+      },
+    },
+  },
+];
+
+export function getActiveNutritionPlan(planId?: string): NutritionPlanConfig {
+  if (!planId) return NUTRITION_PLANS[1]; // default: plan_recomp
+  return NUTRITION_PLANS.find((p) => p.id === planId) || NUTRITION_PLANS[1];
+}
+
+// Backwards-compatible legacy alias
+export const RENATO_PLAN_CONFIG = {
+  athleteName: 'Atleta Pro',
+  initialWeightKg: 80.0,
+  targetWeightKg: 75.0,
+  targetMuscleKg: 60.0,
+  targetVisceralFatMax: 9,
+  waterGoalMl: 3500,
+  targets: NUTRITION_PLANS[1].targets,
 };
 
 export const MEAL_SLOTS: MealSlotConfig[] = [

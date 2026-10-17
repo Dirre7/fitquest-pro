@@ -49,7 +49,6 @@ import {
 import { WorkoutHistoryEntry, UserProfile, Language } from '../types';
 import { translations } from '../lib/i18n';
 import { FitStorage } from '../lib/storage';
-import { RENATO_PLAN_CONFIG } from '../lib/nutritionData';
 import { sound } from '../lib/soundFx';
 import { MuscleHeatmapWidget } from './MuscleHeatmapWidget';
 
@@ -79,11 +78,11 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
   const saturdayWeighIns = FitStorage.getSaturdayWeighIns();
   const unifiedCurrentWeight =
     saturdayWeighIns[0]?.weightKg ||
-    (user.weightKg && user.weightKg !== 75 ? user.weightKg : RENATO_PLAN_CONFIG.initialWeightKg);
+    user.weightKg ||
+    75.0;
   const unifiedTargetWeight =
-    user.targetWeightKg && user.targetWeightKg !== 72
-      ? user.targetWeightKg
-      : RENATO_PLAN_CONFIG.targetWeightKg;
+    user.targetWeightKg ||
+    (unifiedCurrentWeight > 70 ? unifiedCurrentWeight - 5 : 70.0);
 
   const [newWeightInput, setNewWeightInput] = useState<number>(unifiedCurrentWeight);
   const [newHeightInput, setNewHeightInput] = useState<number>(user.heightCm || 178);
@@ -167,7 +166,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
   const weightData = (sortedWeightEntries.length > 0
     ? sortedWeightEntries
     : [
-        { date: user.joinedAt || '2026-03-21', weightKg: RENATO_PLAN_CONFIG.initialWeightKg },
+        { date: user.joinedAt || new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0], weightKg: unifiedCurrentWeight },
         { date: new Date().toISOString().split('T')[0], weightKg: unifiedCurrentWeight },
       ]
   ).map((w) => ({

@@ -36,6 +36,7 @@ import {
 } from '../types';
 import { translations } from '../lib/i18n';
 import { FitStorage } from '../lib/storage';
+import { getActiveNutritionPlan } from '../lib/nutritionData';
 import {
   getLevelTier,
   getNextMilestone,
@@ -886,6 +887,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       {(() => {
         const todayStr = new Date().toISOString().split('T')[0];
         const todayLog = FitStorage.getNutritionLog(todayStr);
+        const activeNutritionPlan = getActiveNutritionPlan(user.activeNutritionPlanId);
         const safeFoods = Array.isArray(todayLog?.foods) ? todayLog.foods : [];
         const totalCalories = safeFoods.reduce((sum, f) => sum + (Number(f.calories) || 0) * (Number(f.quantity) || 1), 0);
         const totalProtein = safeFoods.reduce((sum, f) => sum + (Number(f.protein) || 0) * (Number(f.quantity) || 1), 0);
@@ -909,15 +911,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     </span>
                     <span className="text-xs font-mono text-neutral-400">
                       {todayLog.dayType === 'workout' || trainedToday
-                        ? 'Día de Entreno (2.300 kcal)'
-                        : 'Día de Descanso (2.100 kcal)'}
+                        ? `Día de Entreno (${activeNutritionPlan.targets.workout.calories.toLocaleString()} kcal)`
+                        : `Día de Descanso (${activeNutritionPlan.targets.rest.calories.toLocaleString()} kcal)`}
                     </span>
                   </div>
                   <h3 className="text-lg font-black text-white tracking-tight mt-0.5">
-                    Plan Nutricional Renato Cabrera
+                    Plan Nutricional: {activeNutritionPlan.name}
                   </h3>
                   <p className="text-xs text-neutral-400">
-                    Control de déficit calórico, 180g proteína e hidratación prioritaria en carretera.
+                    {activeNutritionPlan.description}
                   </p>
                 </div>
               </div>

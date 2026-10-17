@@ -62,6 +62,30 @@ export interface UserProfile {
   streakShields?: number; // 0 to 2 shields
   shieldUsedDates?: string[]; // ISO date strings where a streak shield protected the streak
   equippedFrame?: string; // ID of the equipped cosmetic avatar frame
+  activeNutritionPlanId?: string; // ID of active nutrition plan (e.g. 'plan_recomp', 'plan_fat_loss')
+}
+
+export interface NutritionPlanTargets {
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+}
+
+export interface NutritionPlanConfig {
+  id: string;
+  name: string;
+  subtitle: string;
+  badge: string;
+  icon: string;
+  color: string;
+  description: string;
+  idealFor: string;
+  waterGoalMl: number;
+  targets: {
+    workout: NutritionPlanTargets;
+    rest: NutritionPlanTargets;
+  };
 }
 
 export interface AvatarFrame {

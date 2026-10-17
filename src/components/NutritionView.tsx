@@ -21,6 +21,7 @@ import {
   Zap,
   Copy,
   Dumbbell,
+  SlidersHorizontal,
 } from 'lucide-react';
 import {
   UserProfile,
@@ -31,10 +32,12 @@ import {
   FoodItem,
   SaturdayWeighIn,
   WorkoutHistoryEntry,
+  NutritionPlanConfig,
 } from '../types';
 import { FitStorage } from '../lib/storage';
 import {
-  RENATO_PLAN_CONFIG,
+  NUTRITION_PLANS,
+  getActiveNutritionPlan,
   MEAL_SLOTS,
   QUICK_ADD_FOODS,
   MealSlotConfig,
@@ -68,6 +71,10 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
 
   // Active view tab: 'meals' or 'weighin'
   const [activeSubTab, setActiveSubTab] = useState<'meals' | 'weighin'>('meals');
+
+  // Plan selector modal state
+  const [isPlanSelectorOpen, setIsPlanSelectorOpen] = useState(false);
+  const activePlan = getActiveNutritionPlan(user.activeNutritionPlanId);
 
   // Modal states for adding food
   const [addFoodModalOpen, setAddFoodModalOpen] = useState(false);
@@ -227,7 +234,7 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
   // Toggle Day Type (Workout vs Rest)
   const handleToggleDayType = (type: 'workout' | 'rest') => {
     safePlayClick();
-    const targetConfig = RENATO_PLAN_CONFIG.targets[type];
+    const targetConfig = activePlan.targets[type];
     const newLog: DailyNutritionLog = {
       ...log,
       dayType: type,
@@ -237,7 +244,20 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
       targetFat: targetConfig.fat,
     };
     updateLog(newLog);
-    showToast(`Día cambiado a ${type === 'workout' ? 'Entreno (2.300 kcal)' : 'Descanso (2.100 kcal)'}`);
+    showToast(`Día cambiado a ${type === 'workout' ? `Entreno (${targetConfig.calories.toLocaleString()} kcal)` : `Descanso (${targetConfig.calories.toLocaleString()} kcal)`}`);
+  };
+
+  // Switch Active Nutrition Plan
+  const handleSelectPlan = (plan: NutritionPlanConfig) => {
+    safePlaySuccess();
+    const updatedUser = FitStorage.setActiveNutritionPlan(plan.id, user);
+    if (onUpdateUser) {
+      onUpdateUser(updatedUser);
+    }
+    const updatedLog = FitStorage.getNutritionLog(selectedDate);
+    setLog(updatedLog);
+    setIsPlanSelectorOpen(false);
+    showToast(`✓ Plan activado: ${plan.name}`);
   };
 
   // Hydration modification
@@ -315,7 +335,7 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
     showToast('Alimento eliminado');
   };
 
-  // Load complete preloaded meal template from Renato's plan
+  // Load complete preloaded meal template from active plan
   const handleLoadMealTemplate = (slot: MealSlotConfig) => {
     safePlaySuccess();
     const timeNow = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -484,10 +504,14 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
 
   // Latest Weigh In & Progress
   const latestWeighIn = weighIns[0] || null;
-  const currentWeight = latestWeighIn ? latestWeighIn.weightKg : (user.weightKg || RENATO_PLAN_CONFIG.initialWeightKg);
-  const totalKgToLose = RENATO_PLAN_CONFIG.initialWeightKg - RENATO_PLAN_CONFIG.targetWeightKg; // 13.7 kg
-  const lostKgSoFar = Math.max(0, RENATO_PLAN_CONFIG.initialWeightKg - currentWeight);
-  const targetProgressPercent = Math.min(100, Math.max(0, Math.round((lostKgSoFar / totalKgToLose) * 100)));
+  const oldestWeighIn = weighIns[weighIns.length - 1] || null;
+  const initialWeight = oldestWeighIn ? oldestWeighIn.weightKg : (user.weightKg || 80.0);
+  const currentWeight = latestWeighIn ? latestWeighIn.weightKg : (user.weightKg || initialWeight);
+  const targetWeight = user.targetWeightKg || Math.max(50, initialWeight - 5);
+  const totalKgDiff = Math.abs(initialWeight - targetWeight);
+  const currentProgressKg = Math.abs(initialWeight - currentWeight);
+  const targetProgressPercent = totalKgDiff > 0 ? Math.min(100, Math.max(0, Math.round((currentProgressKg / totalKgDiff) * 100))) : 100;
+  const lostKgSoFar = Math.max(0, initialWeight - currentWeight);
 
   return (
     <div className="space-y-6 animate-in fade-in pb-12 relative">
@@ -505,19 +529,28 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
         <div className="relative flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-2 mb-2 flex-wrap">
-              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-cyan-500/20 text-cyan-400 border border-cyan-500/30">
-                Plan Personalizado Renato Cabrera
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 flex items-center gap-1.5">
+                <span>{activePlan.badge}</span>
+                <span>{activePlan.name}</span>
               </span>
-              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-white/5 text-neutral-400 border border-white/10">
-                Protección Lumbar & Rendimiento
-              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  safePlayClick();
+                  setIsPlanSelectorOpen(true);
+                }}
+                className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-white/10 hover:bg-white/20 text-cyan-300 border border-cyan-500/30 transition-all flex items-center gap-1 cursor-pointer active:scale-95"
+              >
+                <SlidersHorizontal className="w-3 h-3" />
+                <span>Cambiar Plan (5 disponibles)</span>
+              </button>
             </div>
             <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight flex items-center gap-2.5">
               <UtensilsCrossed className="w-7 h-7 text-cyan-400" />
               Nutrición & Macros
             </h1>
             <p className="text-xs sm:text-sm text-neutral-400 mt-1 max-w-2xl leading-relaxed">
-              Déficit calórico estratégico (~550 kcal) para alcanzar <strong className="text-white">90.0 kg</strong> protegiendo 63-64 kg de músculo. Prioridad de hidratación continua en carretera.
+              {activePlan.description} Meta personal: <strong className="text-white">{targetWeight.toFixed(1)} kg</strong>.
             </p>
           </div>
 
@@ -880,7 +913,7 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
                         </div>
                       </div>
 
-                      {/* Button to load preloaded meal from Renato's plan */}
+                      {/* Button to load preloaded meal from active plan */}
                       <button
                         type="button"
                         onClick={(e) => {
@@ -1042,7 +1075,7 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
                   Control de Composición Corporal
                 </h2>
                 <p className="text-xs text-neutral-400 mt-0.5">
-                  Seguimiento con báscula de bioimpedancia y cinta métrica para Renato Cabrera.
+                  Seguimiento con báscula de bioimpedancia y cinta métrica para {user.name || 'tu perfil'}.
                 </p>
               </div>
 
@@ -1074,7 +1107,7 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
                   Peso Inicial
                 </span>
                 <div className="text-2xl font-black font-mono text-neutral-400 mt-1">
-                  {RENATO_PLAN_CONFIG.initialWeightKg} kg
+                  {initialWeight.toFixed(1)} kg
                 </div>
                 <span className="text-[10px] text-neutral-500">Punto de partida</span>
               </div>
@@ -1099,18 +1132,22 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
                   Objetivo Final
                 </span>
                 <div className="text-2xl font-black font-mono text-emerald-400 mt-1">
-                  {RENATO_PLAN_CONFIG.targetWeightKg} kg
+                  {targetWeight.toFixed(1)} kg
                 </div>
                 <span className="text-[10px] text-neutral-500">
-                  Faltan {(currentWeight - RENATO_PLAN_CONFIG.targetWeightKg).toFixed(1)} kg
+                  {targetWeight < currentWeight
+                    ? `Faltan ${(currentWeight - targetWeight).toFixed(1)} kg`
+                    : targetWeight > currentWeight
+                    ? `Faltan ${(targetWeight - currentWeight).toFixed(1)} kg`
+                    : '¡Meta alcanzada!'}
                 </span>
               </div>
             </div>
 
-            {/* Overall Progress to 90 kg */}
+            {/* Overall Progress to Target Weight */}
             <div className="mt-5">
               <div className="flex items-center justify-between text-xs font-bold font-mono mb-1.5">
-                <span className="text-neutral-300">Progreso hacia 90 kg</span>
+                <span className="text-neutral-300">Progreso hacia {targetWeight.toFixed(1)} kg</span>
                 <span className="text-cyan-400">{targetProgressPercent}% completado</span>
               </div>
               <div className="w-full h-3 bg-neutral-800 rounded-full overflow-hidden">
@@ -1738,6 +1775,104 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* 📋 Plan Selection Modal (5 Nutritional Plans) */}
+      {isPlanSelectorOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in">
+          <div className="bg-neutral-900 border border-white/10 rounded-3xl p-5 sm:p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto space-y-5 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-white/10 pb-4">
+              <div>
+                <span className="text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-400 border border-cyan-500/30">
+                  Catálogo Nutricional
+                </span>
+                <h3 className="text-xl font-black text-white tracking-tight mt-1 flex items-center gap-2">
+                  <UtensilsCrossed className="w-5 h-5 text-cyan-400" />
+                  Elige tu Plan de Nutrición
+                </h3>
+                <p className="text-xs text-neutral-400 mt-0.5">
+                  Selecciona el plan que mejor se adapte a tus metas. Los objetivos de calorías y macros se sincronizarán al instante.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsPlanSelectorOpen(false)}
+                className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-neutral-400 hover:text-white transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-3.5">
+              {NUTRITION_PLANS.map((plan) => {
+                const isActive = plan.id === activePlan.id;
+                return (
+                  <div
+                    key={plan.id}
+                    className={`relative rounded-2xl p-4 sm:p-5 border transition-all ${
+                      isActive
+                        ? 'bg-cyan-500/10 border-cyan-500/50 shadow-lg shadow-cyan-500/10'
+                        : 'bg-black/40 border-white/10 hover:border-white/20 hover:bg-white/[0.02]'
+                    }`}
+                  >
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div>
+                        <div className="flex items-center gap-2 flex-wrap mb-1">
+                          <span className="text-base">{plan.badge}</span>
+                          <h4 className="text-sm sm:text-base font-black text-white">
+                            {plan.name}
+                          </h4>
+                          {isActive && (
+                            <span className="text-[10px] font-mono font-black uppercase px-2 py-0.5 rounded-full bg-cyan-500 text-neutral-950 flex items-center gap-1">
+                              <Check className="w-3 h-3 stroke-[3]" />
+                              Activo
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-neutral-400 leading-relaxed max-w-xl">
+                          {plan.description}
+                        </p>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => handleSelectPlan(plan)}
+                        disabled={isActive}
+                        className={`px-4 py-2 rounded-xl text-xs font-black transition-all shrink-0 self-start sm:self-auto ${
+                          isActive
+                            ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 cursor-default'
+                            : 'bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-neutral-950 shadow-md hover:scale-105 active:scale-95 cursor-pointer'
+                        }`}
+                      >
+                        {isActive ? 'Plan Activo' : 'Activar Plan'}
+                      </button>
+                    </div>
+
+                    {/* Macro Breakdown Chips */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-3.5 pt-3 border-t border-white/5 font-mono text-xs">
+                      <div className="bg-white/5 rounded-xl p-2 text-center">
+                        <span className="text-[10px] text-neutral-400 block uppercase">Entreno</span>
+                        <span className="font-black text-white">{plan.targets.workout.calories} kcal</span>
+                      </div>
+                      <div className="bg-white/5 rounded-xl p-2 text-center">
+                        <span className="text-[10px] text-neutral-400 block uppercase">Descanso</span>
+                        <span className="font-black text-neutral-300">{plan.targets.rest.calories} kcal</span>
+                      </div>
+                      <div className="bg-white/5 rounded-xl p-2 text-center">
+                        <span className="text-[10px] text-cyan-400 block uppercase">Proteína</span>
+                        <span className="font-black text-cyan-300">~{plan.targets.workout.protein}g</span>
+                      </div>
+                      <div className="bg-white/5 rounded-xl p-2 text-center">
+                        <span className="text-[10px] text-blue-400 block uppercase">Agua</span>
+                        <span className="font-black text-blue-300">{(plan.waterGoalMl / 1000).toFixed(1)} L/día</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
       )}
