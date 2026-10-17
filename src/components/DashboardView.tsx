@@ -183,153 +183,27 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
       
-      {/* ⚡ HERO CARD: MISIÓN DEL DÍA (Propuesta A) */}
-      {currentRoutine && (
-        <div className="bg-gradient-to-r from-neutral-900 via-[#151518] to-cyan-950/40 border-2 border-cyan-500/40 rounded-3xl p-6 sm:p-7 shadow-[0_0_35px_rgba(6,182,212,0.15)] relative overflow-hidden">
-          {/* Ambient light glow */}
-          <div className="absolute top-0 right-0 w-80 h-80 bg-cyan-500/10 blur-[90px] pointer-events-none" />
-          <div className="absolute -bottom-10 -left-10 w-64 h-64 bg-blue-600/10 blur-[80px] pointer-events-none" />
-
-          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 relative z-10">
-            <div className="space-y-2.5 max-w-2xl">
-              <div className="flex items-center gap-2.5 flex-wrap">
-                {trainedToday ? (
-                  <span className="text-xs font-mono font-black uppercase px-3 py-1 rounded-full bg-emerald-500 text-neutral-950 flex items-center gap-1.5 shadow-md shadow-emerald-500/30">
-                    <CheckCircle2 className="w-3.5 h-3.5" /> MISIÓN DE HOY COMPLETADA ({workoutsToday.length})
-                  </span>
-                ) : (
-                  <span className="text-xs font-mono font-black uppercase px-3 py-1 rounded-full bg-cyan-500 text-neutral-950 flex items-center gap-1.5 shadow-md shadow-cyan-500/30">
-                    <Zap className="w-3.5 h-3.5 fill-current animate-bounce" /> MISIÓN DEL DÍA
-                  </span>
-                )}
-                <span className="text-xs font-mono font-bold text-cyan-300 bg-cyan-500/10 border border-cyan-500/20 px-2.5 py-0.5 rounded-full">
-                  +{currentRoutine.xpReward} XP Recompensa
-                </span>
-                <span className="text-xs font-mono text-neutral-400">
-                  {currentRoutine.difficulty === 'Advanced' ? '🔥 Avanzado' : currentRoutine.difficulty === 'Intermediate' ? '⚡ Intermedio' : '🌱 Principiante'}
-                </span>
-              </div>
-
-              <div>
-                <h1 className="text-2xl sm:text-3xl font-display font-black text-white tracking-tight">
-                  {currentRoutine.title}
-                </h1>
-                <p className="text-xs sm:text-sm text-neutral-300 mt-1 leading-relaxed line-clamp-2">
-                  {currentRoutine.description}
-                </p>
-              </div>
-
-              {/* Workout Specs & Muscle Tags */}
-              <div className="flex items-center gap-4 flex-wrap pt-1 text-xs font-mono">
-                <span className="text-neutral-300 flex items-center gap-1 bg-white/5 border border-white/5 px-2.5 py-1 rounded-xl">
-                  <Clock className="w-3.5 h-3.5 text-cyan-400" />
-                  <span>{currentRoutine.durationMinutes} min aprox.</span>
-                </span>
-
-                <span className="text-neutral-300 flex items-center gap-1 bg-white/5 border border-white/5 px-2.5 py-1 rounded-xl">
-                  <Dumbbell className="w-3.5 h-3.5 text-cyan-400" />
-                  <span>{currentRoutine.exercises?.length || 5} Ejercicios</span>
-                </span>
-
-                <span className="text-orange-400 flex items-center gap-1 bg-orange-500/10 border border-orange-500/20 px-2.5 py-1 rounded-xl">
-                  <Flame className="w-3.5 h-3.5" />
-                  <span>~{currentRoutine.estimatedCalories} kcal</span>
-                </span>
-
-                <div className="flex items-center gap-1.5">
-                  {targetMuscles.map((muscle, idx) => (
-                    <span
-                      key={idx}
-                      className="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-cyan-500/10 text-cyan-300 border border-cyan-500/30"
-                    >
-                      {muscle}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Action Buttons: Big Start Button & Routine Switcher */}
-            <div className="flex flex-col sm:flex-row lg:flex-col gap-3 w-full lg:w-auto shrink-0">
-              <button
-                onClick={() => onStartRoutine(currentRoutine)}
-                className="w-full lg:w-64 py-4 px-6 rounded-2xl bg-gradient-to-r from-cyan-400 via-cyan-500 to-blue-600 hover:from-cyan-300 hover:to-blue-500 text-neutral-950 font-display font-black text-sm uppercase tracking-wider shadow-[0_0_30px_rgba(6,182,212,0.45)] flex items-center justify-center gap-2.5 transition-all hover:scale-105 active:scale-95 cursor-pointer"
-              >
-                <Play className="w-5 h-5 fill-current" />
-                <span>{trainedToday ? 'ENTRENAR OTRA SESIÓN' : 'COMENZAR SESIÓN'}</span>
-              </button>
-
-              {/* Quick routine selector dropdown right inside the hero card */}
-              <div className="relative w-full lg:w-64">
-                <select
-                  value={currentRoutine.id}
-                  onChange={(e) => setSelectedRoutineId(e.target.value)}
-                  className="w-full py-2 pl-3 pr-8 rounded-xl bg-neutral-950/80 border border-white/15 text-xs font-mono font-bold text-cyan-300 focus:outline-none focus:border-cyan-400 appearance-none cursor-pointer"
-                >
-                  {routines.map((r) => (
-                    <option key={r.id} value={r.id}>
-                      🎯 {r.title} ({r.durationMinutes}m)
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown className="w-3.5 h-3.5 text-cyan-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-              </div>
-
-              <div className="flex gap-2">
-                <button
-                  onClick={() => onNavigateTab('routines')}
-                  className="flex-1 py-2 px-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-mono font-bold text-neutral-300 hover:text-white flex items-center justify-center gap-1.5 transition-all cursor-pointer"
-                >
-                  <Layers className="w-3.5 h-3.5 text-cyan-400" />
-                  <span>Catálogo</span>
-                </button>
-
-                {onOpenQuickStart && (
-                  <button
-                    onClick={onOpenQuickStart}
-                    className="flex-1 py-2 px-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-mono font-bold text-neutral-300 hover:text-white flex items-center justify-center gap-1.5 transition-all cursor-pointer"
-                  >
-                    <Zap className="w-3.5 h-3.5 text-amber-400" />
-                    <span>Entreno Libre</span>
-                  </button>
-                )}
-              </div>
-
-              {onOpenSportModal && (
-                <button
-                  id="btn-dashboard-log-sport"
-                  onClick={onOpenSportModal}
-                  className="w-full lg:w-64 py-2.5 px-4 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/40 text-xs font-mono font-black text-emerald-300 hover:text-emerald-200 flex items-center justify-center gap-2 transition-all shadow-[0_0_15px_rgba(16,185,129,0.2)] cursor-pointer"
-                >
-                  <Watch className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>🎾 Registrar Deporte / Reloj</span>
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Top Hero Banner: Gamification Level, Rank & Metrics */}
+      {/* 👑 1. TOP HERO CARD: FICHA PRINCIPAL DEL ATLETA (Nivel, Título, Liga, Progreso XP & Métricas) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         
         {/* Main Command Hero Card with Immersive Glowing Radial Backdrop */}
-        <div className="lg:col-span-8 bg-gradient-to-br from-[#18181b] to-[#09090b] rounded-3xl border border-white/10 p-6 sm:p-8 flex flex-col relative overflow-hidden shadow-2xl">
-          <div className="absolute top-0 right-0 w-64 h-64 bg-cyan-500/10 blur-[100px] pointer-events-none" />
-          <div className="absolute -bottom-10 -left-10 w-48 h-48 bg-blue-500/10 blur-[90px] pointer-events-none" />
+        <div className="lg:col-span-8 bg-gradient-to-br from-[#18181b] via-[#121215] to-[#09090b] rounded-3xl border border-white/10 p-6 sm:p-8 flex flex-col relative overflow-hidden shadow-2xl">
+          <div className="absolute top-0 right-0 w-80 h-80 bg-cyan-500/10 blur-[100px] pointer-events-none" />
+          <div className="absolute -bottom-10 -left-10 w-64 h-64 bg-blue-500/10 blur-[90px] pointer-events-none" />
 
-          {/* Top Header of the Hero Card */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 relative z-10">
+          {/* Top Header of the Athlete Card: Avatar, Big Level, Name, League */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5 mb-6 relative z-10">
             <div 
               onClick={onOpenProfileModal}
-              className="flex items-center gap-4 cursor-pointer group transition-transform hover:scale-[1.02]"
+              className="flex items-center gap-4 sm:gap-5 cursor-pointer group transition-transform hover:scale-[1.01]"
               title="Haz clic para personalizar avatar, nombre o título honorífico"
             >
-              <div className="relative">
+              {/* Avatar with Animated Glow and Badge */}
+              <div className="relative shrink-0">
                 <img
                   src={user.avatar}
                   alt={user.name}
-                  className={`w-16 h-16 sm:w-20 sm:h-20 rounded-2xl object-cover border-2 shadow-xl group-hover:scale-105 transition-all ${currentTier.frameClass} ${currentTier.borderColor}`}
+                  className={`w-20 h-20 sm:w-24 sm:h-24 rounded-3xl object-cover border-2 shadow-2xl group-hover:scale-105 transition-all ${currentTier.frameClass} ${currentTier.borderColor}`}
                 />
                 <div
                   onClick={(e) => {
@@ -337,7 +211,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     if (onOpenLevelRoadmap) onOpenLevelRoadmap();
                     else if (onOpenProfileModal) onOpenProfileModal();
                   }}
-                  className="absolute -bottom-2.5 -right-2.5 px-2.5 py-1 rounded-xl text-neutral-950 text-xs font-black font-mono flex items-center gap-1 shadow-2xl cursor-pointer hover:scale-110 transition-transform border border-black/40"
+                  className="absolute -bottom-2 -right-2 px-2.5 py-1 rounded-xl text-neutral-950 text-xs font-black font-mono flex items-center gap-1 shadow-2xl cursor-pointer hover:scale-110 transition-transform border border-black/40"
                   style={{
                     backgroundColor: currentTier.accentColor,
                     boxShadow: `0 0 16px ${currentTier.glowColor}`,
@@ -349,13 +223,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 </div>
               </div>
 
-              <div>
+              {/* Name, Prominent Level Headline & Badges */}
+              <div className="min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <h2 className="font-display font-extrabold text-2xl sm:text-3xl text-white tracking-tight group-hover:text-cyan-300 transition-colors">
-                    {user.name}
-                  </h2>
                   <span
-                    className="text-[10px] font-mono font-black px-2.5 py-0.5 rounded-full border uppercase tracking-wider flex items-center gap-1 shadow-sm"
+                    className="text-xs font-mono font-black px-3 py-0.5 rounded-full border uppercase tracking-wider flex items-center gap-1.5 shadow-sm"
                     style={{
                       color: currentTier.accentColor,
                       borderColor: `${currentTier.accentColor}50`,
@@ -365,14 +237,20 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     <span>{currentTier.badgeIcon}</span>
                     <span>{currentTier.name}</span>
                   </span>
-                  <span className="text-[10px] font-mono font-black px-2.5 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 uppercase tracking-wider">
+
+                  <span className="text-xs font-mono font-black px-3 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/25 uppercase tracking-wider">
                     LIGA {user.league}
                   </span>
                 </div>
-                <div className="flex items-center gap-2 mt-1">
-                  <p className="text-xs sm:text-sm font-semibold text-cyan-400 flex items-center gap-1.5 font-mono">
-                    <Shield className="w-3.5 h-3.5 text-cyan-400" />
-                    {user.rankTitle || 'Recluta Inicial'}
+
+                <h1 className="font-display font-black text-2xl sm:text-4xl text-white tracking-tight mt-1 group-hover:text-cyan-300 transition-colors truncate">
+                  {user.name}
+                </h1>
+
+                <div className="flex items-center gap-2 mt-1 flex-wrap">
+                  <p className="text-sm font-bold text-cyan-400 flex items-center gap-1.5 font-mono">
+                    <Shield className="w-4 h-4 text-cyan-400 shrink-0" />
+                    <span>{user.rankTitle || 'Recluta Inicial'}</span>
                   </p>
                   <button
                     type="button"
@@ -380,39 +258,41 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       e.stopPropagation();
                       if (onOpenLevelRoadmap) onOpenLevelRoadmap();
                     }}
-                    className="text-[10px] text-neutral-400 hover:text-cyan-300 underline font-mono cursor-pointer"
+                    className="text-xs text-neutral-400 hover:text-cyan-300 underline font-mono cursor-pointer"
                   >
-                    Ver títulos
+                    Ver ruta de rangos →
                   </button>
                 </div>
-                <p className="text-xs text-neutral-400 mt-1">
-                  {displayTotalWorkouts} misiones completadas • {Math.round(displayTotalVolumeKg / 1000)}t tonelaje total
+
+                <p className="text-xs text-neutral-400 mt-1 font-mono">
+                  {displayTotalWorkouts} entrenos completados • {Math.round(displayTotalVolumeKg / 1000)}t tonelaje levantado
                 </p>
               </div>
             </div>
 
+            {/* Quick action button in header */}
             <button
               id="btn-dashboard-start-workout"
               onClick={onOpenQuickStart ? onOpenQuickStart : () => onNavigateTab('routines')}
-              className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-neutral-950 px-4 py-2 rounded-2xl text-xs font-mono font-black uppercase tracking-wider shadow-[0_0_20px_rgba(6,182,212,0.4)] flex items-center gap-2 self-start sm:self-center transition-all hover:scale-105 active:scale-95 cursor-pointer"
+              className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-neutral-950 px-4 py-2.5 rounded-2xl text-xs font-mono font-black uppercase tracking-wider shadow-[0_0_20px_rgba(6,182,212,0.4)] flex items-center gap-2 self-start sm:self-center transition-all hover:scale-105 active:scale-95 cursor-pointer shrink-0"
             >
               <Zap className="w-3.5 h-3.5 fill-current animate-pulse" />
               <span>EXPLORAR RUTINAS</span>
             </button>
           </div>
 
-          {/* Goal Ring + Metrics Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center flex-1 relative z-10 pt-4 border-t border-white/5">
+          {/* XP Progress Bar + Telemetry Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center flex-1 relative z-10 pt-5 border-t border-white/10">
             
-            {/* Circular Mastery Ring & Level Progress (Real SVG Ring 0-100%) */}
-            <div className="md:col-span-5 flex flex-col items-center justify-center gap-2 p-3 bg-black/30 rounded-2xl border border-white/5 shadow-inner">
+            {/* Circular Mastery Ring & Level Progress (Prominent 0-100% SVG Ring) */}
+            <div className="md:col-span-5 flex flex-col items-center justify-center gap-2 p-4 bg-black/40 rounded-3xl border border-white/5 shadow-inner">
               <div
                 onClick={onOpenLevelRoadmap}
-                className="w-28 h-28 sm:w-32 sm:h-32 rounded-full flex items-center justify-center relative cursor-pointer hover:scale-105 transition-transform"
+                className="w-32 h-32 sm:w-36 sm:h-36 rounded-full flex items-center justify-center relative cursor-pointer hover:scale-105 transition-transform"
                 style={{
-                  boxShadow: `0 0 25px ${currentTier.glowColor}`,
+                  boxShadow: `0 0 30px ${currentTier.glowColor}`,
                 }}
-                title="Haz clic para explorar la Ruta de Niveles"
+                title="Haz clic para ver todos los niveles y recompensas"
               >
                 <svg className="w-full h-full -rotate-90" viewBox="0 0 120 120">
                   <circle
@@ -437,11 +317,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   />
                 </svg>
                 <div className="text-center absolute inset-0 flex flex-col items-center justify-center">
-                  <span className="text-2xl sm:text-3xl font-black font-mono text-white tracking-tight block">
-                    {xpPercent}<span className="text-xs font-normal opacity-50">%</span>
+                  <span className="text-3xl sm:text-4xl font-black font-mono text-white tracking-tight block">
+                    {xpPercent}<span className="text-sm font-normal opacity-50">%</span>
                   </span>
                   <span
-                    className="text-[9px] uppercase tracking-widest font-mono font-black block"
+                    className="text-[10px] sm:text-xs uppercase tracking-widest font-mono font-black block mt-0.5"
                     style={{ color: currentTier.accentColor }}
                   >
                     NIVEL {user.level}
@@ -450,14 +330,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </div>
 
               <div className="text-center w-full px-1">
-                <p className="text-xs font-mono font-bold" style={{ color: currentTier.accentColor }}>
+                <p className="text-sm font-mono font-extrabold" style={{ color: currentTier.accentColor }}>
                   {user.currentLevelXp} / {user.nextLevelXp} XP
                 </p>
-                <p className="text-[10px] text-neutral-400 font-mono mt-0.5">
+                <p className="text-xs text-neutral-300 font-mono mt-0.5">
                   Faltan <span className="text-white font-bold">{remainingXp} XP</span> para Nivel {user.level + 1}
                 </p>
                 {nextMilestone && (
-                  <p className="text-[10px] text-cyan-300 font-mono mt-1 truncate">
+                  <p className="text-[11px] text-cyan-300 font-mono mt-1 truncate">
                     🎁 Hito Nvl {nextMilestone.level}: {nextMilestone.rewardLabel}
                   </p>
                 )}
@@ -465,17 +345,29 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 <button
                   type="button"
                   onClick={onOpenLevelRoadmap}
-                  className="mt-2.5 w-full py-1.5 px-2.5 rounded-xl bg-white/10 hover:bg-white/15 border border-white/10 hover:border-cyan-400/50 text-white text-[11px] font-mono font-bold flex items-center justify-center gap-1.5 transition-all shadow-sm cursor-pointer"
+                  className="mt-3 w-full py-2 px-3 rounded-xl bg-white/10 hover:bg-white/15 border border-white/10 hover:border-cyan-400/50 text-white text-xs font-mono font-bold flex items-center justify-center gap-1.5 transition-all shadow-sm cursor-pointer"
                 >
                   <Trophy className="w-3.5 h-3.5 text-amber-400" />
                   <span>Ruta de Rangos y Recompensas</span>
-                  <ChevronRight className="w-3 h-3 text-cyan-400" />
+                  <ChevronRight className="w-3.5 h-3.5 text-cyan-400" />
                 </button>
               </div>
             </div>
 
-            {/* Live Telemetry Inner Cards */}
-            <div className="md:col-span-7 space-y-3.5">
+            {/* Live Telemetry Aggregate Metric Cards */}
+            <div className="md:col-span-7 space-y-3">
+              <div className="bg-white/5 border border-white/5 p-4 rounded-2xl flex justify-between items-center hover:border-cyan-500/30 transition-colors">
+                <div>
+                  <p className="text-xs text-neutral-400 font-medium">Volumen Total Levantado (Hierro)</p>
+                  <p className="text-2xl font-mono font-bold text-white mt-0.5">
+                    {displayTotalVolumeKg.toLocaleString()} <span className="text-xs text-cyan-400 font-semibold">KG</span>
+                  </p>
+                </div>
+                <div className="w-11 h-11 rounded-2xl border border-cyan-500/30 bg-cyan-500/10 flex items-center justify-center shadow-[0_0_12px_rgba(6,182,212,0.2)]">
+                  <Dumbbell className="w-5 h-5 text-cyan-400" />
+                </div>
+              </div>
+
               <div className="bg-white/5 border border-white/5 p-4 rounded-2xl flex justify-between items-center hover:border-cyan-500/30 transition-colors">
                 <div>
                   <p className="text-xs text-neutral-400 font-medium">Distancia Recorrida (Cardio & Running)</p>
@@ -502,8 +394,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </div>
           </div>
 
-          {/* RPG Athlete Attributes (10-99 Scale + OVR + Archetype + Interactive Breakdown) */}
-          <div className="mt-6 pt-5 border-t border-white/5 relative z-10">
+          {/* ⚔️ 2. ATRIBUTOS DEL ATLETA (10-99 Scale + OVR Media + Arquetipo + Desglose) */}
+          <div className="mt-6 pt-5 border-t border-white/10 relative z-10">
             <div className="flex flex-wrap items-center justify-between gap-2 mb-3.5">
               <div className="flex flex-wrap items-center gap-2">
                 <p className="text-[10px] font-mono font-bold uppercase tracking-widest text-neutral-400">
@@ -838,6 +730,133 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           )}
         </div>
       </div>
+
+      {/* 🎯 3. MISIÓN DEL DÍA / ENTRENAR HOY */}
+      {currentRoutine && (
+        <div className="bg-gradient-to-r from-neutral-900 via-[#151518] to-cyan-950/40 border-2 border-cyan-500/40 rounded-3xl p-6 sm:p-7 shadow-[0_0_35px_rgba(6,182,212,0.15)] relative overflow-hidden">
+          {/* Ambient light glow */}
+          <div className="absolute top-0 right-0 w-80 h-80 bg-cyan-500/10 blur-[90px] pointer-events-none" />
+          <div className="absolute -bottom-10 -left-10 w-64 h-64 bg-blue-600/10 blur-[80px] pointer-events-none" />
+
+          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 relative z-10">
+            <div className="space-y-2.5 max-w-2xl">
+              <div className="flex items-center gap-2.5 flex-wrap">
+                {trainedToday ? (
+                  <span className="text-xs font-mono font-black uppercase px-3 py-1 rounded-full bg-emerald-500 text-neutral-950 flex items-center gap-1.5 shadow-md shadow-emerald-500/30">
+                    <CheckCircle2 className="w-3.5 h-3.5" /> MISIÓN DE HOY COMPLETADA ({workoutsToday.length})
+                  </span>
+                ) : (
+                  <span className="text-xs font-mono font-black uppercase px-3 py-1 rounded-full bg-cyan-500 text-neutral-950 flex items-center gap-1.5 shadow-md shadow-cyan-500/30">
+                    <Zap className="w-3.5 h-3.5 fill-current animate-bounce" /> MISIÓN DEL DÍA
+                  </span>
+                )}
+                <span className="text-xs font-mono font-bold text-cyan-300 bg-cyan-500/10 border border-cyan-500/20 px-2.5 py-0.5 rounded-full">
+                  +{currentRoutine.xpReward} XP Recompensa
+                </span>
+                <span className="text-xs font-mono text-neutral-400">
+                  {currentRoutine.difficulty === 'Advanced' ? '🔥 Avanzado' : currentRoutine.difficulty === 'Intermediate' ? '⚡ Intermedio' : '🌱 Principiante'}
+                </span>
+              </div>
+
+              <div>
+                <h2 className="text-2xl sm:text-3xl font-display font-black text-white tracking-tight">
+                  {currentRoutine.title}
+                </h2>
+                <p className="text-xs sm:text-sm text-neutral-300 mt-1 leading-relaxed line-clamp-2">
+                  {currentRoutine.description}
+                </p>
+              </div>
+
+              {/* Workout Specs & Muscle Tags */}
+              <div className="flex items-center gap-4 flex-wrap pt-1 text-xs font-mono">
+                <span className="text-neutral-300 flex items-center gap-1 bg-white/5 border border-white/5 px-2.5 py-1 rounded-xl">
+                  <Clock className="w-3.5 h-3.5 text-cyan-400" />
+                  <span>{currentRoutine.durationMinutes} min aprox.</span>
+                </span>
+
+                <span className="text-neutral-300 flex items-center gap-1 bg-white/5 border border-white/5 px-2.5 py-1 rounded-xl">
+                  <Dumbbell className="w-3.5 h-3.5 text-cyan-400" />
+                  <span>{currentRoutine.exercises?.length || 5} Ejercicios</span>
+                </span>
+
+                <span className="text-orange-400 flex items-center gap-1 bg-orange-500/10 border border-orange-500/20 px-2.5 py-1 rounded-xl">
+                  <Flame className="w-3.5 h-3.5" />
+                  <span>~{currentRoutine.estimatedCalories} kcal</span>
+                </span>
+
+                <div className="flex items-center gap-1.5">
+                  {targetMuscles.map((muscle, idx) => (
+                    <span
+                      key={idx}
+                      className="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-cyan-500/10 text-cyan-300 border border-cyan-500/30"
+                    >
+                      {muscle}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Action Buttons: Big Start Button & Routine Switcher */}
+            <div className="flex flex-col sm:flex-row lg:flex-col gap-3 w-full lg:w-auto shrink-0">
+              <button
+                onClick={() => onStartRoutine(currentRoutine)}
+                className="w-full lg:w-64 py-4 px-6 rounded-2xl bg-gradient-to-r from-cyan-400 via-cyan-500 to-blue-600 hover:from-cyan-300 hover:to-blue-500 text-neutral-950 font-display font-black text-sm uppercase tracking-wider shadow-[0_0_30px_rgba(6,182,212,0.45)] flex items-center justify-center gap-2.5 transition-all hover:scale-105 active:scale-95 cursor-pointer"
+              >
+                <Play className="w-5 h-5 fill-current" />
+                <span>{trainedToday ? 'ENTRENAR OTRA SESIÓN' : 'COMENZAR SESIÓN'}</span>
+              </button>
+
+              {/* Quick routine selector dropdown right inside the hero card */}
+              <div className="relative w-full lg:w-64">
+                <select
+                  value={currentRoutine.id}
+                  onChange={(e) => setSelectedRoutineId(e.target.value)}
+                  className="w-full py-2 pl-3 pr-8 rounded-xl bg-neutral-950/80 border border-white/15 text-xs font-mono font-bold text-cyan-300 focus:outline-none focus:border-cyan-400 appearance-none cursor-pointer"
+                >
+                  {routines.map((r) => (
+                    <option key={r.id} value={r.id}>
+                      🎯 {r.title} ({r.durationMinutes}m)
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="w-3.5 h-3.5 text-cyan-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              </div>
+
+              <div className="flex gap-2">
+                <button
+                  onClick={() => onNavigateTab('routines')}
+                  className="flex-1 py-2 px-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-mono font-bold text-neutral-300 hover:text-white flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                >
+                  <Layers className="w-3.5 h-3.5 text-cyan-400" />
+                  <span>Catálogo</span>
+                </button>
+
+                {onOpenQuickStart && (
+                  <button
+                    onClick={onOpenQuickStart}
+                    className="flex-1 py-2 px-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-mono font-bold text-neutral-300 hover:text-white flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                  >
+                    <Zap className="w-3.5 h-3.5 text-amber-400" />
+                    <span>Entreno Libre</span>
+                  </button>
+                )}
+              </div>
+
+              {onOpenSportModal && (
+                <button
+                  id="btn-dashboard-log-sport"
+                  onClick={onOpenSportModal}
+                  className="w-full lg:w-64 py-2.5 px-4 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/40 text-xs font-mono font-black text-emerald-300 hover:text-emerald-200 flex items-center justify-center gap-2 transition-all shadow-[0_0_15px_rgba(16,185,129,0.2)] cursor-pointer"
+                >
+                  <Watch className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>🎾 Registrar Deporte / Reloj</span>
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 🥗 NUTRITION & HYDRATION SUMMARY BANNER */}
       {(() => {
