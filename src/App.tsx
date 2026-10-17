@@ -20,7 +20,12 @@ import { translations } from './lib/i18n';
 import { sound } from './lib/soundFx';
 import { auth, db, onAuthStateChanged, signOut as fbSignOut } from './lib/firebase';
 import { onSnapshot, doc, updateDoc, collection } from 'firebase/firestore';
-import { evaluateWeeklyLeagueReset, calculateRealStreak, calculateAthleteAttributes } from './lib/leagueEngine';
+import {
+  evaluateWeeklyLeagueReset,
+  calculateRealStreak,
+  calculateAthleteAttributes,
+  calculateAttributeXpBonus,
+} from './lib/leagueEngine';
 import { evaluateAllAchievements } from './lib/achievementEngine';
 import { calculateLevelFromTotalXp } from './lib/progressionEngine';
 import { Smartphone, ShieldAlert } from 'lucide-react';
@@ -621,15 +626,30 @@ export default function App() {
     };
   }, []);
 
-  // Listen for local and cloud history updates to keep UI synchronized in real-time
+  // Listen for local and cloud history & nutrition updates to keep UI & attributes synchronized in real-time
   useEffect(() => {
     const handleHistoryUpdate = () => {
       const h = FitStorage.getHistory();
       setHistory(h);
+      const streak = calculateRealStreak(h);
+      setUser((prev) => ({
+        ...prev,
+        attributes: calculateAthleteAttributes(h, streak.currentStreak, prev.level),
+      }));
+    };
+    const handleNutritionUpdate = () => {
+      const h = FitStorage.getHistory();
+      const streak = calculateRealStreak(h);
+      setUser((prev) => ({
+        ...prev,
+        attributes: calculateAthleteAttributes(h, streak.currentStreak, prev.level),
+      }));
     };
     window.addEventListener('fitquest_history_updated', handleHistoryUpdate);
+    window.addEventListener('fitquest_nutrition_updated', handleNutritionUpdate);
     return () => {
       window.removeEventListener('fitquest_history_updated', handleHistoryUpdate);
+      window.removeEventListener('fitquest_nutrition_updated', handleNutritionUpdate);
     };
   }, []);
 
@@ -766,6 +786,22 @@ export default function App() {
         sound.playLevelUp();
       }
     }
+
+    // Apply passive RPG Attribute XP bonus (Fuerza, Resistencia, Agilidad, Disciplina)
+    const currentHistoryBeforeAdd = FitStorage.getHistory().filter((h) => h.id !== entry.id);
+    const previewStreak = calculateRealStreak([entry, ...currentHistoryBeforeAdd]);
+    const currentAttrs = calculateAthleteAttributes(
+      currentHistoryBeforeAdd,
+      previewStreak.currentStreak,
+      user.level
+    );
+    const attrBonus = calculateAttributeXpBonus(
+      entry,
+      currentAttrs,
+      previewStreak.currentStreak,
+      xpGained
+    );
+    totalXpToAward += attrBonus.bonusXp;
 
     const finalEntry: WorkoutHistoryEntry = {
       ...entry,

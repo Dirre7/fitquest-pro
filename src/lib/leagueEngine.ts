@@ -317,84 +317,530 @@ export function calculateRealStreak(history: WorkoutHistoryEntry[]): { currentSt
   return { currentStreak, bestStreak: Math.max(1, bestStreak) };
 }
 
-/**
- * Calculates specialized athlete attributes (0-100) based on biomechanical training history.
- */
-export function calculateAthleteAttributes(
-  history: WorkoutHistoryEntry[],
-  currentStreak: number,
-  userLevel: number = 1,
-  existingAttributes?: { strength: number; endurance: number; agility: number; discipline: number }
-): { strength: number; endurance: number; agility: number; discipline: number } {
-  // Level floor ensures progressing athletes never have beginner 10 stats wiped
-  const levelFloor = Math.max(10, 10 + Math.floor(((userLevel || 1) - 1) * 3));
+export interface AttributeSourceItem {
+  label: string;
+  rawMetric: string;
+  pointsAdded: number;
+}
 
-  if (!history || history.length === 0) {
+export interface SingleAttributeBreakdown {
+  key: 'strength' | 'endurance' | 'agility' | 'discipline';
+  name: string;
+  code: 'PWR' | 'END' | 'AGI' | 'DIS';
+  score: number;
+  tierLabel: 'Bronce' | 'Plata' | 'Oro' | 'Élite' | 'Leyenda';
+  tierColorClass: string;
+  bonusPct: number;
+  bonusDescription: string;
+  summary: string;
+  howToImprove: string;
+  sources: AttributeSourceItem[];
+}
+
+export interface AthleteAttributesBreakdown {
+  attributes: {
+    strength: number;
+    endurance: number;
+    agility: number;
+    discipline: number;
+  };
+  overall: number;
+  overallTierLabel: 'Bronce' | 'Plata' | 'Oro' | 'Élite' | 'Leyenda';
+  archetype: {
+    name: string;
+    icon: string;
+    description: string;
+  };
+  details: {
+    strength: SingleAttributeBreakdown;
+    endurance: SingleAttributeBreakdown;
+    agility: SingleAttributeBreakdown;
+    discipline: SingleAttributeBreakdown;
+  };
+}
+
+function getAttributeTierInfo(score: number): {
+  tierLabel: 'Bronce' | 'Plata' | 'Oro' | 'Élite' | 'Leyenda';
+  tierColorClass: string;
+} {
+  if (score >= 90) {
     return {
-      strength: Math.max(levelFloor, existingAttributes?.strength || 10),
-      endurance: Math.max(levelFloor, existingAttributes?.endurance || 10),
-      agility: Math.max(levelFloor, existingAttributes?.agility || 10),
-      discipline: Math.max(levelFloor, existingAttributes?.discipline || 10),
+      tierLabel: 'Leyenda',
+      tierColorClass: 'text-purple-400 bg-purple-500/15 border-purple-500/30',
+    };
+  }
+  if (score >= 75) {
+    return {
+      tierLabel: 'Élite',
+      tierColorClass: 'text-cyan-400 bg-cyan-500/15 border-cyan-500/30',
+    };
+  }
+  if (score >= 50) {
+    return {
+      tierLabel: 'Oro',
+      tierColorClass: 'text-yellow-400 bg-yellow-500/15 border-yellow-500/30',
+    };
+  }
+  if (score >= 25) {
+    return {
+      tierLabel: 'Plata',
+      tierColorClass: 'text-slate-200 bg-slate-400/15 border-slate-400/30',
+    };
+  }
+  return {
+    tierLabel: 'Bronce',
+    tierColorClass: 'text-amber-400 bg-amber-500/15 border-amber-500/30',
+  };
+}
+
+function resolveAthleteArchetype(attrs: {
+  strength: number;
+  endurance: number;
+  agility: number;
+  discipline: number;
+}): { name: string; icon: string; description: string } {
+  const { strength, endurance, agility, discipline } = attrs;
+  const values = [strength, endurance, agility, discipline];
+  const maxVal = Math.max(...values);
+  const minVal = Math.min(...values);
+
+  if (minVal >= 45 && maxVal - minVal <= 10) {
+    return {
+      name: 'Atleta Híbrido Completo',
+      icon: '👑',
+      description: 'Equilibrio de élite en fuerza, motor aeróbico, agilidad en pista y disciplina diaria.',
     };
   }
 
-  const totalVolumeKg = history.reduce((sum, h) => sum + (h.totalVolumeKg || 0), 0);
-  const totalDistanceKm = history.reduce((sum, h) => sum + (h.totalDistanceKm || 0), 0);
-  const totalMinutes = history.reduce((sum, h) => sum + (h.durationMinutes || 0), 0);
-  const totalSportCalories = history
-    .filter((h) => h.isSportActivity)
-    .reduce((sum, h) => sum + (h.calories || 0), 0);
+  const sorted = [
+    { key: 'strength', val: strength },
+    { key: 'endurance', val: endurance },
+    { key: 'agility', val: agility },
+    { key: 'discipline', val: discipline },
+  ].sort((a, b) => b.val - a.val);
 
-  const strengthWorkouts = history.filter((h) => (h.totalVolumeKg || 0) > 300).length;
-  const sportWorkouts = history.filter(
+  const pair = new Set([sorted[0].key, sorted[1].key]);
+
+  if (pair.has('strength') && pair.has('agility')) {
+    return {
+      name: 'Híbrido: Potencia & Pista',
+      icon: '⚔️🎾',
+      description: 'Fuerza explosiva en el gimnasio combinada con reflejos y agilidad en deportes.',
+    };
+  }
+  if (pair.has('strength') && pair.has('endurance')) {
+    return {
+      name: 'Coloso de Hierro & Fondo',
+      icon: '🏋️🔥',
+      description: 'Gran capacidad de tonelaje muscular respaldada por un motor cardiovascular incansable.',
+    };
+  }
+  if (pair.has('endurance') && pair.has('agility')) {
+    return {
+      name: 'Especialista de Pista & Cardio',
+      icon: '⚡🎾',
+      description: 'Alto gasto calórico, resistencia prolongada y velocidad en deportes de cancha.',
+    };
+  }
+  if (pair.has('strength') && pair.has('discipline')) {
+    return {
+      name: 'Guardián del Hierro',
+      icon: '🛡️🏋️',
+      description: 'Constancia diaria inquebrantable aplicada a la sobrecarga progresiva y nutrición.',
+    };
+  }
+  if (pair.has('endurance') && pair.has('discipline')) {
+    return {
+      name: 'Motor Metódico',
+      icon: '🏃‍♂️🧭',
+      description: 'Resistencia aeróbica sostenida por rachas de entrenamiento y control nutricional.',
+    };
+  }
+  if (pair.has('agility') && pair.has('discipline')) {
+    return {
+      name: 'Estratega de Pista',
+      icon: '🎾🎯',
+      description: 'Dominio deportivo, rapidez de reacción y compromiso constante con el plan diario.',
+    };
+  }
+
+  return {
+    name: 'Atleta en Evolución',
+    icon: '🌟',
+    description: 'Desarrollando capacidades físicas en fuerza, cardio, deporte y hábitos diarios.',
+  };
+}
+
+/**
+ * Computes full breakdown of the 4 RPG Athlete Attributes (10 to 99 scale),
+ * Overall Rating (MEDIA OVR), Archetype, and active XP bonuses.
+ */
+export function getAthleteAttributesBreakdown(
+  history: WorkoutHistoryEntry[],
+  currentStreak: number,
+  _userLevel: number = 1,
+  userProfile?: UserProfile
+): AthleteAttributesBreakdown {
+  const safeHistory = Array.isArray(history) ? history : [];
+
+  // 1. FUERZA (PWR) metrics: Gym volume + Strength/Hypertrophy sessions + Peak session PR
+  const totalVolumeKg = safeHistory.reduce((sum, h) => sum + (Number(h.totalVolumeKg) || 0), 0);
+  const maxSessionVolumeKg = safeHistory.reduce(
+    (max, h) => Math.max(max, Number(h.totalVolumeKg) || 0),
+    0
+  );
+  const strengthSessions = safeHistory.filter(
     (h) =>
-      h.isSportActivity ||
+      !h.isSportActivity &&
+      ((Number(h.totalVolumeKg) || 0) >= 300 ||
+        h.routineTitle?.toLowerCase().includes('fuerza') ||
+        h.routineTitle?.toLowerCase().includes('torso') ||
+        h.routineTitle?.toLowerCase().includes('pierna') ||
+        h.routineTitle?.toLowerCase().includes('espalda') ||
+        h.routineTitle?.toLowerCase().includes('pecho') ||
+        h.routineTitle?.toLowerCase().includes('full body') ||
+        h.routineTitle?.toLowerCase().includes('powerlifting') ||
+        h.routineTitle?.toLowerCase().includes('hipertrofia'))
+  ).length;
+
+  const strengthFromVolume = Math.min(52, Math.round((totalVolumeKg / 2500) * 10) / 10);
+  const strengthFromSessions = Math.min(30, Math.round(strengthSessions * 2.0 * 10) / 10);
+  const strengthFromPeak = maxSessionVolumeKg >= 6000 ? 7 : maxSessionVolumeKg >= 4000 ? 5 : maxSessionVolumeKg >= 2000 ? 3 : maxSessionVolumeKg > 0 ? 1 : 0;
+  const strengthScore = Math.min(
+    99,
+    Math.max(10, Math.round(10 + strengthFromVolume + strengthFromSessions + strengthFromPeak))
+  );
+
+  // 2. RESISTENCIA (END) metrics: Total active minutes + Total burned kcal + Cardio distance (km)
+  const totalMinutes = safeHistory.reduce((sum, h) => sum + (Number(h.durationMinutes) || 0), 0);
+  const totalCalories = safeHistory.reduce((sum, h) => sum + (Number(h.calories) || 0), 0);
+  const sanitizedDistanceKm = safeHistory.reduce(
+    (sum, h) => sum + Math.min(42, Number(h.totalDistanceKm) || 0),
+    0
+  );
+
+  const enduranceFromMinutes = Math.min(35, Math.round((totalMinutes / 35) * 10) / 10);
+  const enduranceFromCalories = Math.min(32, Math.round((totalCalories / 700) * 10) / 10);
+  const enduranceFromDistance = Math.min(22, Math.round(sanitizedDistanceKm * 1.2 * 10) / 10);
+  const enduranceScore = Math.min(
+    99,
+    Math.max(10, Math.round(10 + enduranceFromMinutes + enduranceFromCalories + enduranceFromDistance))
+  );
+
+  // 3. AGILIDAD (AGI) metrics: Sport matches (Tenis, Pádel, Fútbol, Boxeo...) + Sport minutes + HIIT/Mobility/Calisthenics
+  const sportEntries = safeHistory.filter(
+    (h) =>
+      Boolean(h.isSportActivity) ||
+      h.routineId?.startsWith('sport_') ||
       h.routineTitle?.toLowerCase().includes('tenis') ||
       h.routineTitle?.toLowerCase().includes('pádel') ||
       h.routineTitle?.toLowerCase().includes('padel') ||
       h.routineTitle?.toLowerCase().includes('fútbol') ||
       h.routineTitle?.toLowerCase().includes('baloncesto') ||
       h.routineTitle?.toLowerCase().includes('boxeo') ||
-      h.routineTitle?.toLowerCase().includes('natación')
-  ).length;
-  const cardioWorkouts = history.filter(
+      h.routineTitle?.toLowerCase().includes('natación') ||
+      h.routineTitle?.toLowerCase().includes('ciclismo')
+  );
+  const sportSessionsCount = sportEntries.length;
+  const sportMinutes = sportEntries.reduce((sum, h) => sum + (Number(h.durationMinutes) || 0), 0);
+
+  const hiitMobilitySessions = safeHistory.filter(
     (h) =>
-      (h.totalDistanceKm || 0) > 0.5 ||
-      h.isSportActivity ||
-      h.routineTitle?.toLowerCase().includes('cardio') ||
-      h.routineTitle?.toLowerCase().includes('runner')
-  ).length;
-  const hiitWorkouts = history.filter(
-    (h) =>
-      h.isSportActivity ||
-      h.routineTitle?.toLowerCase().includes('hiit') ||
-      h.routineTitle?.toLowerCase().includes('tabata') ||
-      h.routineTitle?.toLowerCase().includes('calistenia') ||
-      h.routineTitle?.toLowerCase().includes('shred')
+      !h.isSportActivity &&
+      (h.routineTitle?.toLowerCase().includes('hiit') ||
+        h.routineTitle?.toLowerCase().includes('tabata') ||
+        h.routineTitle?.toLowerCase().includes('calistenia') ||
+        h.routineTitle?.toLowerCase().includes('movilidad') ||
+        h.routineTitle?.toLowerCase().includes('core') ||
+        h.routineTitle?.toLowerCase().includes('funcional') ||
+        h.routineTitle?.toLowerCase().includes('shred') ||
+        h.routineTitle?.toLowerCase().includes('cardio'))
   ).length;
 
-  // 1. FUERZA: Level floor + volume lifted + heavy strength sessions + power sports (scale up to 100)
-  const strengthPoints = Math.floor(
-    Math.min(80, (totalVolumeKg / 1000) * 1.5 + strengthWorkouts * 2.5 + sportWorkouts * 1.5)
+  const agilityFromSports = Math.min(45, Math.round(sportSessionsCount * 3.5 * 10) / 10);
+  const agilityFromSportTime = Math.min(24, Math.round((sportMinutes / 40) * 10) / 10);
+  const agilityFromHiit = Math.min(20, Math.round(hiitMobilitySessions * 2.5 * 10) / 10);
+  const agilityScore = Math.min(
+    99,
+    Math.max(10, Math.round(10 + agilityFromSports + agilityFromSportTime + agilityFromHiit))
   );
-  const strength = Math.min(100, Math.max(levelFloor, existingAttributes?.strength || 10, levelFloor + strengthPoints));
 
-  // 2. RESISTENCIA: Level floor + total distance (km) + cardio/sport duration & sport calories (scale up to 100)
-  const sanitizedDistance = history.reduce((sum, h) => sum + Math.min(30, h.totalDistanceKm || 0), 0);
-  const endurancePoints = Math.floor(
-    Math.min(80, sanitizedDistance * 2.0 + (totalMinutes / 25) * 1.5 + cardioWorkouts * 3 + (totalSportCalories / 400) * 1.5)
+  // 4. DISCIPLINA (DIS) metrics: Current Streak + Unique training days + Logged Nutrition/Water days + Claimed Weekly Challenges
+  const uniqueWorkoutDays = new Set(
+    safeHistory
+      .map((h) => (typeof h.date === 'string' ? h.date.split('T')[0] : ''))
+      .filter(Boolean)
+  ).size;
+
+  let nutritionDaysCount = 0;
+  try {
+    const rawLogs = localStorage.getItem('fitquest_nutrition_logs');
+    if (rawLogs) {
+      const parsedLogs = JSON.parse(rawLogs);
+      if (parsedLogs && typeof parsedLogs === 'object') {
+        nutritionDaysCount = Object.values(parsedLogs).filter((log: any) => {
+          const hasFoods = Array.isArray(log?.foods) && log.foods.length > 0;
+          const hasWater = (Number(log?.waterMl) || 0) >= 500;
+          return hasFoods || hasWater;
+        }).length;
+      }
+    }
+  } catch {}
+
+  let claimedChallengesCount = userProfile?.claimedChallenges?.length || 0;
+  if (!claimedChallengesCount) {
+    try {
+      const rawClaimed = localStorage.getItem('fitquest_claimed_challenges');
+      if (rawClaimed) {
+        const parsed = JSON.parse(rawClaimed);
+        if (Array.isArray(parsed)) claimedChallengesCount = parsed.length;
+      }
+    } catch {}
+  }
+
+  const safeStreak = Math.max(0, Number(currentStreak) || 0);
+  const disciplineFromStreak = Math.min(30, Math.round(safeStreak * 2.5 * 10) / 10);
+  const disciplineFromUniqueDays = Math.min(30, Math.round(uniqueWorkoutDays * 1.6 * 10) / 10);
+  const disciplineFromNutrition = Math.min(18, Math.round(nutritionDaysCount * 1.5 * 10) / 10);
+  const disciplineFromChallenges = Math.min(11, Math.round(claimedChallengesCount * 2.5 * 10) / 10);
+
+  const disciplineScore = Math.min(
+    99,
+    Math.max(
+      10,
+      Math.round(
+        10 +
+          disciplineFromStreak +
+          disciplineFromUniqueDays +
+          disciplineFromNutrition +
+          disciplineFromChallenges
+      )
+    )
   );
-  const endurance = Math.min(100, Math.max(levelFloor, existingAttributes?.endurance || 10, levelFloor + endurancePoints));
 
-  // 3. AGILIDAD: Level floor + Sport matches (Tenis/Pádel/Fútbol/etc.), HIIT sessions & calisthenics (scale up to 100)
-  const agilityPoints = Math.floor(
-    Math.min(80, hiitWorkouts * 5 + sportWorkouts * 4 + history.length * 2.0)
+  const attributes = {
+    strength: strengthScore,
+    endurance: enduranceScore,
+    agility: agilityScore,
+    discipline: disciplineScore,
+  };
+
+  const overall = Math.round(
+    (strengthScore + enduranceScore + agilityScore + disciplineScore) / 4
   );
-  const agility = Math.min(100, Math.max(levelFloor, existingAttributes?.agility || 10, levelFloor + agilityPoints));
+  const overallTier = getAttributeTierInfo(overall);
+  const archetype = resolveAthleteArchetype(attributes);
 
-  // 4. DISCIPLINA: Level floor + real streak days + total workouts completed (scale up to 100)
-  const disciplinePoints = Math.floor(Math.min(80, currentStreak * 5.0 + history.length * 3.0));
-  const discipline = Math.min(100, Math.max(levelFloor, existingAttributes?.discipline || 10, levelFloor + disciplinePoints));
+  const strTier = getAttributeTierInfo(strengthScore);
+  const endTier = getAttributeTierInfo(enduranceScore);
+  const agiTier = getAttributeTierInfo(agilityScore);
+  const disTier = getAttributeTierInfo(disciplineScore);
 
-  return { strength, endurance, agility, discipline };
+  const strBonusPct = Math.floor(strengthScore / 10) * 2;
+  const endBonusPct = Math.floor(enduranceScore / 10) * 2;
+  const agiBonusPct = Math.floor(agilityScore / 10) * 2;
+  const disBonusPct = Math.floor(disciplineScore / 10) * 2;
+
+  return {
+    attributes,
+    overall,
+    overallTierLabel: overallTier.tierLabel,
+    archetype,
+    details: {
+      strength: {
+        key: 'strength',
+        name: 'FUERZA',
+        code: 'PWR',
+        score: strengthScore,
+        tierLabel: strTier.tierLabel,
+        tierColorClass: strTier.tierColorClass,
+        bonusPct: strBonusPct,
+        bonusDescription: `+${strBonusPct}% XP extra en rutinas de Pesas e Hipertrofia`,
+        summary: 'Mide tu capacidad de carga muscular, tonelaje total levantado y sesiones de fuerza.',
+        howToImprove: 'Completa rutinas de gimnasio registrando series y peso (kg) para sumar tonelaje (+1 pto cada 2.500 kg y +2 ptos por sesión de fuerza).',
+        sources: [
+          { label: 'Base inicial de Atleta', rawMetric: 'Nivel Base', pointsAdded: 10 },
+          {
+            label: 'Tonelaje total levantado',
+            rawMetric: `${totalVolumeKg.toLocaleString()} kg`,
+            pointsAdded: strengthFromVolume,
+          },
+          {
+            label: 'Sesiones de Fuerza / Hipertrofia',
+            rawMetric: `${strengthSessions} entrenos`,
+            pointsAdded: strengthFromSessions,
+          },
+          {
+            label: 'Pico máximo de carga en 1 sesión',
+            rawMetric: `${maxSessionVolumeKg.toLocaleString()} kg máx`,
+            pointsAdded: strengthFromPeak,
+          },
+        ],
+      },
+      endurance: {
+        key: 'endurance',
+        name: 'RESISTENCIA',
+        code: 'END',
+        score: enduranceScore,
+        tierLabel: endTier.tierLabel,
+        tierColorClass: endTier.tierColorClass,
+        bonusPct: endBonusPct,
+        bonusDescription: `+${endBonusPct}% XP extra en Cardio y entrenos de +45 min`,
+        summary: 'Refleja tu motor aeróbico: minutos activos totales, calorías quemadas y kilómetros recorridos.',
+        howToImprove: 'Suma minutos de entrenamiento (+1 pto cada 35 min), quema calorías en sesiones largas (+1 pto cada 700 kcal) o registra distancia en cardio.',
+        sources: [
+          { label: 'Base inicial de Atleta', rawMetric: 'Nivel Base', pointsAdded: 10 },
+          {
+            label: 'Tiempo activo acumulado',
+            rawMetric: `${totalMinutes} min (${(totalMinutes / 60).toFixed(1)} h)`,
+            pointsAdded: enduranceFromMinutes,
+          },
+          {
+            label: 'Gasto energético en entrenos',
+            rawMetric: `${totalCalories.toLocaleString()} kcal`,
+            pointsAdded: enduranceFromCalories,
+          },
+          {
+            label: 'Distancia Cardio & Running',
+            rawMetric: `${sanitizedDistanceKm.toFixed(1)} km`,
+            pointsAdded: enduranceFromDistance,
+          },
+        ],
+      },
+      agility: {
+        key: 'agility',
+        name: 'AGILIDAD',
+        code: 'AGI',
+        score: agilityScore,
+        tierLabel: agiTier.tierLabel,
+        tierColorClass: agiTier.tierColorClass,
+        bonusPct: agiBonusPct,
+        bonusDescription: `+${agiBonusPct}% XP extra en Deportes (Tenis, Pádel...) y HIIT`,
+        summary: 'Evalúa tu destreza deportiva en cancha, coordinación, sesiones de raqueta/equipo y HIIT.',
+        howToImprove: 'Registra partidos en «Registrar Deporte / Reloj» (+3.5 ptos por partido + tiempo en pista) o completa rutinas de HIIT, Core y Movilidad.',
+        sources: [
+          { label: 'Base inicial de Atleta', rawMetric: 'Nivel Base', pointsAdded: 10 },
+          {
+            label: 'Partidos y Deportes registrados',
+            rawMetric: `${sportSessionsCount} sesiones`,
+            pointsAdded: agilityFromSports,
+          },
+          {
+            label: 'Tiempo en pista / cancha',
+            rawMetric: `${sportMinutes} min deportivos`,
+            pointsAdded: agilityFromSportTime,
+          },
+          {
+            label: 'Sesiones HIIT, Core y Movilidad',
+            rawMetric: `${hiitMobilitySessions} sesiones`,
+            pointsAdded: agilityFromHiit,
+          },
+        ],
+      },
+      discipline: {
+        key: 'discipline',
+        name: 'DISCIPLINA',
+        code: 'DIS',
+        score: disciplineScore,
+        tierLabel: disTier.tierLabel,
+        tierColorClass: disTier.tierColorClass,
+        bonusPct: disBonusPct,
+        bonusDescription: `+${disBonusPct}% XP extra global manteniendo racha activa (≥2 días)`,
+        summary: 'Mide tu adherencia al plan: racha actual, días únicos entrenados, registro nutricional/agua y retos semanales.',
+        howToImprove: 'Mantén tu racha activa (+2.5 ptos/día), registra tus comidas y agua en Nutrición (+1.5 ptos/día) y reclama Retos Semanales.',
+        sources: [
+          { label: 'Base inicial de Atleta', rawMetric: 'Nivel Base', pointsAdded: 10 },
+          {
+            label: 'Racha activa actual',
+            rawMetric: `${safeStreak} días seguidos`,
+            pointsAdded: disciplineFromStreak,
+          },
+          {
+            label: 'Días únicos de entrenamiento',
+            rawMetric: `${uniqueWorkoutDays} días cumplidos`,
+            pointsAdded: disciplineFromUniqueDays,
+          },
+          {
+            label: 'Días con Nutrición / Agua registrada',
+            rawMetric: `${nutritionDaysCount} días registrados`,
+            pointsAdded: disciplineFromNutrition,
+          },
+          {
+            label: 'Retos Semanales reclamados',
+            rawMetric: `${claimedChallengesCount} retos`,
+            pointsAdded: disciplineFromChallenges,
+          },
+        ],
+      },
+    },
+  };
 }
+
+/**
+ * Calculates specialized athlete attributes (10-99) based on real biomechanical & habit history.
+ */
+export function calculateAthleteAttributes(
+  history: WorkoutHistoryEntry[],
+  currentStreak: number,
+  userLevel: number = 1,
+  _existingAttributes?: { strength: number; endurance: number; agility: number; discipline: number }
+): { strength: number; endurance: number; agility: number; discipline: number } {
+  return getAthleteAttributesBreakdown(history, currentStreak, userLevel).attributes;
+}
+
+/**
+ * Calculates passive XP bonus earned on a workout/sport entry from the athlete's attributes.
+ */
+export function calculateAttributeXpBonus(
+  entry: WorkoutHistoryEntry,
+  attributes: { strength: number; endurance: number; agility: number; discipline: number },
+  currentStreak: number,
+  baseXp: number
+): { bonusXp: number; totalMultiplierPct: number; activeBonuses: string[] } {
+  const safeBaseXp = Math.max(0, Number(baseXp) || 0);
+  if (safeBaseXp === 0) {
+    return { bonusXp: 0, totalMultiplierPct: 0, activeBonuses: [] };
+  }
+
+  let totalPct = 0;
+  const activeBonuses: string[] = [];
+
+  const isSport = Boolean(entry.isSportActivity || entry.routineId?.startsWith('sport_'));
+  const hasVolume = (Number(entry.totalVolumeKg) || 0) >= 300;
+  const isLongOrCardio =
+    (Number(entry.durationMinutes) || 0) >= 45 || (Number(entry.totalDistanceKm) || 0) >= 1;
+
+  if (isSport) {
+    const agiPct = Math.floor((attributes.agility || 10) / 10) * 2;
+    if (agiPct > 0) {
+      totalPct += agiPct;
+      activeBonuses.push(`+${agiPct}% Agilidad`);
+    }
+  } else if (hasVolume) {
+    const strPct = Math.floor((attributes.strength || 10) / 10) * 2;
+    if (strPct > 0) {
+      totalPct += strPct;
+      activeBonuses.push(`+${strPct}% Fuerza`);
+    }
+  }
+
+  if (isLongOrCardio) {
+    const endPct = Math.floor((attributes.endurance || 10) / 10) * 2;
+    if (endPct > 0) {
+      totalPct += endPct;
+      activeBonuses.push(`+${endPct}% Resistencia`);
+    }
+  }
+
+  if (currentStreak >= 2) {
+    const disPct = Math.floor((attributes.discipline || 10) / 10) * 2;
+    if (disPct > 0) {
+      totalPct += disPct;
+      activeBonuses.push(`+${disPct}% Disciplina`);
+    }
+  }
+
+  const bonusXp = Math.round(safeBaseXp * (totalPct / 100));
+  return { bonusXp, totalMultiplierPct: totalPct, activeBonuses };
+}
+

@@ -22,6 +22,8 @@ import {
   UtensilsCrossed,
   Droplet,
   CheckCircle2,
+  X,
+  Info,
 } from 'lucide-react';
 import {
   UserProfile,
@@ -42,6 +44,8 @@ import {
 import {
   getLeagueLeaderboard,
   calculateUserWeeklyXp,
+  calculateRealStreak,
+  getAthleteAttributesBreakdown,
 } from '../lib/leagueEngine';
 import { getWeeklyChallengesForRotation } from '../lib/weeklyChallengesEngine';
 
@@ -97,6 +101,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   // Active workout selection for "Misión del Día"
   const [selectedRoutineId, setSelectedRoutineId] = useState<string>(() => getRecommendedRoutineId());
+  const [selectedAttrKey, setSelectedAttrKey] = useState<'strength' | 'endurance' | 'agility' | 'discipline' | null>(null);
+
+  const realStreakObj = calculateRealStreak(history);
+  const effectiveStreak = Math.max(user.stats?.currentStreak || 0, realStreakObj.currentStreak);
+  const attrBreakdown = getAthleteAttributesBreakdown(history, effectiveStreak, user.level, user);
 
   const currentRoutine = routines.find((r) => r.id === selectedRoutineId) || routines[0];
   const weeklyRotationData = getWeeklyChallengesForRotation(history);
@@ -493,49 +502,175 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </div>
           </div>
 
-          {/* RPG Athlete Attributes */}
+          {/* RPG Athlete Attributes (10-99 Scale + OVR + Archetype + Interactive Breakdown) */}
           <div className="mt-6 pt-5 border-t border-white/5 relative z-10">
-            <p className="text-[10px] font-mono font-bold uppercase tracking-widest text-neutral-400 mb-3">ATRIBUTOS DEL ATLETA</p>
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-3.5">
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="text-[10px] font-mono font-bold uppercase tracking-widest text-neutral-400">
+                  ATRIBUTOS DEL ATLETA
+                </p>
+                <span className="px-2.5 py-0.5 rounded-full bg-gradient-to-r from-cyan-500/20 to-blue-500/20 border border-cyan-500/35 text-cyan-300 text-[10px] font-mono font-black tracking-wide">
+                  MEDIA {attrBreakdown.overall} OVR · {attrBreakdown.overallTierLabel.toUpperCase()}
+                </span>
+                <span className="px-2.5 py-0.5 rounded-full bg-white/5 border border-white/10 text-neutral-200 text-[10px] font-semibold">
+                  {attrBreakdown.archetype.icon} {attrBreakdown.archetype.name}
+                </span>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setSelectedAttrKey('strength')}
+                className="text-[11px] font-mono font-bold text-cyan-400 hover:text-cyan-300 flex items-center gap-1 cursor-pointer transition-colors"
+              >
+                <Info className="w-3.5 h-3.5" />
+                <span>Ver Ficha y Bonus XP →</span>
+              </button>
+            </div>
+
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <div className="bg-white/5 hover:bg-white/[0.07] p-3.5 rounded-2xl border border-white/5 hover:border-red-500/30 transition-all flex items-center justify-between">
-                <div>
-                  <span className="text-[11px] font-bold text-neutral-400 font-mono tracking-wider">FUERZA</span>
-                  <p className="text-xl font-mono font-extrabold text-white mt-0.5">{user.attributes.strength}</p>
+              {/* FUERZA (PWR) */}
+              <button
+                type="button"
+                onClick={() => setSelectedAttrKey('strength')}
+                className="text-left bg-white/5 hover:bg-white/[0.08] p-3.5 rounded-2xl border border-white/5 hover:border-red-500/40 transition-all flex flex-col justify-between group cursor-pointer"
+              >
+                <div className="flex items-start justify-between w-full gap-2">
+                  <div>
+                    <span className="text-[10px] font-bold text-neutral-400 font-mono tracking-wider block">
+                      FUERZA
+                    </span>
+                    <div className="flex items-baseline gap-1 mt-0.5">
+                      <span className="text-xl font-mono font-extrabold text-white">
+                        {attrBreakdown.details.strength.score}
+                      </span>
+                      <span className="text-[10px] font-mono text-neutral-500">/99</span>
+                    </div>
+                  </div>
+                  <div className="w-8 h-8 rounded-xl bg-red-500/10 border border-red-500/25 flex items-center justify-center text-red-400 font-mono font-black text-xs shadow-[0_0_8px_rgba(239,68,68,0.2)] group-hover:scale-105 transition-transform">
+                    PWR
+                  </div>
                 </div>
-                <div className="w-8 h-8 rounded-xl bg-red-500/10 border border-red-500/25 flex items-center justify-center text-red-400 font-mono font-black text-xs shadow-[0_0_8px_rgba(239,68,68,0.2)]">
-                  PWR
-                </div>
-              </div>
 
-              <div className="bg-white/5 hover:bg-white/[0.07] p-3.5 rounded-2xl border border-white/5 hover:border-cyan-500/30 transition-all flex items-center justify-between">
-                <div>
-                  <span className="text-[11px] font-bold text-neutral-400 font-mono tracking-wider">RESISTENCIA</span>
-                  <p className="text-xl font-mono font-extrabold text-white mt-0.5">{user.attributes.endurance}</p>
+                <div className="w-full h-1.5 bg-neutral-900 rounded-full overflow-hidden mt-2.5 border border-white/5">
+                  <div
+                    className="h-full bg-gradient-to-r from-red-500 to-orange-400 rounded-full transition-all duration-500"
+                    style={{ width: `${Math.min(100, (attrBreakdown.details.strength.score / 99) * 100)}%` }}
+                  />
                 </div>
-                <div className="w-8 h-8 rounded-xl bg-cyan-500/10 border border-cyan-500/25 flex items-center justify-center text-cyan-400 font-mono font-black text-xs shadow-[0_0_8px_rgba(6,182,212,0.2)]">
-                  END
-                </div>
-              </div>
 
-              <div className="bg-white/5 hover:bg-white/[0.07] p-3.5 rounded-2xl border border-white/5 hover:border-amber-500/30 transition-all flex items-center justify-between">
-                <div>
-                  <span className="text-[11px] font-bold text-neutral-400 font-mono tracking-wider">AGILIDAD</span>
-                  <p className="text-xl font-mono font-extrabold text-white mt-0.5">{user.attributes.agility}</p>
+                <div className="flex items-center justify-between mt-2 text-[10px] font-mono">
+                  <span className="text-neutral-400">{attrBreakdown.details.strength.tierLabel}</span>
+                  <span className="text-red-400 font-bold">+{attrBreakdown.details.strength.bonusPct}% XP</span>
                 </div>
-                <div className="w-8 h-8 rounded-xl bg-amber-500/10 border border-amber-500/25 flex items-center justify-center text-amber-400 font-mono font-black text-xs shadow-[0_0_8px_rgba(245,158,11,0.2)]">
-                  AGI
-                </div>
-              </div>
+              </button>
 
-              <div className="bg-white/5 hover:bg-white/[0.07] p-3.5 rounded-2xl border border-white/5 hover:border-emerald-500/30 transition-all flex items-center justify-between">
-                <div>
-                  <span className="text-[11px] font-bold text-neutral-400 font-mono tracking-wider">DISCIPLINA</span>
-                  <p className="text-xl font-mono font-extrabold text-white mt-0.5">{user.attributes.discipline}</p>
+              {/* RESISTENCIA (END) */}
+              <button
+                type="button"
+                onClick={() => setSelectedAttrKey('endurance')}
+                className="text-left bg-white/5 hover:bg-white/[0.08] p-3.5 rounded-2xl border border-white/5 hover:border-cyan-500/40 transition-all flex flex-col justify-between group cursor-pointer"
+              >
+                <div className="flex items-start justify-between w-full gap-2">
+                  <div>
+                    <span className="text-[10px] font-bold text-neutral-400 font-mono tracking-wider block">
+                      RESISTENCIA
+                    </span>
+                    <div className="flex items-baseline gap-1 mt-0.5">
+                      <span className="text-xl font-mono font-extrabold text-white">
+                        {attrBreakdown.details.endurance.score}
+                      </span>
+                      <span className="text-[10px] font-mono text-neutral-500">/99</span>
+                    </div>
+                  </div>
+                  <div className="w-8 h-8 rounded-xl bg-cyan-500/10 border border-cyan-500/25 flex items-center justify-center text-cyan-400 font-mono font-black text-xs shadow-[0_0_8px_rgba(6,182,212,0.2)] group-hover:scale-105 transition-transform">
+                    END
+                  </div>
                 </div>
-                <div className="w-8 h-8 rounded-xl bg-emerald-500/10 border border-emerald-500/25 flex items-center justify-center text-emerald-400 font-mono font-black text-xs shadow-[0_0_8px_rgba(16,185,129,0.2)]">
-                  DIS
+
+                <div className="w-full h-1.5 bg-neutral-900 rounded-full overflow-hidden mt-2.5 border border-white/5">
+                  <div
+                    className="h-full bg-gradient-to-r from-cyan-500 to-blue-400 rounded-full transition-all duration-500"
+                    style={{ width: `${Math.min(100, (attrBreakdown.details.endurance.score / 99) * 100)}%` }}
+                  />
                 </div>
-              </div>
+
+                <div className="flex items-center justify-between mt-2 text-[10px] font-mono">
+                  <span className="text-neutral-400">{attrBreakdown.details.endurance.tierLabel}</span>
+                  <span className="text-cyan-400 font-bold">+{attrBreakdown.details.endurance.bonusPct}% XP</span>
+                </div>
+              </button>
+
+              {/* AGILIDAD (AGI) */}
+              <button
+                type="button"
+                onClick={() => setSelectedAttrKey('agility')}
+                className="text-left bg-white/5 hover:bg-white/[0.08] p-3.5 rounded-2xl border border-white/5 hover:border-amber-500/40 transition-all flex flex-col justify-between group cursor-pointer"
+              >
+                <div className="flex items-start justify-between w-full gap-2">
+                  <div>
+                    <span className="text-[10px] font-bold text-neutral-400 font-mono tracking-wider block">
+                      AGILIDAD
+                    </span>
+                    <div className="flex items-baseline gap-1 mt-0.5">
+                      <span className="text-xl font-mono font-extrabold text-white">
+                        {attrBreakdown.details.agility.score}
+                      </span>
+                      <span className="text-[10px] font-mono text-neutral-500">/99</span>
+                    </div>
+                  </div>
+                  <div className="w-8 h-8 rounded-xl bg-amber-500/10 border border-amber-500/25 flex items-center justify-center text-amber-400 font-mono font-black text-xs shadow-[0_0_8px_rgba(245,158,11,0.2)] group-hover:scale-105 transition-transform">
+                    AGI
+                  </div>
+                </div>
+
+                <div className="w-full h-1.5 bg-neutral-900 rounded-full overflow-hidden mt-2.5 border border-white/5">
+                  <div
+                    className="h-full bg-gradient-to-r from-amber-500 to-yellow-400 rounded-full transition-all duration-500"
+                    style={{ width: `${Math.min(100, (attrBreakdown.details.agility.score / 99) * 100)}%` }}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between mt-2 text-[10px] font-mono">
+                  <span className="text-neutral-400">{attrBreakdown.details.agility.tierLabel}</span>
+                  <span className="text-amber-400 font-bold">+{attrBreakdown.details.agility.bonusPct}% XP</span>
+                </div>
+              </button>
+
+              {/* DISCIPLINA (DIS) */}
+              <button
+                type="button"
+                onClick={() => setSelectedAttrKey('discipline')}
+                className="text-left bg-white/5 hover:bg-white/[0.08] p-3.5 rounded-2xl border border-white/5 hover:border-emerald-500/40 transition-all flex flex-col justify-between group cursor-pointer"
+              >
+                <div className="flex items-start justify-between w-full gap-2">
+                  <div>
+                    <span className="text-[10px] font-bold text-neutral-400 font-mono tracking-wider block">
+                      DISCIPLINA
+                    </span>
+                    <div className="flex items-baseline gap-1 mt-0.5">
+                      <span className="text-xl font-mono font-extrabold text-white">
+                        {attrBreakdown.details.discipline.score}
+                      </span>
+                      <span className="text-[10px] font-mono text-neutral-500">/99</span>
+                    </div>
+                  </div>
+                  <div className="w-8 h-8 rounded-xl bg-emerald-500/10 border border-emerald-500/25 flex items-center justify-center text-emerald-400 font-mono font-black text-xs shadow-[0_0_8px_rgba(16,185,129,0.2)] group-hover:scale-105 transition-transform">
+                    DIS
+                  </div>
+                </div>
+
+                <div className="w-full h-1.5 bg-neutral-900 rounded-full overflow-hidden mt-2.5 border border-white/5">
+                  <div
+                    className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full transition-all duration-500"
+                    style={{ width: `${Math.min(100, (attrBreakdown.details.discipline.score / 99) * 100)}%` }}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between mt-2 text-[10px] font-mono">
+                  <span className="text-neutral-400">{attrBreakdown.details.discipline.tierLabel}</span>
+                  <span className="text-emerald-400 font-bold">+{attrBreakdown.details.discipline.bonusPct}% XP</span>
+                </div>
+              </button>
             </div>
           </div>
         </div>
@@ -1015,6 +1150,232 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           ))}
         </div>
       </div>
+
+      {/* Interactive Athlete Attributes Breakdown & XP Bonus Modal */}
+      {selectedAttrKey && (() => {
+        const activeAttr = attrBreakdown.details[selectedAttrKey];
+        const attrOrder: Array<'strength' | 'endurance' | 'agility' | 'discipline'> = [
+          'strength',
+          'endurance',
+          'agility',
+          'discipline',
+        ];
+        const barGradientMap = {
+          strength: 'from-red-500 to-orange-400',
+          endurance: 'from-cyan-500 to-blue-400',
+          agility: 'from-amber-500 to-yellow-400',
+          discipline: 'from-emerald-500 to-teal-400',
+        };
+        const accentTextMap = {
+          strength: 'text-red-400',
+          endurance: 'text-cyan-400',
+          agility: 'text-amber-400',
+          discipline: 'text-emerald-400',
+        };
+
+        return (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fadeIn"
+            onClick={() => setSelectedAttrKey(null)}
+          >
+            <div
+              className="bg-[#121216] border border-white/10 rounded-3xl max-w-lg w-full p-6 shadow-2xl relative overflow-hidden max-h-[90vh] overflow-y-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Top Overall Rating & Archetype Banner */}
+              <div className="flex items-start justify-between gap-4 pb-4 border-b border-white/10">
+                <div className="flex items-center gap-3.5">
+                  <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-cyan-500/20 to-blue-600/20 border border-cyan-500/40 flex flex-col items-center justify-center shadow-[0_0_20px_rgba(6,182,212,0.2)] shrink-0">
+                    <span className="text-[9px] font-mono font-bold text-cyan-300 uppercase leading-none">
+                      MEDIA
+                    </span>
+                    <span className="text-2xl font-mono font-black text-white leading-tight">
+                      {attrBreakdown.overall}
+                    </span>
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-xs font-mono font-bold uppercase tracking-wider text-cyan-400">
+                        FICHA RPG DEL ATLETA
+                      </span>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-white/10 text-white">
+                        Rango {attrBreakdown.overallTierLabel}
+                      </span>
+                    </div>
+                    <h3 className="text-base font-display font-extrabold text-white mt-0.5">
+                      {attrBreakdown.archetype.icon} {attrBreakdown.archetype.name}
+                    </h3>
+                    <p className="text-xs text-neutral-400 mt-0.5">
+                      {attrBreakdown.archetype.description}
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setSelectedAttrKey(null)}
+                  className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-neutral-400 hover:text-white transition-colors cursor-pointer shrink-0"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* 4-Attribute Selector Tabs */}
+              <div className="grid grid-cols-4 gap-2 my-4">
+                {attrOrder.map((key) => {
+                  const item = attrBreakdown.details[key];
+                  const isSelected = key === selectedAttrKey;
+                  return (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => setSelectedAttrKey(key)}
+                      className={`p-2.5 rounded-2xl border text-center transition-all cursor-pointer ${
+                        isSelected
+                          ? 'bg-white/10 border-cyan-500/50 shadow-[0_0_12px_rgba(6,182,212,0.2)]'
+                          : 'bg-white/[0.03] border-white/5 hover:bg-white/[0.06]'
+                      }`}
+                    >
+                      <span className="text-[10px] font-mono font-bold text-neutral-400 block">
+                        {item.code}
+                      </span>
+                      <span className="text-lg font-mono font-black text-white">
+                        {item.score}
+                      </span>
+                      <span className="text-[9px] font-mono text-cyan-400 block">
+                        +{item.bonusPct}% XP
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Active Attribute Detail Card */}
+              <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-4">
+                <div className="flex items-center justify-between gap-2">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h4 className={`text-lg font-mono font-black ${accentTextMap[selectedAttrKey]}`}>
+                        {activeAttr.name} ({activeAttr.code})
+                      </h4>
+                      <span
+                        className={`px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold border ${activeAttr.tierColorClass}`}
+                      >
+                        {activeAttr.tierLabel}
+                      </span>
+                    </div>
+                    <p className="text-xs text-neutral-300 mt-1">{activeAttr.summary}</p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <span className="text-3xl font-mono font-black text-white">
+                      {activeAttr.score}
+                    </span>
+                    <span className="text-xs font-mono text-neutral-500">/99</span>
+                  </div>
+                </div>
+
+                {/* Progress Bar (10 to 99) */}
+                <div className="w-full h-2.5 bg-neutral-900 rounded-full overflow-hidden mt-3 border border-white/5">
+                  <div
+                    className={`h-full bg-gradient-to-r ${barGradientMap[selectedAttrKey]} rounded-full transition-all duration-500`}
+                    style={{ width: `${Math.min(100, (activeAttr.score / 99) * 100)}%` }}
+                  />
+                </div>
+                <div className="flex justify-between text-[10px] font-mono text-neutral-500 mt-1">
+                  <span>Base 10</span>
+                  <span>Plata 25</span>
+                  <span>Oro 50</span>
+                  <span>Élite 75</span>
+                  <span>Máx 99</span>
+                </div>
+
+                {/* Active Passive Bonus Banner */}
+                <div className="mt-3.5 p-3 rounded-xl bg-cyan-500/10 border border-cyan-500/25 flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2.5">
+                    <Zap className="w-4 h-4 text-cyan-400 shrink-0" />
+                    <div>
+                      <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-cyan-300 block">
+                        VENTAJA PASIVA ACTIVA (CADA 10 PTOS = +2% XP)
+                      </span>
+                      <span className="text-xs font-bold text-white">
+                        {activeAttr.bonusDescription}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Point-by-Point Sources Breakdown */}
+                <div className="mt-4">
+                  <p className="text-[10px] font-mono font-bold uppercase tracking-wider text-neutral-400 mb-2">
+                    DESGLOSE EXACTO DE PUNTOS
+                  </p>
+                  <div className="space-y-2">
+                    {activeAttr.sources.map((src, idx) => (
+                      <div
+                        key={idx}
+                        className="flex items-center justify-between p-2.5 rounded-xl bg-black/40 border border-white/5 text-xs"
+                      >
+                        <div>
+                          <span className="text-neutral-200 font-medium block">{src.label}</span>
+                          <span className="text-[11px] font-mono text-neutral-400">{src.rawMetric}</span>
+                        </div>
+                        <span className="font-mono font-bold text-emerald-400">
+                          +{src.pointsAdded} ptos
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* How to level up tip */}
+                <div className="mt-4 p-3 rounded-xl bg-white/5 border border-white/10">
+                  <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-amber-400 block mb-1">
+                    💡 ¿CÓMO SUBIR {activeAttr.name} HOY?
+                  </span>
+                  <p className="text-xs text-neutral-300 leading-relaxed">
+                    {activeAttr.howToImprove}
+                  </p>
+                </div>
+              </div>
+
+              {/* Footer Actions */}
+              <div className="mt-5 flex items-center justify-end gap-3">
+                {selectedAttrKey === 'agility' && onOpenSportModal && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedAttrKey(null);
+                      onOpenSportModal();
+                    }}
+                    className="px-4 py-2.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 text-xs font-mono font-bold transition-colors cursor-pointer"
+                  >
+                    🎾 Registrar Deporte / Reloj
+                  </button>
+                )}
+                {selectedAttrKey === 'discipline' && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedAttrKey(null);
+                      onNavigateTab('nutrition');
+                    }}
+                    className="px-4 py-2.5 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-300 text-xs font-mono font-bold transition-colors cursor-pointer"
+                  >
+                    🥗 Ir a Nutrición & Agua
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setSelectedAttrKey(null)}
+                  className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 text-neutral-950 font-bold text-xs cursor-pointer"
+                >
+                  Entendido
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 };
