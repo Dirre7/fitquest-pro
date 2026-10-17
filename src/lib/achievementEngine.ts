@@ -1922,7 +1922,7 @@ export function evaluateAllAchievements(
       ...base,
       currentProgress: progress,
       unlocked,
-      unlockedAt: unlocked ? (existing?.unlockedAt || new Date().toISOString()) : undefined,
+      ...(unlocked ? { unlockedAt: existing?.unlockedAt || new Date().toISOString() } : {}),
     };
   });
 }

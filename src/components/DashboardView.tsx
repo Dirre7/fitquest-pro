@@ -673,6 +673,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         const totalCalories = safeFoods.reduce((sum, f) => sum + (Number(f.calories) || 0) * (Number(f.quantity) || 1), 0);
         const totalProtein = safeFoods.reduce((sum, f) => sum + (Number(f.protein) || 0) * (Number(f.quantity) || 1), 0);
         const waterLiters = ((Number(todayLog?.waterMl) || 0) / 1000).toFixed(1);
+        const burnedTodayKcal = workoutsToday.reduce((sum, w) => sum + (Number(w.calories) || 0), 0);
 
         return (
           <div
@@ -690,7 +691,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       Nutrición & Macros
                     </span>
                     <span className="text-xs font-mono text-neutral-400">
-                      {todayLog.dayType === 'workout' ? 'Día de Entreno (2.300 kcal)' : 'Día de Descanso (2.100 kcal)'}
+                      {todayLog.dayType === 'workout' || trainedToday
+                        ? 'Día de Entreno (2.300 kcal)'
+                        : 'Día de Descanso (2.100 kcal)'}
                     </span>
                   </div>
                   <h3 className="text-lg font-black text-white tracking-tight mt-0.5">
@@ -703,11 +706,20 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </div>
 
               {/* Progress Gauges */}
-              <div className="flex items-center gap-4 sm:gap-6 shrink-0 font-mono">
+              <div className="flex items-center gap-4 sm:gap-5 flex-wrap shrink-0 font-mono">
                 <div>
-                  <div className="text-[10px] text-neutral-400 uppercase font-bold">Calorías Hoy</div>
+                  <div className="text-[10px] text-neutral-400 uppercase font-bold">Comidas Hoy</div>
                   <div className="text-lg font-black text-white">
                     {totalCalories} <span className="text-xs text-neutral-400 font-normal">/ {todayLog.targetCalories}</span>
+                  </div>
+                </div>
+
+                <div className="h-8 w-px bg-white/10 hidden xs:block" />
+
+                <div>
+                  <div className="text-[10px] text-orange-400 uppercase font-bold">Quemadas Hoy</div>
+                  <div className="text-lg font-black text-orange-400">
+                    +{burnedTodayKcal.toLocaleString()} <span className="text-xs text-neutral-400 font-normal">kcal</span>
                   </div>
                 </div>
 
@@ -748,7 +760,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
           <p className="font-mono font-extrabold text-3xl text-white">{displayTotalWorkouts}</p>
           <span className="text-[11px] text-cyan-400 font-mono font-medium">
-            {workoutsThisWeek > 0 ? `↑ +${workoutsThisWeek} esta semana` : '0 esta semana'}
+            {workoutsToday.length > 0
+              ? `🔥 +${workoutsToday.length} hoy (${workoutsThisWeek} esta sem.)`
+              : workoutsThisWeek > 0
+              ? `↑ +${workoutsThisWeek} esta semana`
+              : '0 esta semana'}
           </span>
         </div>
 
@@ -763,27 +779,20 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <span className="text-[11px] text-neutral-400 font-mono">{displayTotalVolumeKg.toLocaleString()} kg total</span>
         </div>
 
-        {/* Calories Burned Card (Entrenamientos) */}
+        {/* Calories Burned Card (Entrenamientos & Deportes) */}
         <div className="bg-[#121214] border border-white/5 hover:border-orange-500/30 rounded-3xl p-5 shadow-xl transition-all">
           <div className="flex items-center justify-between text-neutral-400 mb-2">
             <span className="text-xs font-mono font-bold uppercase tracking-wider">Calorías Quemadas (Entreno)</span>
             <Flame className="w-4 h-4 text-orange-400" />
           </div>
-          <p className="font-mono font-extrabold text-3xl text-white">
-            {displayCaloriesBurned >= 1000 ? (
-              <>
-                {(displayCaloriesBurned / 1000).toFixed(1)}k{' '}
-                <span className="text-sm font-sans font-normal text-neutral-400">kcal</span>
-              </>
-            ) : (
-              <>
-                {Math.round(displayCaloriesBurned)}{' '}
-                <span className="text-sm font-sans font-normal text-neutral-400">kcal</span>
-              </>
-            )}
+          <p className="font-mono font-extrabold text-2xl sm:text-3xl text-white">
+            {Math.round(displayCaloriesBurned).toLocaleString()}{' '}
+            <span className="text-sm font-sans font-normal text-neutral-400">kcal</span>
           </p>
           <span className="text-[11px] text-orange-400 font-mono font-medium">
-            ~{displayTotalWorkouts > 0 ? Math.round(displayCaloriesBurned / displayTotalWorkouts) : 0} kcal / sesión
+            {workoutsToday.length > 0
+              ? `🔥 Hoy: +${workoutsToday.reduce((s, w) => s + (w.calories || 0), 0).toLocaleString()} kcal`
+              : `~${displayTotalWorkouts > 0 ? Math.round(displayCaloriesBurned / displayTotalWorkouts) : 0} kcal / sesión`}
           </span>
         </div>
 
@@ -807,12 +816,105 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             )}
           </p>
           <span className="text-[11px] text-neutral-400 font-mono">
-            {displayTotalMinutes < 60
-              ? `${(displayTotalMinutes / 60).toFixed(1)} h totales`
+            {workoutsToday.length > 0
+              ? `⏱ Hoy: +${workoutsToday.reduce((s, w) => s + (w.durationMinutes || 0), 0)} min (${displayTotalMinutes}m total)`
               : `${displayTotalMinutes} min acumulados`}
           </span>
         </div>
       </div>
+
+      {/* 🎾📋 RECENT WORKOUTS & SPORTS LOGGED */}
+      {history && history.length > 0 && (
+        <div className="bg-[#121214] border border-white/10 rounded-3xl p-5 sm:p-6 shadow-xl">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+            <div>
+              <h3 className="font-display font-extrabold text-lg sm:text-xl text-white flex items-center gap-2">
+                <Activity className="w-5 h-5 text-emerald-400" />
+                <span>Últimos Entrenamientos y Deportes Registrados</span>
+              </h3>
+              <p className="text-xs text-neutral-400">
+                Tus sesiones de gimnasio y partidos con reloj sincronizados en tu perfil
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              {onOpenSportModal && (
+                <button
+                  type="button"
+                  onClick={onOpenSportModal}
+                  className="px-3 py-1.5 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-300 text-xs font-mono font-bold flex items-center gap-1.5 transition-all cursor-pointer"
+                >
+                  <Watch className="w-3.5 h-3.5" />
+                  <span>+ Registrar Deporte</span>
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => onNavigateTab('analytics')}
+                className="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-cyan-400 text-xs font-mono font-bold flex items-center gap-1 transition-all cursor-pointer"
+              >
+                <span>Ver Historial ({history.length})</span>
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+            {history.slice(0, 4).map((item) => {
+              const isSport = Boolean(item.isSportActivity || item.routineId?.startsWith('sport_'));
+              const dateObj = new Date(item.date);
+              const isTodaySession = item.date.startsWith(todayIsoPrefix);
+              const formattedDate = isTodaySession
+                ? 'Hoy'
+                : dateObj.toLocaleDateString('es-ES', { day: '2-digit', month: 'short' });
+
+              return (
+                <div
+                  key={item.id}
+                  onClick={() => onNavigateTab('analytics')}
+                  className={`p-4 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between ${
+                    isSport
+                      ? 'bg-emerald-500/5 border-emerald-500/25 hover:border-emerald-400/50'
+                      : 'bg-white/[0.03] border-white/10 hover:border-cyan-500/40'
+                  }`}
+                >
+                  <div>
+                    <div className="flex items-center justify-between gap-2 mb-1.5">
+                      <span
+                        className={`text-[10px] font-mono font-black uppercase px-2 py-0.5 rounded-full border ${
+                          isSport
+                            ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
+                            : 'bg-cyan-500/15 text-cyan-300 border-cyan-500/30'
+                        }`}
+                      >
+                        {isSport ? '⌚ Deporte / Reloj' : '🏋️ Gimnasio'}
+                      </span>
+                      <span className="text-[10px] font-mono text-neutral-400">{formattedDate}</span>
+                    </div>
+                    <h4 className="text-sm font-bold text-white truncate">{item.routineTitle}</h4>
+                    {item.notes && (
+                      <p className="text-[11px] text-neutral-400 truncate mt-0.5">{item.notes}</p>
+                    )}
+                  </div>
+
+                  <div className="mt-3 pt-2.5 border-t border-white/5 flex items-center justify-between text-xs font-mono">
+                    <div className="flex items-center gap-2.5">
+                      <span className="text-neutral-300 flex items-center gap-1">
+                        <Clock className="w-3 h-3 text-cyan-400" />
+                        {item.durationMinutes}m
+                      </span>
+                      <span className="text-orange-400 font-bold flex items-center gap-1">
+                        <Flame className="w-3 h-3" />
+                        {item.calories} kcal
+                      </span>
+                    </div>
+                    <span className="text-emerald-400 font-bold">+{item.xpEarned || 250} XP</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Suggested Routines Section */}
       <div>

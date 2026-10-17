@@ -212,7 +212,7 @@ export const SportActivityModal: React.FC<SportActivityModalProps> = ({
       date: finalIsoDate,
       durationMinutes: validDuration,
       totalVolumeKg: 0,
-      totalDistanceKm: parsedDistance,
+      ...(parsedDistance !== undefined ? { totalDistanceKm: parsedDistance } : {}),
       cardioMinutes: validDuration,
       cardioMode: 'general',
       calories: validCalories,

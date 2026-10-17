@@ -39,6 +39,7 @@ const KEYS = {
   SMARTWATCH: 'fitquest_smartwatch',
   REMINDERS: 'fitquest_reminders',
   HISTORY: 'fitquest_history',
+  DELETED_HISTORY_IDS: 'fitquest_deleted_history_ids',
   THEME: 'fitquest_theme',
   LANG: 'fitquest_lang',
   SOUND: 'fitquest_sound_enabled',
@@ -52,7 +53,31 @@ const KEYS = {
   SATURDAY_WEIGH_INS: 'fitquest_saturday_weigh_ins',
 };
 
+/**
+ * Strips all undefined fields recursively so Firestore setDoc never rejects nested objects/arrays
+ */
+function sanitizeForFirestore<T>(data: T): T {
+  return JSON.parse(JSON.stringify(data));
+}
+
 export class FitStorage {
+  public static getDeletedHistoryIds(): Set<string> {
+    try {
+      const raw = localStorage.getItem(KEYS.DELETED_HISTORY_IDS);
+      return new Set(raw ? JSON.parse(raw) : []);
+    } catch {
+      return new Set();
+    }
+  }
+
+  public static markHistoryIdDeleted(id: string) {
+    try {
+      const current = this.getDeletedHistoryIds();
+      current.add(id);
+      localStorage.setItem(KEYS.DELETED_HISTORY_IDS, JSON.stringify(Array.from(current)));
+    } catch {}
+  }
+
   public static getUser(): UserProfile {
     try {
       const data = localStorage.getItem(KEYS.USER);
@@ -90,33 +115,37 @@ export class FitStorage {
       const localCustomRoutines = this.getRoutines().filter((r) => r.isCustom);
       const localAchievements = this.getAchievements();
 
-      await setDoc(userRef, {
-        ...user,
-        workoutHistory: localHistory,
-        customRoutines: localCustomRoutines,
-        achievementsState: localAchievements,
-        nutritionLogs: localNutritionLogs,
-        saturdayWeighIns: localWeighIns,
-        id: uid,
-        level: user.level,
-        xp: user.xp,
-        currentLevelXp: user.currentLevelXp,
-        nextLevelXp: user.nextLevelXp,
-        rankTitle: user.rankTitle || 'Recluta Inicial',
-        stats: user.stats,
-        attributes: user.attributes,
-        unlockedBadges: user.unlockedBadges || [],
-        claimedChallenges: user.claimedChallenges || [],
-        claimedChallengesWeek: user.claimedChallengesWeek || '',
-        lastResetAt: user.lastResetAt || '',
-        programProgress: user.programProgress || this.getProgramProgress(),
-        activeSession: user.activeSession !== undefined ? user.activeSession : (this.getActiveSession() || null),
-        weightKg: user.weightKg,
-        targetWeightKg: user.targetWeightKg,
-        name: user.name,
-        avatar: user.avatar,
-        updatedAt: new Date().toISOString(),
-      }, { merge: true });
+      await setDoc(
+        userRef,
+        sanitizeForFirestore({
+          ...user,
+          workoutHistory: localHistory,
+          customRoutines: localCustomRoutines,
+          achievementsState: localAchievements,
+          nutritionLogs: localNutritionLogs,
+          saturdayWeighIns: localWeighIns,
+          id: uid,
+          level: user.level,
+          xp: user.xp,
+          currentLevelXp: user.currentLevelXp,
+          nextLevelXp: user.nextLevelXp,
+          rankTitle: user.rankTitle || 'Recluta Inicial',
+          stats: user.stats,
+          attributes: user.attributes,
+          unlockedBadges: user.unlockedBadges || [],
+          claimedChallenges: user.claimedChallenges || [],
+          claimedChallengesWeek: user.claimedChallengesWeek || '',
+          lastResetAt: user.lastResetAt || '',
+          programProgress: user.programProgress || this.getProgramProgress(),
+          activeSession: user.activeSession !== undefined ? user.activeSession : (this.getActiveSession() || null),
+          weightKg: user.weightKg,
+          targetWeightKg: user.targetWeightKg,
+          name: user.name,
+          avatar: user.avatar,
+          updatedAt: new Date().toISOString(),
+        }),
+        { merge: true }
+      );
       localStorage.setItem(KEYS.LAST_CLOUD_SYNC, new Date().toISOString());
     } catch (e) {
       console.error('Firestore user sync error', e);
@@ -237,11 +266,12 @@ export class FitStorage {
       }
 
       const combinedHistoryMap = new Map<string, WorkoutHistoryEntry>();
+      const deletedIds = this.getDeletedHistoryIds();
 
       // 1. Primary Sync: Load from Master User Document (instant and reliable across all devices)
       if (Array.isArray((cloudData as any).workoutHistory) && (cloudData as any).workoutHistory.length > 0) {
         ((cloudData as any).workoutHistory as WorkoutHistoryEntry[]).forEach((h) => {
-          if (h && h.id) combinedHistoryMap.set(h.id, h);
+          if (h && h.id && !deletedIds.has(h.id)) combinedHistoryMap.set(h.id, h);
         });
       }
 
@@ -252,7 +282,7 @@ export class FitStorage {
         if (!historySnap.empty) {
           historySnap.docs.forEach((d) => {
             const h = { id: d.id, ...d.data() } as WorkoutHistoryEntry;
-            if (h && h.id && !combinedHistoryMap.has(h.id)) {
+            if (h && h.id && !deletedIds.has(h.id) && !combinedHistoryMap.has(h.id)) {
               combinedHistoryMap.set(h.id, h);
             }
           });
@@ -265,12 +295,16 @@ export class FitStorage {
       if (!isCloudResetActive) {
         const localHistory = this.getHistory();
         localHistory.forEach((h) => {
-          if (h && h.id && !combinedHistoryMap.has(h.id)) {
+          if (h && h.id && !deletedIds.has(h.id) && !combinedHistoryMap.has(h.id)) {
             combinedHistoryMap.set(h.id, h);
             // Sync missing entry to cloud
             try {
               const historyDocRef = doc(db, 'users', uid, 'history', h.id);
-              setDoc(historyDocRef, { ...h, createdAt: h.date || new Date().toISOString() }, { merge: true });
+              setDoc(
+                historyDocRef,
+                sanitizeForFirestore({ ...h, createdAt: h.date || new Date().toISOString() }),
+                { merge: true }
+              );
             } catch {}
           }
         });
@@ -365,21 +399,22 @@ export class FitStorage {
         .map((h) => {
           let cleanedKm = h.totalDistanceKm || 0;
           let cleanedCal = h.calories || 0;
-          // If distance was inflated (> 30 km on a strength session)
-          if (cleanedKm > 30 && !h.routineTitle?.toLowerCase().includes('maratón')) {
+          const isSport = Boolean(h.isSportActivity || h.routineId?.startsWith('sport_'));
+          // If distance was inflated (> 30 km on a non-sport strength session)
+          if (!isSport && cleanedKm > 30 && !h.routineTitle?.toLowerCase().includes('maratón')) {
             cleanedKm = 0;
           }
-          // If calories were inflated (> 1500 kcal on a single session)
-          if (cleanedCal > 1500) {
+          // Only cap extreme corrupted values (> 4500 kcal on a non-sport session)
+          if (!isSport && cleanedCal > 4500) {
             const minutes = h.durationMinutes || 45;
             const volume = h.totalVolumeKg || 0;
             cleanedCal = Math.round(minutes * 7.5 + (volume / 1000) * 8 + cleanedKm * 60);
           }
-          const cleaned = {
+          const cleaned = sanitizeForFirestore({
             ...h,
-            totalDistanceKm: cleanedKm,
+            ...(cleanedKm > 0 || h.totalDistanceKm !== undefined ? { totalDistanceKm: cleanedKm } : {}),
             calories: cleanedCal,
-          };
+          });
           // Sync cleaned entry back to cloud if it was modified
           if (cleaned.totalDistanceKm !== h.totalDistanceKm || cleaned.calories !== h.calories) {
             try {
@@ -586,10 +621,14 @@ export class FitStorage {
       const uid = auth.currentUser?.uid;
       if (uid) {
         const customOnly = routines.filter((r) => r.isCustom);
-        setDoc(doc(db, 'users', uid), {
-          customRoutines: customOnly,
-          updatedAt: new Date().toISOString(),
-        }, { merge: true }).catch((err) => console.warn('Custom routines cloud sync warning:', err));
+        setDoc(
+          doc(db, 'users', uid),
+          sanitizeForFirestore({
+            customRoutines: customOnly,
+            updatedAt: new Date().toISOString(),
+          }),
+          { merge: true }
+        ).catch((err) => console.warn('Custom routines cloud sync warning:', err));
       }
     } catch (e) {
       console.error('Failed to save routines', e);
@@ -626,10 +665,14 @@ export class FitStorage {
       localStorage.setItem('fitquest_program_progress', JSON.stringify(current));
       const uid = auth.currentUser?.uid;
       if (uid) {
-        setDoc(doc(db, 'users', uid), {
-          programProgress: current,
-          updatedAt: new Date().toISOString(),
-        }, { merge: true }).catch((err) => console.warn('Program progress sync warning:', err));
+        setDoc(
+          doc(db, 'users', uid),
+          sanitizeForFirestore({
+            programProgress: current,
+            updatedAt: new Date().toISOString(),
+          }),
+          { merge: true }
+        ).catch((err) => console.warn('Program progress sync warning:', err));
       }
     } catch (e) {
       console.error(e);
@@ -660,7 +703,7 @@ export class FitStorage {
       if (!data) return fresh;
       const parsed: Achievement[] = JSON.parse(data);
       const parsedMap = new Map(parsed.map((a) => [a.id, a]));
-      // Merge with fresh list so all 35 achievements are present and updated
+      // Merge with fresh list so all achievements are present and updated
       return fresh.map((base) => {
         const stored = parsedMap.get(base.id);
         if (!stored) return base;
@@ -668,7 +711,7 @@ export class FitStorage {
           ...base,
           currentProgress: stored.currentProgress || 0,
           unlocked: stored.unlocked || false,
-          unlockedAt: stored.unlockedAt,
+          ...(stored.unlockedAt ? { unlockedAt: stored.unlockedAt } : {}),
           rewardClaimed: (stored as any).rewardClaimed || false,
         };
       });
@@ -682,10 +725,14 @@ export class FitStorage {
       localStorage.setItem(KEYS.ACHIEVEMENTS, JSON.stringify(achievements));
       const uid = auth.currentUser?.uid;
       if (uid) {
-        setDoc(doc(db, 'users', uid), {
-          achievementsState: achievements,
-          updatedAt: new Date().toISOString(),
-        }, { merge: true }).catch((err) => console.warn('Achievements cloud sync warning:', err));
+        setDoc(
+          doc(db, 'users', uid),
+          sanitizeForFirestore({
+            achievementsState: achievements,
+            updatedAt: new Date().toISOString(),
+          }),
+          { merge: true }
+        ).catch((err) => console.warn('Achievements cloud sync warning:', err));
       }
     } catch (e) {
       console.error('Failed to save achievements', e);
@@ -785,10 +832,14 @@ export class FitStorage {
       }
       const uid = auth.currentUser?.uid;
       if (uid) {
-        setDoc(doc(db, 'users', uid), {
-          activeSession: session,
-          updatedAt: new Date().toISOString(),
-        }, { merge: true }).catch((err) => console.warn('Active session sync warning:', err));
+        setDoc(
+          doc(db, 'users', uid),
+          sanitizeForFirestore({
+            activeSession: session,
+            updatedAt: new Date().toISOString(),
+          }),
+          { merge: true }
+        ).catch((err) => console.warn('Active session sync warning:', err));
       }
     } catch (e) {
       console.error('Failed to save active session', e);
@@ -812,7 +863,8 @@ export class FitStorage {
 
   public static async addHistoryEntry(entry: WorkoutHistoryEntry, user?: UserProfile) {
     const history = this.getHistory();
-    const updated = [entry, ...history.filter(h => h.id !== entry.id)];
+    const sanitizedEntry = sanitizeForFirestore(entry);
+    const updated = [sanitizedEntry, ...history.filter(h => h.id !== sanitizedEntry.id)];
     this.saveHistory(updated);
 
     if (typeof window !== 'undefined') {
@@ -824,17 +876,25 @@ export class FitStorage {
     if (uid) {
       try {
         // 1. Primary Sync: Save entire workout history to master user doc for instant multi-device sync
-        await setDoc(doc(db, 'users', uid), {
-          workoutHistory: updated,
-          updatedAt: new Date().toISOString(),
-        }, { merge: true });
+        await setDoc(
+          doc(db, 'users', uid),
+          sanitizeForFirestore({
+            workoutHistory: updated,
+            updatedAt: new Date().toISOString(),
+          }),
+          { merge: true }
+        );
 
         // 2. Secondary backup: Save to subcollection
-        const historyDocRef = doc(db, 'users', uid, 'history', entry.id);
-        await setDoc(historyDocRef, {
-          ...entry,
-          createdAt: entry.date || new Date().toISOString(),
-        }, { merge: true });
+        const historyDocRef = doc(db, 'users', uid, 'history', sanitizedEntry.id);
+        await setDoc(
+          historyDocRef,
+          sanitizeForFirestore({
+            ...sanitizedEntry,
+            createdAt: sanitizedEntry.date || new Date().toISOString(),
+          }),
+          { merge: true }
+        );
       } catch (err) {
         console.error('Failed to save workout entry to Firestore', err);
       }
@@ -842,6 +902,7 @@ export class FitStorage {
   }
 
   public static async deleteHistoryEntry(entryId: string, user?: UserProfile): Promise<WorkoutHistoryEntry[]> {
+    this.markHistoryIdDeleted(entryId);
     const history = this.getHistory();
     const updated = history.filter((h) => h.id !== entryId);
     this.saveHistory(updated);
@@ -853,10 +914,14 @@ export class FitStorage {
     const uid = auth.currentUser?.uid || (user?.id && !user.id.startsWith('guest_') ? user.id : null);
     if (uid) {
       try {
-        await setDoc(doc(db, 'users', uid), {
-          workoutHistory: updated,
-          updatedAt: new Date().toISOString(),
-        }, { merge: true });
+        await setDoc(
+          doc(db, 'users', uid),
+          sanitizeForFirestore({
+            workoutHistory: updated,
+            updatedAt: new Date().toISOString(),
+          }),
+          { merge: true }
+        );
 
         await deleteDoc(doc(db, 'users', uid, 'history', entryId)).catch(() => {});
       } catch (err) {
@@ -867,8 +932,9 @@ export class FitStorage {
   }
 
   public static async updateHistoryEntry(updatedEntry: WorkoutHistoryEntry, user?: UserProfile): Promise<WorkoutHistoryEntry[]> {
+    const sanitizedEntry = sanitizeForFirestore(updatedEntry);
     const history = this.getHistory();
-    const updated = history.map((h) => (h.id === updatedEntry.id ? updatedEntry : h));
+    const updated = history.map((h) => (h.id === sanitizedEntry.id ? sanitizedEntry : h));
     this.saveHistory(updated);
 
     if (typeof window !== 'undefined') {
@@ -878,15 +944,23 @@ export class FitStorage {
     const uid = auth.currentUser?.uid || (user?.id && !user.id.startsWith('guest_') ? user.id : null);
     if (uid) {
       try {
-        await setDoc(doc(db, 'users', uid), {
-          workoutHistory: updated,
-          updatedAt: new Date().toISOString(),
-        }, { merge: true });
+        await setDoc(
+          doc(db, 'users', uid),
+          sanitizeForFirestore({
+            workoutHistory: updated,
+            updatedAt: new Date().toISOString(),
+          }),
+          { merge: true }
+        );
 
-        await setDoc(doc(db, 'users', uid, 'history', updatedEntry.id), {
-          ...updatedEntry,
-          updatedAt: new Date().toISOString(),
-        }, { merge: true });
+        await setDoc(
+          doc(db, 'users', uid, 'history', sanitizedEntry.id),
+          sanitizeForFirestore({
+            ...sanitizedEntry,
+            updatedAt: new Date().toISOString(),
+          }),
+          { merge: true }
+        );
       } catch (err) {
         console.error('Failed to update workout entry in Firestore', err);
       }
@@ -894,7 +968,7 @@ export class FitStorage {
     return updated;
   }
 
-  public static addXp(amount: number, currentUser?: UserProfile): UserProfile {
+  public static addXp(amount: number, currentUser?: UserProfile, skipSave: boolean = false): UserProfile {
     const user = currentUser || this.getUser();
     let currentXp = user.currentLevelXp + amount;
     let nextXp = user.nextLevelXp;
@@ -926,7 +1000,9 @@ export class FitStorage {
       },
     };
 
-    this.saveUser(updatedUser);
+    if (!skipSave) {
+      this.saveUser(updatedUser);
+    }
     return updatedUser;
   }
 

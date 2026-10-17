@@ -288,12 +288,29 @@ export default function App() {
               try {
                 const cloudHistory = (data as any).workoutHistory as WorkoutHistoryEntry[];
                 const localHistory = FitStorage.getHistory();
-                const sortedCloud = [...cloudHistory].sort(
+                const deletedIds = FitStorage.getDeletedHistoryIds();
+                const mergedMap = new Map<string, WorkoutHistoryEntry>();
+
+                if (!isSnapshotReset) {
+                  localHistory.forEach((h) => {
+                    if (h && h.id && !deletedIds.has(h.id)) {
+                      mergedMap.set(h.id, h);
+                    }
+                  });
+                }
+
+                cloudHistory.forEach((h) => {
+                  if (h && h.id && !deletedIds.has(h.id) && !mergedMap.has(h.id)) {
+                    mergedMap.set(h.id, h);
+                  }
+                });
+
+                const sortedMerged = Array.from(mergedMap.values()).sort(
                   (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
                 );
-                if (JSON.stringify(sortedCloud) !== JSON.stringify(localHistory)) {
-                  FitStorage.saveHistory(sortedCloud);
-                  setHistory(sortedCloud);
+                if (JSON.stringify(sortedMerged) !== JSON.stringify(localHistory)) {
+                  FitStorage.saveHistory(sortedMerged);
+                  setHistory(sortedMerged);
                   window.dispatchEvent(new CustomEvent('fitquest_history_updated'));
                 }
               } catch (e) {
@@ -326,11 +343,12 @@ export default function App() {
                 const mergedAch = currentAch.map((base) => {
                   const c = cloudMap.get(base.id);
                   if (!c) return base;
+                  const unlockedAtVal = base.unlockedAt || c.unlockedAt;
                   return {
                     ...base,
                     currentProgress: Math.max(base.currentProgress || 0, c.currentProgress || 0),
                     unlocked: Boolean(base.unlocked || c.unlocked),
-                    unlockedAt: base.unlockedAt || c.unlockedAt,
+                    ...(unlockedAtVal ? { unlockedAt: unlockedAtVal } : {}),
                     rewardClaimed: Boolean((base as any).rewardClaimed || (c as any).rewardClaimed),
                   };
                 });
@@ -373,8 +391,26 @@ export default function App() {
             setUser((prev) => {
               const currentHistory = isSnapshotReset ? [] : FitStorage.getHistory();
               const realStreak = calculateRealStreak(currentHistory);
-              const effectiveLevel = isSnapshotReset ? (data.level || 1) : (data.level !== undefined ? data.level : prev.level);
-              const effectiveXp = isSnapshotReset ? (data.xp || 0) : (data.xp !== undefined ? data.xp : prev.xp);
+              const localHasMoreXp = !isSnapshotReset && (prev.xp || 0) > (data.xp || 0);
+              const effectiveLevel = isSnapshotReset
+                ? (data.level || 1)
+                : localHasMoreXp
+                ? prev.level
+                : Math.max(data.level || 1, prev.level || 1);
+              const effectiveXp = isSnapshotReset
+                ? (data.xp || 0)
+                : Math.max(data.xp || 0, prev.xp || 0);
+              const effectiveCurrentLevelXp = isSnapshotReset
+                ? (data.currentLevelXp || 0)
+                : localHasMoreXp
+                ? prev.currentLevelXp
+                : (data.currentLevelXp !== undefined ? data.currentLevelXp : prev.currentLevelXp);
+              const effectiveNextLevelXp = isSnapshotReset
+                ? (data.nextLevelXp || 500)
+                : localHasMoreXp
+                ? prev.nextLevelXp
+                : (data.nextLevelXp || prev.nextLevelXp);
+
               const dynamicAttributes = calculateAthleteAttributes(
                 currentHistory,
                 realStreak.currentStreak,
@@ -408,11 +444,11 @@ export default function App() {
                 ...data,
                 name: data.name || prev.name,
                 avatar: data.avatar || prev.avatar,
-                rankTitle: data.rankTitle || (isSnapshotReset ? 'Gladiador de Bronce' : prev.rankTitle),
+                rankTitle: localHasMoreXp ? (prev.rankTitle || data.rankTitle || 'Recluta Inicial') : (data.rankTitle || (isSnapshotReset ? 'Gladiador de Bronce' : prev.rankTitle)),
                 level: effectiveLevel,
                 xp: effectiveXp,
-                currentLevelXp: isSnapshotReset ? (data.currentLevelXp || 0) : (data.currentLevelXp !== undefined ? data.currentLevelXp : prev.currentLevelXp),
-                nextLevelXp: data.nextLevelXp || (isSnapshotReset ? 500 : prev.nextLevelXp),
+                currentLevelXp: effectiveCurrentLevelXp,
+                nextLevelXp: effectiveNextLevelXp,
                 weightKg: data.weightKg ?? prev.weightKg,
                 targetWeightKg: data.targetWeightKg ?? prev.targetWeightKg,
                 unlockedBadges: isSnapshotReset ? (data.unlockedBadges || []) : (data.unlockedBadges !== undefined ? data.unlockedBadges : (prev.unlockedBadges || [])),
@@ -718,7 +754,7 @@ export default function App() {
     setActiveRoutine(null);
   };
 
-  // Handle Workout Complete from ActiveWorkoutTracker
+  // Handle Workout Complete from ActiveWorkoutTracker or SportActivityModal
   const handleCompleteWorkout = (entry: WorkoutHistoryEntry, xpGained: number) => {
     // If completed workout belonged to a multi-day program, unlock the next day!
     let totalXpToAward = xpGained;
@@ -729,8 +765,8 @@ export default function App() {
     if (activeRoutine?.programId && activeRoutine?.programDayNumber) {
       const progId = activeRoutine.programId;
       const dayNum = activeRoutine.programDayNumber;
-      FitStorage.setProgramDayCompleted(progId, dayNum);
       updatedProgramProgress[progId] = Math.max(updatedProgramProgress[progId] || 0, dayNum);
+      localStorage.setItem('fitquest_program_progress', JSON.stringify(updatedProgramProgress));
 
       // Check if this completes the entire program cycle
       const targetProgram = FitStorage.getPrograms().find((p) => p.id === progId);
@@ -740,13 +776,17 @@ export default function App() {
       }
     }
 
-    FitStorage.clearActiveSession();
+    // Clear active session in local memory & localStorage first without triggering a premature cloud snapshot
+    localStorage.removeItem('fitquest_active_session');
     setActiveSession(null);
     setActiveRoutine(null);
 
-    // 1. Add history entry (persists to Firestore if logged in)
-    FitStorage.addHistoryEntry(entry, user);
-    const updatedHistory = FitStorage.getHistory();
+    // 1. Prepend new history entry synchronously to localStorage
+    const existingHistory = FitStorage.getHistory().filter((h) => h.id !== entry.id);
+    const updatedHistory = [entry, ...existingHistory].sort(
+      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+    );
+    FitStorage.saveHistory(updatedHistory);
     setHistory(updatedHistory);
 
     // 1b. Automatically switch today's Nutrition Log to Workout Day (2,300 kcal)
@@ -762,13 +802,13 @@ export default function App() {
           targetCarbs: 220,
           targetFat: 70,
         });
+      } else {
+        window.dispatchEvent(new CustomEvent('fitquest_nutrition_updated'));
       }
     } catch {}
 
-    // 2. Add XP to User Profile
-    const updatedUser = FitStorage.addXp(totalXpToAward, user);
-
-    // Calculate real streak and exact cumulative stats from complete history
+    // 2. Add XP to User Profile & calculate exact cumulative stats + RPG attributes from updatedHistory
+    const updatedUser = FitStorage.addXp(totalXpToAward, user, true);
     const realStreak = calculateRealStreak(updatedHistory);
     const dynamicAttributes = calculateAthleteAttributes(
       updatedHistory,
@@ -798,10 +838,7 @@ export default function App() {
       },
     };
 
-    FitStorage.saveUser(finalUser);
-    setUser(finalUser);
-
-    // 3. Check and unlock achievements
+    // 3. Check and unlock achievements before cloud sync so achievementsState is up-to-date
     const allAchievements = FitStorage.getAchievements();
     const updatedAchievements = evaluateAllAchievements(
       finalUser,
@@ -810,7 +847,7 @@ export default function App() {
       routines.filter((r) => r.isCustom).length,
       challenges.filter((c) => c.joined && c.currentProgress >= c.goalTarget).length
     );
-    FitStorage.saveAchievements(updatedAchievements);
+    localStorage.setItem('fitquest_achievements', JSON.stringify(updatedAchievements));
     setAchievements(updatedAchievements);
 
     // 4. Update challenges progress
@@ -833,11 +870,15 @@ export default function App() {
     FitStorage.saveChallenges(updatedChallenges);
     setChallenges(updatedChallenges);
 
-    // 5. Close active routine modal & show appropriate view
-    setActiveRoutine(null);
+    // 5. Persist finalUser + updatedHistory + updatedAchievements to localStorage & Firestore in one clean pass
+    FitStorage.saveUser(finalUser);
+    FitStorage.addHistoryEntry(entry, finalUser);
+    setUser(finalUser);
+
+    // 6. Close active routine modal & show appropriate view
     if (isProgramWorkout) {
       setActiveTab('routines');
-    } else {
+    } else if (!entry.isSportActivity) {
       setActiveTab('analytics');
     }
   };
