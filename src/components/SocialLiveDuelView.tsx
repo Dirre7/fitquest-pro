@@ -1,406 +1,393 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   Swords,
-  Users,
-  Play,
-  Flame,
-  Zap,
-  Trophy,
-  Heart,
-  Timer,
-  Sparkles,
-  MessageSquare,
-  Smile,
   Shield,
-  RotateCcw,
-  CheckCircle2,
+  Zap,
+  Flame,
+  Activity,
+  Dumbbell,
+  Trophy,
+  ChevronRight,
+  TrendingUp,
+  Sparkles,
+  Info,
 } from 'lucide-react';
-import confetti from 'canvas-confetti';
-import { UserProfile, SmartwatchDevice, Language } from '../types';
+import { UserProfile, WorkoutHistoryEntry, Language, LeaderboardUser } from '../types';
+import {
+  getAthleteAttributesBreakdown,
+  calculateRealStreak,
+  LEAGUE_BOTS,
+} from '../lib/leagueEngine';
 import { translations } from '../lib/i18n';
-import { sound } from '../lib/soundFx';
 
-interface Participant {
+interface RivalCardProfile {
   id: string;
   name: string;
   avatar: string;
   level: number;
-  reps: number;
-  bpm: number;
-  isCurrentUser?: boolean;
+  league: string;
+  rankTitle: string;
+  weeklyXp: number;
+  totalVolumeKg: number;
+  totalDistanceKm: number;
+  streakDays: number;
+  attributes: {
+    strength: number;
+    endurance: number;
+    agility: number;
+    discipline: number;
+  };
+  overall: number;
+  archetype: {
+    name: string;
+    icon: string;
+    description: string;
+  };
 }
 
 interface SocialLiveDuelViewProps {
   user: UserProfile;
-  smartwatch: SmartwatchDevice;
+  history?: WorkoutHistoryEntry[];
   lang: Language;
-  onDuelWin: (xpGained: number) => void;
 }
 
 export const SocialLiveDuelView: React.FC<SocialLiveDuelViewProps> = ({
   user,
-  smartwatch,
+  history = [],
   lang,
-  onDuelWin,
 }) => {
   const t = translations[lang];
 
-  // Duel Mode state: 'lobby' | 'countdown' | 'in_progress' | 'victory'
-  const [duelStatus, setDuelStatus] = useState<'lobby' | 'countdown' | 'in_progress' | 'victory'>('lobby');
-  const [countdown, setCountdown] = useState<number>(3);
-  const [targetReps, setTargetReps] = useState<number>(50);
-  const [timeRemaining, setTimeRemaining] = useState<number>(60);
-  const [userReps, setUserReps] = useState<number>(0);
-  const [activeFloatingReactions, setActiveFloatingReactions] = useState<{ id: string; emoji: string; x: number }[]>([]);
+  // 1. Calculate Real User Attributes Breakdown
+  const realStreakObj = calculateRealStreak(history);
+  const effectiveStreak = Math.max(user.stats?.currentStreak || 0, realStreakObj.currentStreak);
+  const userBreakdown = getAthleteAttributesBreakdown(history, effectiveStreak, user.level, user);
 
-  // Competitors
-  const [opponents, setOpponents] = useState<Participant[]>([
-    {
-      id: 'opp_1',
-      name: 'Elena Beast',
-      avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100',
-      level: 18,
-      reps: 0,
-      bpm: 148,
-    },
-    {
-      id: 'opp_2',
-      name: 'Marcus Titan',
-      avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100',
-      level: 21,
-      reps: 0,
-      bpm: 162,
-    },
-    {
-      id: 'opp_3',
-      name: 'Sofia Runner',
-      avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=100',
-      level: 15,
-      reps: 0,
-      bpm: 155,
-    },
-  ]);
+  // 2. Build Realistic Rivals from the Current User League
+  const leagueBots = LEAGUE_BOTS[user.league] || LEAGUE_BOTS['Bronze'];
 
-  // Start Duel flow
-  const handleStartDuel = () => {
-    setUserReps(0);
-    setOpponents((prev) => prev.map((o) => ({ ...o, reps: 0 })));
-    setTimeRemaining(60);
-    setDuelStatus('countdown');
-    setCountdown(3);
-    sound.playBeep(880, 100);
-  };
+  const rivals: RivalCardProfile[] = leagueBots.map((bot, idx) => {
+    // Generate deterministic, realistic attributes based on bot stats
+    const str = Math.min(98, Math.max(15, Math.round(15 + (bot.totalVolumeKg || 10000) / 2800 + bot.level * 1.5)));
+    const end = Math.min(98, Math.max(15, Math.round(15 + (bot.totalDistanceKm || 10) * 1.2 + bot.level * 1.4)));
+    const agi = Math.min(98, Math.max(15, Math.round(18 + (idx % 2 === 0 ? 25 : 12) + bot.level * 1.2)));
+    const dis = Math.min(98, Math.max(15, Math.round(15 + (bot.streakDays || 1) * 2.8 + bot.level * 1.3)));
+    const ovr = Math.round((str + end + agi + dis) / 4);
 
-  // Countdown timer
-  useEffect(() => {
-    if (duelStatus !== 'countdown') return;
+    let archetypeName = 'Atleta Híbrido';
+    let archetypeIcon = '⚔️';
+    let archetypeDesc = 'Equilibrio entre fuerza y constancia semanal.';
 
-    if (countdown > 0) {
-      const timer = setTimeout(() => {
-        sound.playBeep(countdown === 1 ? 1200 : 700, 150);
-        setCountdown((c) => c - 1);
-      }, 1000);
-      return () => clearTimeout(timer);
-    } else {
-      setDuelStatus('in_progress');
-      sound.playLevelUp();
+    if (str >= end && str >= agi) {
+      archetypeName = 'Coloso del Hierro';
+      archetypeIcon = '🏋️';
+      archetypeDesc = 'Especialista en sobrecarga progresiva y tonelaje alto.';
+    } else if (end >= str && end >= agi) {
+      archetypeName = 'Motor Aeróbico';
+      archetypeIcon = '🏃';
+      archetypeDesc = 'Gran capacidad de fondo y distancia acumulada.';
+    } else if (agi >= str && agi >= end) {
+      archetypeName = 'Especialista en Pista';
+      archetypeIcon = '🎾';
+      archetypeDesc = 'Velocidad de reacción, HIIT y deportes de cancha.';
     }
-  }, [duelStatus, countdown]);
 
-  // In-progress active duel simulation loop
-  useEffect(() => {
-    if (duelStatus !== 'in_progress') return;
-
-    const timer = setInterval(() => {
-      setTimeRemaining((prev) => {
-        if (prev <= 1) {
-          clearInterval(timer);
-          handleFinishDuel();
-          return 0;
-        }
-        return prev - 1;
-      });
-
-      // Simulate opponents pacing
-      setOpponents((prev) =>
-        prev.map((opp) => {
-          if (opp.reps >= targetReps) return opp;
-          const randomIncrement = Math.random() > 0.35 ? 1 : 0;
-          return {
-            ...opp,
-            reps: Math.min(targetReps, opp.reps + randomIncrement),
-            bpm: Math.min(185, opp.bpm + (Math.random() > 0.5 ? 1 : -1)),
-          };
-        })
-      );
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, [duelStatus, targetReps, userReps]);
-
-  // Add User Rep
-  const handleAddUserRep = () => {
-    if (duelStatus !== 'in_progress') return;
-
-    sound.playBeep(950, 40);
-    const nextReps = userReps + 1;
-    setUserReps(nextReps);
-
-    if (nextReps >= targetReps) {
-      handleFinishDuel();
-    }
-  };
-
-  const handleFinishDuel = () => {
-    setDuelStatus('victory');
-    sound.playLevelUp();
-    try {
-      confetti({
-        particleCount: 100,
-        spread: 80,
-        origin: { y: 0.5 },
-      });
-    } catch {}
-    onDuelWin(450);
-  };
-
-  // Floating emoji reaction
-  const handleSendReaction = (emoji: string) => {
-    sound.playBeep(1100, 50);
-    const newReaction = {
-      id: `react_${Date.now()}_${Math.random()}`,
-      emoji,
-      x: Math.floor(Math.random() * 80) + 10,
+    return {
+      id: bot.userId,
+      name: bot.name,
+      avatar: bot.avatar,
+      level: bot.level,
+      league: user.league,
+      rankTitle: bot.rankTitle || 'Guerrero',
+      weeklyXp: bot.xpEarned,
+      totalVolumeKg: bot.totalVolumeKg || 12000,
+      totalDistanceKm: bot.totalDistanceKm || 10,
+      streakDays: bot.streakDays || 2,
+      attributes: { strength: str, endurance: end, agility: agi, discipline: dis },
+      overall: ovr,
+      archetype: { name: archetypeName, icon: archetypeIcon, description: archetypeDesc },
     };
-    setActiveFloatingReactions((prev) => [...prev, newReaction]);
-    setTimeout(() => {
-      setActiveFloatingReactions((prev) => prev.filter((r) => r.id !== newReaction.id));
-    }, 2000);
-  };
+  });
 
-  // Compile all participants sorted by reps
-  const allParticipants = [
-    {
-      id: user.id,
-      name: `${user.name} (Tú)`,
-      avatar: user.avatar,
-      level: user.level,
-      reps: userReps,
-      bpm: smartwatch.liveHeartRate || 145,
-      isCurrentUser: true,
-    },
-    ...opponents,
-  ].sort((a, b) => b.reps - a.reps);
+  const [selectedRivalId, setSelectedRivalId] = useState<string>(rivals[0]?.id || '');
+  const activeRival = rivals.find((r) => r.id === selectedRivalId) || rivals[0];
 
-  const currentUserRank = allParticipants.findIndex((p) => p.isCurrentUser) + 1;
+  // Compare 4 attributes
+  const attrKeys: Array<{
+    key: 'strength' | 'endurance' | 'agility' | 'discipline';
+    name: string;
+    code: string;
+    color: string;
+    barUser: string;
+    barRival: string;
+  }> = [
+    { key: 'strength', name: 'FUERZA', code: 'PWR', color: 'text-red-400', barUser: 'bg-red-500', barRival: 'bg-red-500/60' },
+    { key: 'endurance', name: 'RESISTENCIA', code: 'END', color: 'text-cyan-400', barUser: 'bg-cyan-500', barRival: 'bg-cyan-500/60' },
+    { key: 'agility', name: 'AGILIDAD', code: 'AGI', color: 'text-amber-400', barUser: 'bg-amber-500', barRival: 'bg-amber-500/60' },
+    { key: 'discipline', name: 'DISCIPLINA', code: 'DIS', color: 'text-emerald-400', barUser: 'bg-emerald-500', barRival: 'bg-emerald-500/60' },
+  ];
+
+  let userWinsCount = 0;
+  let rivalWinsCount = 0;
+
+  attrKeys.forEach(({ key }) => {
+    const userVal = userBreakdown.attributes[key];
+    const rivalVal = activeRival.attributes[key];
+    if (userVal > rivalVal) userWinsCount += 1;
+    else if (rivalVal > userVal) rivalWinsCount += 1;
+  });
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-300 relative">
-      
-      {/* Floating Animated Reaction Emojis */}
-      <div className="fixed inset-0 pointer-events-none z-50 overflow-hidden">
-        {activeFloatingReactions.map((r) => (
-          <div
-            key={r.id}
-            className="absolute bottom-20 text-3xl sm:text-4xl animate-bounce transition-all duration-1000"
-            style={{ left: `${r.x}%`, transform: 'translateY(-120px)' }}
-          >
-            {r.emoji}
-          </div>
-        ))}
-      </div>
-
+    <div className="space-y-6 animate-in fade-in duration-300">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <span className="text-xs font-black uppercase px-2.5 py-0.5 rounded-full bg-red-500/20 text-red-400 border border-red-500/30 animate-pulse">
-              🔴 Multijugador en Vivo
+            <span className="text-xs font-black uppercase px-2.5 py-0.5 rounded-full bg-cyan-500/20 text-cyan-400 border border-cyan-500/30">
+              ⚔️ Cara a Cara · Ficha FIFA/OVR
             </span>
-            <span className="text-xs font-bold text-neutral-400">
-              {allParticipants.length} Atletas Conectados
+            <span className="text-xs font-mono font-bold text-neutral-400">
+              Liga {user.league}
             </span>
           </div>
-          <h2 className="font-display font-extrabold text-2xl sm:text-3xl text-white mt-1">
-            {t.socialDuelTitle}
+          <h2 className="font-display font-black text-2xl sm:text-3xl text-white tracking-tight mt-1">
+            Comparador de Atletas Real
           </h2>
           <p className="text-xs sm:text-sm text-neutral-400 mt-0.5">
-            {t.socialDuelSubtitle}
+            Compara tu ficha técnica y tus atributos reales (10 a 99) contra los rivales de tu liga semanal.
           </p>
         </div>
 
-        {duelStatus === 'lobby' && (
-          <button
-            id="btn-start-social-duel"
-            onClick={handleStartDuel}
-            className="px-6 py-3 rounded-2xl bg-gradient-to-r from-red-500 to-orange-500 hover:from-red-400 hover:to-orange-400 text-black font-extrabold text-sm shadow-xl shadow-red-500/25 flex items-center justify-center gap-2 transition-all hover:scale-105"
+        {/* Rival Selector Dropdown */}
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-mono text-neutral-400 hidden sm:inline">Rival:</span>
+          <select
+            value={selectedRivalId}
+            onChange={(e) => setSelectedRivalId(e.target.value)}
+            className="py-2.5 px-3.5 rounded-2xl bg-[#121214] border border-white/10 text-xs font-mono font-bold text-cyan-400 focus:outline-none focus:border-cyan-500 cursor-pointer shadow-lg"
           >
-            <Swords className="w-5 h-5 stroke-[2.5]" />
-            <span>Iniciar Duelo en Vivo (+450 XP)</span>
-          </button>
-        )}
+            {rivals.map((r) => (
+              <option key={r.id} value={r.id}>
+                vs {r.name} (MEDIA {r.overall} · Nvl {r.level})
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
-      {/* Countdown Splash */}
-      {duelStatus === 'countdown' && (
-        <div className="bg-neutral-900 border-2 border-red-500/50 rounded-3xl p-12 text-center shadow-2xl flex flex-col items-center justify-center">
-          <span className="text-sm font-extrabold uppercase text-red-400 tracking-widest">
-            {t.countDown}
-          </span>
-          <h1 className="font-display font-black text-7xl sm:text-8xl text-white my-4 animate-ping">
-            {countdown > 0 ? countdown : '¡YA!'}
-          </h1>
-          <p className="text-xs text-neutral-400">Meta: {targetReps} flexiones / repeticiones a máxima velocidad</p>
-        </div>
-      )}
+      {/* Main Versus Card (FIFA / EA FC Style) */}
+      <div className="bg-gradient-to-br from-[#16161a] via-[#101014] to-[#0a0a0c] border border-white/10 rounded-3xl p-6 sm:p-8 shadow-2xl relative overflow-hidden">
+        {/* Glow ambient effects */}
+        <div className="absolute top-0 left-1/4 w-72 h-72 bg-cyan-500/10 blur-[100px] pointer-events-none" />
+        <div className="absolute bottom-0 right-1/4 w-72 h-72 bg-red-500/10 blur-[100px] pointer-events-none" />
 
-      {/* Active Battle Arena */}
-      {duelStatus === 'in_progress' && (
-        <div className="bg-gradient-to-b from-neutral-900 via-neutral-900 to-neutral-950 border-2 border-red-500/40 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6">
-          
-          {/* Battle HUD Top */}
-          <div className="flex items-center justify-between pb-4 border-b border-neutral-800">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-2xl bg-red-500/20 border border-red-500/40 flex items-center justify-center text-red-400">
-                <Flame className="w-6 h-6 animate-bounce" />
-              </div>
-              <div>
-                <span className="text-[10px] font-black uppercase text-red-400 tracking-wider">
-                  {t.repBattle} (Meta: {targetReps} reps)
-                </span>
-                <h3 className="font-display font-extrabold text-xl text-white">
-                  Posición Actual: #{currentUserRank}
-                </h3>
-              </div>
-            </div>
-
-            <div className="text-right">
-              <span className="text-[11px] font-bold text-neutral-400 block">Tiempo Restante</span>
-              <span className="font-mono font-black text-2xl text-red-400">{timeRemaining}s</span>
-            </div>
-          </div>
-
-          {/* Big Interactive Tap / Rep Button for Current User */}
-          <div className="text-center py-4">
-            <button
-              id="btn-live-rep-counter"
-              onClick={handleAddUserRep}
-              className="w-44 h-44 sm:w-52 sm:h-52 rounded-full bg-gradient-to-tr from-red-600 via-orange-500 to-amber-400 text-black font-black text-4xl sm:text-5xl shadow-2xl shadow-red-500/40 flex flex-col items-center justify-center mx-auto transition-transform active:scale-90 hover:scale-105 select-none"
-            >
-              <span>{userReps}</span>
-              <span className="text-xs uppercase font-extrabold mt-1 tracking-wider">
-                ¡PULSA +1 REP!
-              </span>
-            </button>
-            <p className="text-xs text-neutral-400 mt-3 font-semibold">
-              O presiona la pantalla / barra espaciadora
-            </p>
-          </div>
-
-          {/* Quick Reaction Bar */}
-          <div className="flex items-center justify-center gap-2 pt-2">
-            <span className="text-xs font-bold text-neutral-400 mr-2 flex items-center gap-1">
-              <Smile className="w-4 h-4 text-amber-400" /> Reaccionar:
+        {/* Header VS Badge */}
+        <div className="flex items-center justify-center mb-6 relative z-10">
+          <div className="px-4 py-1.5 rounded-2xl bg-white/5 border border-white/10 text-xs font-mono font-black text-white flex items-center gap-2 shadow-inner">
+            <Swords className="w-4 h-4 text-cyan-400" />
+            <span>CARA A CARA EN VIVO</span>
+            <span className="text-neutral-500">•</span>
+            <span className="text-emerald-400">
+              {userWinsCount > rivalWinsCount
+                ? '🏆 Ventaja: Tú'
+                : userWinsCount < rivalWinsCount
+                ? `⚡ Ventaja: ${activeRival.name}`
+                : '⚖️ Empate Técnico'}
             </span>
-            {['🔥', '⚡', '💪', '🏆', '💥', '👏'].map((emoji) => (
-              <button
-                key={emoji}
-                onClick={() => handleSendReaction(emoji)}
-                className="w-9 h-9 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-lg flex items-center justify-center transition-transform hover:scale-125 active:scale-95"
-              >
-                {emoji}
-              </button>
-            ))}
           </div>
         </div>
-      )}
 
-      {/* Victory / Summary Card */}
-      {duelStatus === 'victory' && (
-        <div className="bg-gradient-to-b from-amber-950/40 via-neutral-900 to-neutral-900 border-2 border-amber-500/50 rounded-3xl p-6 sm:p-8 text-center shadow-2xl animate-in zoom-in-95 space-y-4">
-          <div className="w-16 h-16 rounded-2xl bg-amber-500 text-black mx-auto flex items-center justify-center shadow-xl shadow-amber-500/30">
-            <Trophy className="w-8 h-8" />
-          </div>
-          <h2 className="font-display font-black text-3xl text-white">
-            {currentUserRank === 1 ? '¡CAMPEÓN DEL DUELO!' : `¡Duelo Finalizado! #${currentUserRank}`}
-          </h2>
-          <p className="text-xs text-neutral-300">
-            Completaste {userReps} repeticiones en el tiempo límite. Has ganado +450 XP y 35 Puntos de Liga.
-          </p>
-
-          <div className="flex justify-center gap-3 pt-2">
-            <button
-              onClick={() => setDuelStatus('lobby')}
-              className="px-6 py-2.5 rounded-2xl bg-neutral-800 hover:bg-neutral-700 text-white font-bold text-xs"
-            >
-              Volver al Lobby
-            </button>
-            <button
-              onClick={handleStartDuel}
-              className="px-6 py-2.5 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-black font-extrabold text-xs shadow-lg"
-            >
-              Revancha Inmediata
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Live Competitors Table */}
-      <div className="bg-neutral-900 border border-neutral-800 rounded-3xl p-5 sm:p-6 shadow-xl space-y-4">
-        <h3 className="font-display font-extrabold text-lg text-white flex items-center gap-2">
-          <Users className="w-5 h-5 text-red-400" />
-          <span>{t.liveOpponents}</span>
-        </h3>
-
-        <div className="space-y-2.5">
-          {allParticipants.map((p, idx) => {
-            const progressPercent = Math.min(100, Math.round((p.reps / targetReps) * 100));
-
-            return (
-              <div
-                key={p.id}
-                className={`p-3.5 rounded-2xl border transition-all ${
-                  p.isCurrentUser
-                    ? 'bg-emerald-950/30 border-emerald-500/50 shadow-md shadow-emerald-500/10'
-                    : 'bg-neutral-800/60 border-neutral-700/70'
-                }`}
-              >
-                <div className="flex items-center justify-between gap-3 mb-2">
-                  <div className="flex items-center gap-3">
-                    <span className="w-6 h-6 rounded-lg bg-neutral-700 text-neutral-200 font-mono font-bold text-xs flex items-center justify-center">
-                      #{idx + 1}
+        {/* Cards Row: User vs Rival */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 relative z-10 mb-8">
+          {/* USER CARD (Left) */}
+          <div className="bg-gradient-to-b from-cyan-950/30 to-black/40 border-2 border-cyan-500/40 rounded-3xl p-6 flex flex-col justify-between shadow-[0_0_30px_rgba(6,182,212,0.15)] relative overflow-hidden">
+            <div className="flex items-start justify-between gap-4 mb-4">
+              <div className="flex items-center gap-3.5">
+                <div className="relative">
+                  <img
+                    src={user.avatar}
+                    alt={user.name}
+                    className="w-16 h-16 rounded-2xl object-cover border-2 border-cyan-400 shadow-xl"
+                  />
+                  <span className="absolute -bottom-1 -right-1 px-1.5 py-0.5 rounded-md bg-cyan-500 text-neutral-950 font-mono font-black text-[9px]">
+                    TÚ
+                  </span>
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-cyan-400">
+                      Nivel {user.level}
                     </span>
-                    <img src={p.avatar} alt={p.name} className="w-9 h-9 rounded-xl object-cover border border-neutral-600" />
-                    <div>
-                      <h4 className="font-bold text-white text-xs sm:text-sm flex items-center gap-1.5">
-                        {p.name}
-                        {p.isCurrentUser && (
-                          <span className="text-[10px] bg-emerald-500/20 text-emerald-400 font-extrabold px-1.5 rounded">TÚ</span>
-                        )}
-                      </h4>
-                      <span className="text-[11px] text-neutral-400">Nv. {p.level} • {p.bpm} BPM</span>
+                    <span className="text-[10px] font-mono px-2 py-0.2 rounded-full bg-cyan-500/15 text-cyan-300 border border-cyan-500/30">
+                      {userBreakdown.overallTierLabel}
+                    </span>
+                  </div>
+                  <h3 className="text-xl font-display font-black text-white">{user.name}</h3>
+                  <p className="text-xs text-neutral-400 font-mono mt-0.5">
+                    {userBreakdown.archetype.icon} {userBreakdown.archetype.name}
+                  </p>
+                </div>
+              </div>
+
+              {/* Big OVR Badge */}
+              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-cyan-500 to-blue-600 p-0.5 flex flex-col items-center justify-center shadow-[0_0_20px_rgba(6,182,212,0.4)] shrink-0">
+                <span className="text-[9px] font-mono font-black text-neutral-950 uppercase leading-none">
+                  MEDIA
+                </span>
+                <span className="text-2xl font-mono font-black text-neutral-950 leading-tight">
+                  {userBreakdown.overall}
+                </span>
+                <span className="text-[8px] font-mono font-bold text-neutral-900 leading-none">
+                  OVR
+                </span>
+              </div>
+            </div>
+
+            <p className="text-xs text-neutral-300 italic mb-4 leading-relaxed bg-white/5 p-3 rounded-2xl border border-white/5">
+              "{userBreakdown.archetype.description}"
+            </p>
+
+            <div className="grid grid-cols-2 gap-2 text-xs font-mono">
+              <div className="bg-black/40 p-2.5 rounded-xl border border-white/5">
+                <span className="text-[10px] text-neutral-400 block">Racha Activa</span>
+                <span className="text-sm font-bold text-white">{effectiveStreak} días</span>
+              </div>
+              <div className="bg-black/40 p-2.5 rounded-xl border border-white/5">
+                <span className="text-[10px] text-neutral-400 block">Entrenos Totales</span>
+                <span className="text-sm font-bold text-white">{history.length} misiones</span>
+              </div>
+            </div>
+          </div>
+
+          {/* RIVAL CARD (Right) */}
+          <div className="bg-gradient-to-b from-red-950/20 to-black/40 border border-white/10 hover:border-red-500/40 rounded-3xl p-6 flex flex-col justify-between shadow-xl relative overflow-hidden transition-colors">
+            <div className="flex items-start justify-between gap-4 mb-4">
+              <div className="flex items-center gap-3.5">
+                <div className="relative">
+                  <img
+                    src={activeRival.avatar}
+                    alt={activeRival.name}
+                    className="w-16 h-16 rounded-2xl object-cover border-2 border-white/20 shadow-xl"
+                  />
+                  <span className="absolute -bottom-1 -right-1 px-1.5 py-0.5 rounded-md bg-neutral-800 text-neutral-300 font-mono font-black text-[9px] border border-white/10">
+                    RIVAL
+                  </span>
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-neutral-400">
+                      Nivel {activeRival.level}
+                    </span>
+                    <span className="text-[10px] font-mono px-2 py-0.2 rounded-full bg-white/10 text-neutral-300">
+                      Liga {activeRival.league}
+                    </span>
+                  </div>
+                  <h3 className="text-xl font-display font-black text-white">{activeRival.name}</h3>
+                  <p className="text-xs text-neutral-400 font-mono mt-0.5">
+                    {activeRival.archetype.icon} {activeRival.archetype.name}
+                  </p>
+                </div>
+              </div>
+
+              {/* Big OVR Badge */}
+              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-neutral-800 to-neutral-900 border border-white/15 p-0.5 flex flex-col items-center justify-center shadow-lg shrink-0">
+                <span className="text-[9px] font-mono font-bold text-neutral-400 uppercase leading-none">
+                  MEDIA
+                </span>
+                <span className="text-2xl font-mono font-black text-white leading-tight">
+                  {activeRival.overall}
+                </span>
+                <span className="text-[8px] font-mono font-bold text-neutral-500 leading-none">
+                  OVR
+                </span>
+              </div>
+            </div>
+
+            <p className="text-xs text-neutral-300 italic mb-4 leading-relaxed bg-white/5 p-3 rounded-2xl border border-white/5">
+              "{activeRival.archetype.description}"
+            </p>
+
+            <div className="grid grid-cols-2 gap-2 text-xs font-mono">
+              <div className="bg-black/40 p-2.5 rounded-xl border border-white/5">
+                <span className="text-[10px] text-neutral-400 block">Racha Semanal</span>
+                <span className="text-sm font-bold text-white">{activeRival.streakDays} días</span>
+              </div>
+              <div className="bg-black/40 p-2.5 rounded-xl border border-white/5">
+                <span className="text-[10px] text-neutral-400 block">XP de Liga Semanal</span>
+                <span className="text-sm font-bold text-cyan-400">{activeRival.weeklyXp.toLocaleString()} XP</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Detailed Attribute Comparison Bars */}
+        <div className="bg-black/50 border border-white/5 rounded-2xl p-5 relative z-10">
+          <div className="flex items-center justify-between mb-4">
+            <span className="text-xs font-mono font-bold uppercase tracking-wider text-cyan-400">
+              📊 Comparativa Atributo por Atributo
+            </span>
+            <span className="text-xs font-mono text-neutral-400">
+              Escala Oficial 10 a 99
+            </span>
+          </div>
+
+          <div className="space-y-4">
+            {attrKeys.map(({ key, name, code, color, barUser, barRival }) => {
+              const uVal = userBreakdown.attributes[key];
+              const rVal = activeRival.attributes[key];
+              const diff = uVal - rVal;
+
+              return (
+                <div key={key} className="space-y-1.5">
+                  <div className="flex items-center justify-between text-xs font-mono font-bold">
+                    <div className="flex items-center gap-2">
+                      <span className={`${color}`}>{name}</span>
+                      <span className="text-[10px] text-neutral-500">({code})</span>
+                    </div>
+
+                    <div className="flex items-center gap-4">
+                      <span className={`text-sm ${diff > 0 ? 'text-cyan-400 font-black' : 'text-neutral-400'}`}>
+                        {uVal} <span className="text-[10px] text-neutral-500 font-normal">Tú</span>
+                      </span>
+                      <span className="text-neutral-600 font-normal">vs</span>
+                      <span className={`text-sm ${diff < 0 ? 'text-red-400 font-black' : 'text-neutral-400'}`}>
+                        {rVal} <span className="text-[10px] text-neutral-500 font-normal">Rival</span>
+                      </span>
+                      <span
+                        className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
+                          diff > 0
+                            ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
+                            : diff < 0
+                            ? 'bg-red-500/15 text-red-400 border border-red-500/30'
+                            : 'bg-white/5 text-neutral-400'
+                        }`}
+                      >
+                        {diff > 0 ? `+${diff}` : diff < 0 ? `${diff}` : '='}
+                      </span>
                     </div>
                   </div>
 
-                  <div className="text-right">
-                    <span className="font-mono font-extrabold text-lg text-white">
-                      {p.reps} <span className="text-xs text-neutral-400 font-sans">/ {targetReps} reps</span>
-                    </span>
+                  {/* Dual comparison bar */}
+                  <div className="grid grid-cols-2 gap-1.5 h-2">
+                    {/* User bar (left aligned right) */}
+                    <div className="h-full bg-neutral-900 rounded-l-full overflow-hidden flex justify-end">
+                      <div
+                        className={`h-full ${barUser} rounded-l-full transition-all duration-500`}
+                        style={{ width: `${Math.min(100, (uVal / 99) * 100)}%` }}
+                      />
+                    </div>
+                    {/* Rival bar (right aligned left) */}
+                    <div className="h-full bg-neutral-900 rounded-r-full overflow-hidden flex justify-start">
+                      <div
+                        className={`h-full ${barRival} rounded-r-full transition-all duration-500`}
+                        style={{ width: `${Math.min(100, (rVal / 99) * 100)}%` }}
+                      />
+                    </div>
                   </div>
                 </div>
-
-                {/* Progress bar */}
-                <div className="h-2 bg-neutral-800 rounded-full overflow-hidden">
-                  <div
-                    className={`h-full rounded-full transition-all duration-300 ${
-                      p.isCurrentUser ? 'bg-gradient-to-r from-emerald-500 to-teal-400' : 'bg-gradient-to-r from-orange-500 to-amber-400'
-                    }`}
-                    style={{ width: `${progressPercent}%` }}
-                  />
-                </div>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
       </div>
     </div>

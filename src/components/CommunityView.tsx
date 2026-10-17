@@ -114,7 +114,7 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
             }`}
           >
             <Swords className="w-4 h-4 shrink-0" />
-            <span>Duelos 1v1</span>
+            <span>Cara a Cara</span>
           </button>
         </div>
       </div>
@@ -153,11 +153,8 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
       {subTab === 'duels' && (
         <SocialLiveDuelView
           user={user}
-          smartwatch={fallbackWatch}
+          history={history}
           lang={lang}
-          onDuelWin={(xp) => {
-            if (onWinDuel) onWinDuel(xp);
-          }}
         />
       )}
     </div>
