@@ -1,21 +1,33 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    
+
     // ===============================================================
-    // Assumed Data Model & Access Control Overview
+    // Assumed Data Model & Security Boundaries
     // ===============================================================
+    //
     // Collection: /users/{userId}
-    //   - Read: Authenticated users (for leaderboards and duels)
+    //   - Read: Authenticated users (for leaderboards, social profiles, and duels)
     //   - Write: Authenticated owner (request.auth.uid == userId)
+    //   - Validation:
+    //       * name: string (1-50 chars) if present
+    //       * level: int (1-100) if present
+    //       * streakShields: int (0-2) if present
+    //       * xp: number (>= 0) if present
+    //       * role / privilege escalation disallowed
     //
     // Subcollection: /users/{userId}/history/{historyId}
     //   - Read: Authenticated users (workout logs)
-    //   - Write: Authenticated owner
+    //   - Write: Authenticated owner (request.auth.uid == userId)
+    //   - Validation (physical boundaries per workout):
+    //       * totalVolumeKg: number (0 - 150,000) if present
+    //       * durationMinutes: number (0 - 600) if present
+    //       * xpEarned: number (0 - 8,000) if present
+    //       * totalDistanceKm: number (0 - 200) if present
     //
     // Subcollection: /users/{userId}/routines/{routineId}
     //   - Read: Authenticated users (workout templates)
-    //   - Write: Authenticated owner
+    //   - Write: Authenticated owner (request.auth.uid == userId)
     //
     // Subcollection: /users/{userId}/nutrition/{date}
     //   - Read & Write: Authenticated owner only (private meal logs, macros, hydration)
@@ -25,58 +37,115 @@ service cloud.firestore {
     //
     // Collection: /challenges/{challengeId}
     //   - Read & Write: Authenticated users
+    //   - Delete: Denied (allow delete: false)
+    //
+    // Collection: /leaderboards/{league}
+    //   - Read & Write: Authenticated users
+    //   - Delete: Denied (allow delete: false)
     //
     // Collection: /duelRooms/{roomId}
     //   - Read & Write: Authenticated users
     //
-    // Collection: /leaderboards/{league}
-    //   - Read & Write: Authenticated users
     // ===============================================================
 
-    // User profile documents: Any authenticated user can read profiles (for leaderboards/duels); only the user can write their own profile
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isNumber(val) {
+      return val is int || val is float;
+    }
+
+    // Disallow client setting role == 'admin' or elevating privileges
+    function noRoleEscalation(data) {
+      return (
+        (!('role' in data) || (data.role != 'admin' && (resource == null || !('role' in resource.data) || data.role == resource.data.role))) &&
+        (!('isAdmin' in data) || data.isAdmin != true) &&
+        (!('admin' in data) || data.admin != true)
+      );
+    }
+
+    // Validate user profile fields & anti-cheat constraints
+    function isValidUser(data) {
+      return (
+        (!('name' in data) || (data.name is string && data.name.size() >= 1 && data.name.size() <= 50)) &&
+        (!('level' in data) || (data.level is int && data.level >= 1 && data.level <= 100)) &&
+        (!('streakShields' in data) || (data.streakShields is int && data.streakShields >= 0 && data.streakShields <= 2)) &&
+        (!('xp' in data) || (isNumber(data.xp) && data.xp >= 0)) &&
+        noRoleEscalation(data)
+      );
+    }
+
+    // Validate realistic physical boundaries per workout entry
+    function isValidHistoryEntry(data) {
+      return (
+        (!('totalVolumeKg' in data) || (isNumber(data.totalVolumeKg) && data.totalVolumeKg >= 0 && data.totalVolumeKg <= 150000)) &&
+        (!('durationMinutes' in data) || (isNumber(data.durationMinutes) && data.durationMinutes >= 0 && data.durationMinutes <= 600)) &&
+        (!('xpEarned' in data) || (isNumber(data.xpEarned) && data.xpEarned >= 0 && data.xpEarned <= 8000)) &&
+        (!('totalDistanceKm' in data) || (isNumber(data.totalDistanceKm) && data.totalDistanceKm >= 0 && data.totalDistanceKm <= 200))
+      );
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    // User profile documents
     match /users/{userId} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null && request.auth.uid == userId;
-      
+      allow read: if isAuthenticated();
+      allow create, update: if isOwner(userId) && isValidUser(request.resource.data);
+      allow delete: if isOwner(userId);
+
       // User workout history subcollection
       match /history/{historyId} {
-        allow read: if request.auth != null;
-        allow write: if request.auth != null && request.auth.uid == userId;
+        allow read: if isAuthenticated();
+        allow create, update: if isOwner(userId) && isValidHistoryEntry(request.resource.data);
+        allow delete: if isOwner(userId);
       }
 
       // User custom routines
       match /routines/{routineId} {
-        allow read: if request.auth != null;
-        allow write: if request.auth != null && request.auth.uid == userId;
+        allow read: if isAuthenticated();
+        allow write: if isOwner(userId);
       }
 
-      // User daily nutrition logs (meals, macro targets, water intake)
+      // User daily nutrition logs (private logs)
       match /nutrition/{date} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
+        allow read, write: if isOwner(userId);
       }
 
-      // User Saturday weigh-in logs (weight, body fat %, waist, notes)
+      // User weigh-in logs (private logs)
       match /weighIns/{weighInId} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
+        allow read, write: if isOwner(userId);
       }
     }
 
     // Community challenges
     match /challenges/{challengeId} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null;
-    }
-
-    // Live duel match rooms
-    match /duelRooms/{roomId} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null;
+      allow read: if isAuthenticated();
+      allow create, update: if isAuthenticated();
+      allow delete: if false;
     }
 
     // Public leaderboards aggregate
     match /leaderboards/{league} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null;
+      allow read: if isAuthenticated();
+      allow create, update: if isAuthenticated();
+      allow delete: if false;
+    }
+
+    // Live duel match rooms
+    match /duelRooms/{roomId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
     }
   }
 }
