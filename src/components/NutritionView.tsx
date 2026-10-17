@@ -19,6 +19,8 @@ import {
   X,
   Target,
   Zap,
+  Copy,
+  Dumbbell,
 } from 'lucide-react';
 import {
   UserProfile,
@@ -28,6 +30,7 @@ import {
   MealType,
   FoodItem,
   SaturdayWeighIn,
+  WorkoutHistoryEntry,
 } from '../types';
 import { FitStorage } from '../lib/storage';
 import {
@@ -41,6 +44,7 @@ import { sound } from '../lib/soundFx';
 interface NutritionViewProps {
   user: UserProfile;
   lang: Language;
+  history?: WorkoutHistoryEntry[];
   onUpdateUser?: (updated: UserProfile) => void;
   onGrantXp?: (amount: number, reason: string) => void;
 }
@@ -48,6 +52,7 @@ interface NutritionViewProps {
 export const NutritionView: React.FC<NutritionViewProps> = ({
   user,
   lang,
+  history = [],
   onUpdateUser,
   onGrantXp,
 }) => {
@@ -70,7 +75,7 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
   const [modalTab, setModalTab] = useState<'catalog' | 'custom'>('catalog');
   const [foodSearchQuery, setFoodSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<
-    'all' | 'protein' | 'carbs' | 'dairy' | 'fats' | 'fruits' | 'vegetables' | 'supplement'
+    'all' | 'frequent' | 'protein' | 'carbs' | 'dairy' | 'fats' | 'fruits' | 'vegetables' | 'supplement'
   >('all');
   
   // Selected food state in modal
@@ -175,12 +180,49 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
   const targetFat = Number(log.targetFat) || 70;
   const targetWater = Number(log.waterGoalMl) || 3500;
 
+  // Calculate workout calories burned on selectedDate from real workout history
+  const workoutCaloriesToday = useMemo(() => {
+    return (history || [])
+      .filter((h) => h.date && h.date.startsWith(selectedDate))
+      .reduce((sum, h) => sum + (Number(h.calories) || 0), 0);
+  }, [history, selectedDate]);
+
+  const netCalories = totals.calories - workoutCaloriesToday;
+
   const caloriesRemaining = Math.max(0, targetKcal - totals.calories);
   const caloriesPercent = Math.min(100, Math.round((totals.calories / targetKcal) * 100));
   const proteinPercent = Math.min(100, Math.round((totals.protein / targetProt) * 100));
   const carbsPercent = Math.min(100, Math.round((totals.carbs / targetCarb) * 100));
   const fatPercent = Math.min(100, Math.round((totals.fat / targetFat) * 100));
   const waterPercent = Math.min(100, Math.round(((log.waterMl || 0) / targetWater) * 100));
+
+  // Copy meals from the most recent previous logged day ("Repetir día anterior")
+  const handleCopyYesterdayMeals = () => {
+    safePlayClick();
+    const allLogs = FitStorage.getAllNutritionLogs();
+    const previousDates = Object.keys(allLogs)
+      .filter((d) => d < selectedDate && Array.isArray(allLogs[d]?.foods) && allLogs[d].foods.length > 0)
+      .sort((a, b) => b.localeCompare(a));
+
+    if (previousDates.length === 0) {
+      showToast('⚠️ No hay registros de comidas en días anteriores para copiar');
+      return;
+    }
+
+    const sourceDate = previousDates[0];
+    const sourceFoods = allLogs[sourceDate].foods || [];
+    const timeNow = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const copiedFoods: LoggedFoodItem[] = sourceFoods.map((f, idx) => ({
+      ...f,
+      id: `copy_${Date.now()}_${idx}`,
+      loggedAt: timeNow,
+    }));
+
+    const updatedFoods = [...(log.foods || []), ...copiedFoods];
+    updateLog({ ...log, foods: updatedFoods });
+    safePlaySuccess();
+    showToast(`✓ ${copiedFoods.length} alimentos copiados del ${sourceDate}`);
+  };
 
   // Toggle Day Type (Workout vs Rest)
   const handleToggleDayType = (type: 'workout' | 'rest') => {
@@ -373,14 +415,47 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
     showToast('Pesaje eliminado');
   };
 
-  // Filtered food catalog
+  // Filtered food catalog (including 'frequent' tab derived from historical logs)
   const filteredCatalog = useMemo(() => {
     let list = QUICK_ADD_FOODS;
+
+    if (categoryFilter === 'frequent') {
+      const allLogs = FitStorage.getAllNutritionLogs();
+      const countMap = new Map<string, { item: Omit<FoodItem, 'id'>; count: number }>();
+      Object.values(allLogs).forEach((dayLog) => {
+        (dayLog.foods || []).forEach((f) => {
+          const existing = countMap.get(f.name);
+          if (existing) {
+            existing.count += 1;
+          } else {
+            countMap.set(f.name, {
+              item: {
+                name: f.name,
+                calories: f.calories,
+                protein: f.protein,
+                carbs: f.carbs,
+                fat: f.fat,
+                servingSize: f.servingSize,
+                category: f.category,
+              },
+              count: 1,
+            });
+          }
+        });
+      });
+
+      const sortedFrequent = Array.from(countMap.values())
+        .sort((a, b) => b.count - a.count)
+        .map((x) => x.item);
+
+      list = sortedFrequent.length > 0 ? sortedFrequent : QUICK_ADD_FOODS.slice(0, 12);
+    }
+
     if (foodSearchQuery.trim()) {
       const q = foodSearchQuery.toLowerCase().trim();
       list = list.filter((f) => f.name.toLowerCase().includes(q));
     }
-    if (categoryFilter === 'all') {
+    if (categoryFilter === 'all' || categoryFilter === 'frequent') {
       return list;
     }
     if (categoryFilter === 'protein') {
@@ -405,7 +480,7 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
       return list.filter((f) => f.category === 'supplement');
     }
     return list;
-  }, [foodSearchQuery, categoryFilter]);
+  }, [foodSearchQuery, categoryFilter, log.foods]);
 
   // Latest Weigh In & Progress
   const latestWeighIn = weighIns[0] || null;
@@ -484,8 +559,8 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
         <>
           {/* Day Navigator & Day-Type Toggle */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-neutral-900/60 border border-white/10 rounded-2xl p-3 sm:p-4">
-            {/* Date selector */}
-            <div className="flex items-center gap-2">
+            {/* Date selector + Copy Previous Day */}
+            <div className="flex items-center gap-2 flex-wrap">
               <Calendar className="w-4 h-4 text-cyan-400 shrink-0" />
               <input
                 type="date"
@@ -498,6 +573,15 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
                   Hoy
                 </span>
               )}
+              <button
+                type="button"
+                onClick={handleCopyYesterdayMeals}
+                className="px-2.5 py-1.5 rounded-xl bg-white/5 hover:bg-cyan-500/15 border border-white/10 hover:border-cyan-500/40 text-neutral-300 hover:text-cyan-300 text-xs font-mono font-bold flex items-center gap-1.5 transition-all cursor-pointer"
+                title="Copiar todas las comidas registradas en el día anterior"
+              >
+                <Copy className="w-3.5 h-3.5 text-cyan-400" />
+                <span>Repetir día anterior</span>
+              </button>
             </div>
 
             {/* Workout vs Rest Day toggle */}
@@ -558,9 +642,20 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
                   />
                 </div>
               </div>
-              <span className="text-[11px] text-neutral-500">
-                {totals.calories > targetKcal ? '⚠️ Superaste la meta calórica' : 'Déficit controlado para quemar grasa'}
-              </span>
+              {workoutCaloriesToday > 0 ? (
+                <div className="flex items-center justify-between text-[10px] font-mono pt-1 border-t border-white/5">
+                  <span className="text-orange-400 flex items-center gap-1 font-bold">
+                    <Dumbbell className="w-3 h-3" /> -{workoutCaloriesToday} kcal entreno
+                  </span>
+                  <span className="text-cyan-300 font-bold">
+                    Neto: {netCalories} kcal
+                  </span>
+                </div>
+              ) : (
+                <span className="text-[11px] text-neutral-500">
+                  {totals.calories > targetKcal ? '⚠️ Superaste la meta calórica' : 'Déficit controlado para quemar grasa'}
+                </span>
+              )}
             </div>
 
             {/* Protein Card (180g) */}
@@ -1241,6 +1336,7 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
                     {(
                       [
                         { id: 'all', label: 'Todos' },
+                        { id: 'frequent', label: '⭐ Frecuentes' },
                         { id: 'protein', label: '🥩 Carnes y Pescados' },
                         { id: 'carbs', label: '🍚 Carbohidratos' },
                         { id: 'dairy', label: '🥛 Lácteos y Huevos' },

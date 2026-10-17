@@ -40,6 +40,7 @@ import {
   Scale,
   Plus,
   Edit2,
+  Trash2,
   Check,
   X,
   Target,
@@ -48,6 +49,7 @@ import {
 import { WorkoutHistoryEntry, UserProfile, Language } from '../types';
 import { translations } from '../lib/i18n';
 import { FitStorage } from '../lib/storage';
+import { RENATO_PLAN_CONFIG } from '../lib/nutritionData';
 import { sound } from '../lib/soundFx';
 import { MuscleHeatmapWidget } from './MuscleHeatmapWidget';
 
@@ -57,6 +59,8 @@ interface AnalyticsViewProps {
   lang: Language;
   onNavigateTab?: (tab: string) => void;
   onUpdateUser?: (updated: UserProfile) => void;
+  onDeleteHistoryEntry?: (entryId: string) => void;
+  onUpdateHistoryEntry?: (entry: WorkoutHistoryEntry) => void;
 }
 
 export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
@@ -65,13 +69,29 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
   lang,
   onNavigateTab,
   onUpdateUser,
+  onDeleteHistoryEntry,
+  onUpdateHistoryEntry,
 }) => {
   const t = translations[lang];
   const [expandedSessionId, setExpandedSessionId] = useState<string | null>(null);
   const [showWeightModal, setShowWeightModal] = useState(false);
-  const [newWeightInput, setNewWeightInput] = useState<number>(user.weightKg || 75);
-  const [newHeightInput, setNewHeightInput] = useState<number>(user.heightCm || 175);
-  const [newTargetWeightInput, setNewTargetWeightInput] = useState<number>(user.targetWeightKg || 72);
+
+  const saturdayWeighIns = FitStorage.getSaturdayWeighIns();
+  const unifiedCurrentWeight =
+    saturdayWeighIns[0]?.weightKg ||
+    (user.weightKg && user.weightKg !== 75 ? user.weightKg : RENATO_PLAN_CONFIG.initialWeightKg);
+  const unifiedTargetWeight =
+    user.targetWeightKg && user.targetWeightKg !== 72
+      ? user.targetWeightKg
+      : RENATO_PLAN_CONFIG.targetWeightKg;
+
+  const [newWeightInput, setNewWeightInput] = useState<number>(unifiedCurrentWeight);
+  const [newHeightInput, setNewHeightInput] = useState<number>(user.heightCm || 178);
+  const [newTargetWeightInput, setNewTargetWeightInput] = useState<number>(unifiedTargetWeight);
+
+  // State for editing or deleting a history entry
+  const [editingEntry, setEditingEntry] = useState<WorkoutHistoryEntry | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   const totalDistance = history.reduce((acc, h) => acc + (h.totalDistanceKm || 0), 0);
 
@@ -99,13 +119,27 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
         }))
     : [];
 
-  // Estimated 1RM Progression data (computed from real history)
+  // Estimated 1RM Progression data (computed from real history sets using Epley formula)
   const strength1rmData = history.length > 0
-    ? [...history].reverse().map((h, idx) => ({
-        week: `S${idx + 1}`,
-        vol: h.totalVolumeKg || 0,
-        calc1rm: Math.round(((h.totalVolumeKg || 0) / Math.max(1, h.completedExercises || 4)) * 0.15),
-      }))
+    ? [...history].reverse().map((h, idx) => {
+        let sessionBest1Rm = 0;
+        (h.exercises || []).forEach((ex) => {
+          (ex.sets || []).forEach((s) => {
+            if (s.completed && s.weightKg > 0 && s.reps > 0) {
+              const epley = Math.round(s.weightKg * (1 + s.reps / 30));
+              if (epley > sessionBest1Rm) sessionBest1Rm = epley;
+            }
+          });
+        });
+        if (sessionBest1Rm === 0) {
+          sessionBest1Rm = Math.round(((h.totalVolumeKg || 0) / Math.max(1, h.completedExercises || 4)) * 0.15);
+        }
+        return {
+          week: `S${idx + 1}`,
+          vol: h.totalVolumeKg || 0,
+          calc1rm: sessionBest1Rm,
+        };
+      })
     : [];
 
   // Muscle group split breakdown
@@ -118,12 +152,23 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
     { muscle: 'Core', value: user.attributes.discipline || 10 },
   ];
 
-  // Weight History Data
-  const weightData = (user.weightHistory && user.weightHistory.length > 0
-    ? user.weightHistory
+  // Unified Weight History Data (combining Saturday Weigh-ins and user.weightHistory)
+  const combinedWeightMap = new Map<string, number>();
+  (user.weightHistory || []).forEach((w) => {
+    if (w.date && w.weightKg) combinedWeightMap.set(w.date, w.weightKg);
+  });
+  saturdayWeighIns.forEach((w) => {
+    if (w.date && w.weightKg) combinedWeightMap.set(w.date, w.weightKg);
+  });
+  const sortedWeightEntries = Array.from(combinedWeightMap.entries())
+    .map(([date, weightKg]) => ({ date, weightKg }))
+    .sort((a, b) => a.date.localeCompare(b.date));
+
+  const weightData = (sortedWeightEntries.length > 0
+    ? sortedWeightEntries
     : [
-        { date: user.joinedAt || '2026-08-01', weightKg: user.weightKg || 75 },
-        { date: new Date().toISOString().split('T')[0], weightKg: user.weightKg || 75 },
+        { date: user.joinedAt || '2026-03-21', weightKg: RENATO_PLAN_CONFIG.initialWeightKg },
+        { date: new Date().toISOString().split('T')[0], weightKg: unifiedCurrentWeight },
       ]
   ).map((w) => ({
     date: w.date.slice(5),
@@ -131,8 +176,8 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
   }));
 
   // Anthropometric & Metabolic Calculations
-  const currentWeight = user.weightKg || 75;
-  const currentHeight = user.heightCm || 175;
+  const currentWeight = unifiedCurrentWeight;
+  const currentHeight = user.heightCm || 178;
   const heightM = currentHeight / 100;
   const bmi = Math.round((currentWeight / (heightM * heightM)) * 10) / 10;
   
@@ -153,19 +198,44 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
   const bmr = Math.round(10 * currentWeight + 6.25 * currentHeight - 5 * 25 + 5);
   const tdee = Math.round(bmr * 1.55); // Moderate activity
 
-  // Relative Strength Standards (PR vs Bodyweight)
-  const benchPr = user.stats.benchPrKg || 80;
-  const squatPr = user.stats.squatPrKg || 105;
-  const deadliftPr = user.stats.deadliftPrKg || 135;
+  // Compute Real 1RM PRs from workout history sets (Epley formula: weight * (1 + reps/30))
+  const computeExercisePrFromHistory = (keywords: string[], fallbackKg: number): number => {
+    let best1Rm = 0;
+    history.forEach((h) => {
+      (h.exercises || []).forEach((ex) => {
+        const nameLower = (ex.name || '').toLowerCase();
+        if (keywords.some((kw) => nameLower.includes(kw))) {
+          (ex.sets || []).forEach((s) => {
+            if (s.completed && s.weightKg > 0 && s.reps > 0) {
+              const epley = Math.round(s.weightKg * (1 + s.reps / 30));
+              if (epley > best1Rm) best1Rm = epley;
+            }
+          });
+        }
+      });
+    });
+    return best1Rm > 0 ? best1Rm : fallbackKg;
+  };
+
+  const benchPr = computeExercisePrFromHistory(['banca', 'bench', 'press de pecho', 'chest press'], user.stats.benchPrKg || 80);
+  const squatPr = computeExercisePrFromHistory(['sentadilla', 'squat', 'prensa'], user.stats.squatPrKg || 105);
+  const deadliftPr = computeExercisePrFromHistory(['peso muerto', 'deadlift', 'rumano'], user.stats.deadliftPrKg || 135);
 
   const benchRatio = Math.round((benchPr / currentWeight) * 100) / 100;
   const squatRatio = Math.round((squatPr / currentWeight) * 100) / 100;
   const deadliftRatio = Math.round((deadliftPr / currentWeight) * 100) / 100;
 
-  // Handle Save Weight & Anthropometrics
+  // Handle Save Weight & Anthropometrics (Unified across Profile + Saturday Weigh-Ins)
   const handleSaveAnthropometrics = () => {
     sound.playLevelUp();
-    const updated = FitStorage.logWeight(newWeightInput, undefined, {
+    const todayIso = new Date().toISOString().split('T')[0];
+    FitStorage.saveSaturdayWeighIn({
+      id: `weighin-${todayIso}`,
+      date: todayIso,
+      weightKg: newWeightInput,
+      notes: 'Registrado desde Analíticas',
+    });
+    const updated = FitStorage.logWeight(newWeightInput, todayIso, {
       ...user,
       heightCm: newHeightInput,
       targetWeightKg: newTargetWeightInput,
@@ -292,9 +362,9 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
 
           <button
             onClick={() => {
-              setNewWeightInput(user.weightKg || 75);
-              setNewHeightInput(user.heightCm || 175);
-              setNewTargetWeightInput(user.targetWeightKg || 72);
+              setNewWeightInput(unifiedCurrentWeight);
+              setNewHeightInput(user.heightCm || 178);
+              setNewTargetWeightInput(unifiedTargetWeight);
               setShowWeightModal(true);
             }}
             className="px-4 py-2 rounded-2xl bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 hover:border-cyan-500/60 text-cyan-300 font-mono font-bold text-xs flex items-center gap-1.5 transition-all self-start sm:self-center cursor-pointer shadow-sm"
@@ -316,7 +386,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
               {currentWeight} <span className="text-xs font-normal text-neutral-400">kg</span>
             </p>
             <p className="text-[10px] font-mono text-cyan-400 mt-1">
-              Meta: {user.targetWeightKg || 72} kg ({Math.abs(Math.round((currentWeight - (user.targetWeightKg || 72)) * 10) / 10)}kg dif.)
+              Meta: {unifiedTargetWeight} kg ({Math.abs(Math.round((currentWeight - unifiedTargetWeight) * 10) / 10)}kg dif.)
             </p>
           </div>
 
@@ -659,8 +729,8 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-3 self-end sm:self-center">
-                      <div className="text-right">
+                    <div className="flex items-center gap-2.5 self-end sm:self-center">
+                      <div className="text-right mr-1">
                         <span className="text-xs font-mono font-bold text-cyan-400">
                           +{entry.xpEarned} XP
                         </span>
@@ -668,6 +738,57 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
                           {'★'.repeat(entry.rating || 5)}
                         </div>
                       </div>
+
+                      {onUpdateHistoryEntry && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEditingEntry({ ...entry });
+                          }}
+                          className="p-2 rounded-xl bg-white/5 hover:bg-cyan-500/20 text-neutral-400 hover:text-cyan-400 border border-white/5 hover:border-cyan-500/30 transition-all cursor-pointer"
+                          title="Editar sesión"
+                        >
+                          <Edit2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+
+                      {onDeleteHistoryEntry && (
+                        confirmDeleteId === entry.id ? (
+                          <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                onDeleteHistoryEntry(entry.id);
+                                setConfirmDeleteId(null);
+                              }}
+                              className="px-2.5 py-1.5 rounded-xl bg-red-500 text-neutral-950 font-mono font-black text-[10px] hover:bg-red-400 transition-colors cursor-pointer"
+                            >
+                              Borrar
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setConfirmDeleteId(null)}
+                              className="p-1.5 rounded-xl bg-white/10 text-neutral-300 hover:text-white cursor-pointer"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setConfirmDeleteId(entry.id);
+                            }}
+                            className="p-2 rounded-xl bg-white/5 hover:bg-red-500/20 text-neutral-400 hover:text-red-400 border border-white/5 hover:border-red-500/30 transition-all cursor-pointer"
+                            title="Eliminar sesión"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )
+                      )}
+
                       <button className="p-1 text-neutral-400 hover:text-white">
                         {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                       </button>
@@ -709,6 +830,153 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
           </div>
         )}
       </div>
+
+      {/* Modal to Edit a Past Workout History Entry */}
+      {editingEntry && onUpdateHistoryEntry && (
+        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in">
+          <div className="bg-[#121214] border border-cyan-500/40 rounded-3xl p-6 max-w-md w-full shadow-2xl relative overflow-hidden space-y-4 animate-in zoom-in-95">
+            <div className="flex items-center justify-between border-b border-white/5 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-cyan-500/20 text-cyan-400 flex items-center justify-center font-bold">
+                  <Edit2 className="w-4 h-4" />
+                </div>
+                <h3 className="font-display font-black text-lg text-white">
+                  Editar Sesión de Entrenamiento
+                </h3>
+              </div>
+              <button
+                onClick={() => setEditingEntry(null)}
+                className="p-1 rounded-xl text-neutral-400 hover:text-white cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs font-mono">
+              <div>
+                <label className="block text-neutral-400 font-bold mb-1">Título de la Rutina:</label>
+                <input
+                  type="text"
+                  value={editingEntry.routineTitle}
+                  onChange={(e) => setEditingEntry({ ...editingEntry, routineTitle: e.target.value })}
+                  className="w-full bg-white/5 border border-white/10 focus:border-cyan-500 px-3.5 py-2 rounded-xl text-white font-bold outline-none"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-neutral-400 font-bold mb-1">Fecha (YYYY-MM-DD):</label>
+                  <input
+                    type="date"
+                    value={editingEntry.date.slice(0, 10)}
+                    onChange={(e) => setEditingEntry({ ...editingEntry, date: e.target.value })}
+                    className="w-full bg-white/5 border border-white/10 focus:border-cyan-500 px-3 py-2 rounded-xl text-white font-bold outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-neutral-400 font-bold mb-1">Duración (min):</label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={editingEntry.durationMinutes}
+                    onChange={(e) =>
+                      setEditingEntry({ ...editingEntry, durationMinutes: Math.max(1, parseInt(e.target.value) || 0) })
+                    }
+                    className="w-full bg-white/5 border border-white/10 focus:border-cyan-500 px-3 py-2 rounded-xl text-white font-bold outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-neutral-400 font-bold mb-1">Volumen Total (kg):</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={editingEntry.totalVolumeKg}
+                    onChange={(e) =>
+                      setEditingEntry({ ...editingEntry, totalVolumeKg: Math.max(0, parseFloat(e.target.value) || 0) })
+                    }
+                    className="w-full bg-white/5 border border-white/10 focus:border-cyan-500 px-3 py-2 rounded-xl text-white font-bold outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-neutral-400 font-bold mb-1">Calorías Quemadas:</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={editingEntry.calories}
+                    onChange={(e) =>
+                      setEditingEntry({ ...editingEntry, calories: Math.max(0, parseInt(e.target.value) || 0) })
+                    }
+                    className="w-full bg-white/5 border border-white/10 focus:border-cyan-500 px-3 py-2 rounded-xl text-white font-bold outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-neutral-400 font-bold mb-1">Distancia Cardio (km):</label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    value={editingEntry.totalDistanceKm || 0}
+                    onChange={(e) =>
+                      setEditingEntry({ ...editingEntry, totalDistanceKm: Math.max(0, parseFloat(e.target.value) || 0) })
+                    }
+                    className="w-full bg-white/5 border border-white/10 focus:border-cyan-500 px-3 py-2 rounded-xl text-white font-bold outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-neutral-400 font-bold mb-1">Valoración (1-5 ★):</label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="5"
+                    value={editingEntry.rating || 5}
+                    onChange={(e) =>
+                      setEditingEntry({
+                        ...editingEntry,
+                        rating: Math.min(5, Math.max(1, parseInt(e.target.value) || 5)),
+                      })
+                    }
+                    className="w-full bg-white/5 border border-white/10 focus:border-cyan-500 px-3 py-2 rounded-xl text-white font-bold outline-none"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-neutral-400 font-bold mb-1">Notas de la sesión:</label>
+                <textarea
+                  rows={2}
+                  value={editingEntry.notes || ''}
+                  onChange={(e) => setEditingEntry({ ...editingEntry, notes: e.target.value })}
+                  className="w-full bg-white/5 border border-white/10 focus:border-cyan-500 px-3 py-2 rounded-xl text-white outline-none resize-none"
+                />
+              </div>
+            </div>
+
+            <div className="pt-2 border-t border-white/5 flex gap-3">
+              <button
+                onClick={() => setEditingEntry(null)}
+                className="flex-1 py-3 rounded-2xl bg-white/5 hover:bg-white/10 text-neutral-300 font-mono font-bold text-xs transition-colors cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => {
+                  onUpdateHistoryEntry(editingEntry);
+                  setEditingEntry(null);
+                }}
+                className="flex-1 py-3 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-neutral-950 font-mono font-black text-xs uppercase tracking-wider shadow-lg shadow-cyan-500/25 transition-all cursor-pointer"
+              >
+                Guardar Cambios
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Interactive Modal to Update Weight & Anthropometrics */}
       {showWeightModal && (
@@ -764,7 +1032,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
                     min="100"
                     max="240"
                     value={newHeightInput}
-                    onChange={(e) => setNewHeightInput(parseInt(e.target.value) || 175)}
+                    onChange={(e) => setNewHeightInput(parseInt(e.target.value) || 178)}
                     className="w-full bg-white/5 border border-white/10 focus:border-cyan-500 px-4 py-2.5 rounded-xl text-white font-mono font-bold text-sm outline-none"
                   />
                   <span className="text-xs font-mono text-neutral-400">CM</span>

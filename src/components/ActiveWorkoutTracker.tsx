@@ -214,44 +214,75 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
     onClose();
   };
 
-  // Active workout timer loop
+  // Timestamp-based anchors so timers stay 100% accurate even when phone screen is locked
+  const workoutAnchorRef = useRef<number>(Date.now() - (initialState?.elapsedSeconds || 0) * 1000);
+  const restEndTimestampRef = useRef<number | null>(
+    initialState?.isResting && initialState?.restTimeRemaining
+      ? Date.now() + initialState.restTimeRemaining * 1000
+      : null
+  );
+
+  // Active workout timer loop (timestamp-based, immune to background tab throttling)
   useEffect(() => {
     if (isPaused || showSummaryModal) return;
 
-    const timer = setInterval(() => {
-      setElapsedSeconds((prev) => {
-        const next = prev + 1;
-        // Estimate calories based on elapsed seconds and heart rate
-        const hrFactor = (smartwatch.liveHeartRate || 135) / 130;
-        const cal = Math.round((next / 60) * 8.5 * hrFactor);
-        setLiveCalories(cal);
-        return next;
-      });
-    }, 1000);
+    // Resync anchor with current elapsedSeconds when unpausing
+    workoutAnchorRef.current = Date.now() - elapsedSeconds * 1000;
 
-    return () => clearInterval(timer);
+    const syncElapsed = () => {
+      const next = Math.max(0, Math.floor((Date.now() - workoutAnchorRef.current) / 1000));
+      setElapsedSeconds(next);
+      const hrFactor = (smartwatch.liveHeartRate || 135) / 130;
+      const cal = Math.round((next / 60) * 8.5 * hrFactor);
+      setLiveCalories(cal);
+    };
+
+    const timer = setInterval(syncElapsed, 1000);
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') syncElapsed();
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
   }, [isPaused, showSummaryModal, smartwatch.liveHeartRate]);
 
-  // Rest countdown timer loop
+  // Rest countdown timer loop (timestamp-based, immune to mobile screen lock)
   useEffect(() => {
     if (!isResting || isPaused) return;
 
-    const restTimer = setInterval(() => {
-      setRestRemaining((prev) => {
-        if (prev <= 1) {
-          clearInterval(restTimer);
-          setIsResting(false);
-          sound.playRestFinished();
-          return 0;
-        }
-        if (prev <= 4) {
+    if (!restEndTimestampRef.current) {
+      restEndTimestampRef.current = Date.now() + restRemaining * 1000;
+    }
+
+    const syncRest = () => {
+      if (!restEndTimestampRef.current) return;
+      const rem = Math.max(0, Math.ceil((restEndTimestampRef.current - Date.now()) / 1000));
+      if (rem <= 0) {
+        restEndTimestampRef.current = null;
+        setRestRemaining(0);
+        setIsResting(false);
+        sound.playRestFinished();
+      } else {
+        if (rem <= 3 && rem !== restRemaining) {
           sound.playBeep(600, 70);
         }
-        return prev - 1;
-      });
-    }, 1000);
+        setRestRemaining(rem);
+      }
+    };
 
-    return () => clearInterval(restTimer);
+    const restTimer = setInterval(syncRest, 500);
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') syncRest();
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    return () => {
+      clearInterval(restTimer);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
   }, [isResting, isPaused]);
 
   const currentExercise = exercises[currentExerciseIndex];
@@ -287,6 +318,7 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
         }
       } else {
         // If unchecking a set, stop any active rest timer
+        restEndTimestampRef.current = null;
         setIsResting(false);
         setRestRemaining(0);
       }
@@ -331,8 +363,9 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
                 }
               }
 
-              // Start auto rest timer
+              // Start auto rest timer with exact end timestamp
               if (exercise.restSeconds > 0) {
+                restEndTimestampRef.current = Date.now() + exercise.restSeconds * 1000;
                 setTotalRestTime(exercise.restSeconds);
                 setRestRemaining(exercise.restSeconds);
                 setIsResting(true);
@@ -1134,13 +1167,17 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
                                 <div className="flex-1 max-w-[64px] sm:max-w-[80px] text-center min-w-0">
                                   <input
                                     type="number"
+                                    inputMode="decimal"
                                     step={isCardio ? "0.1" : "0.5"}
                                     value={set.actualWeightKg}
+                                    onFocus={(e) => e.target.select()}
                                     onChange={(e) => {
-                                      const val = parseFloat(e.target.value) || 0;
-                                      handleUpdateSetVal(set.id, 'actualWeightKg', val - set.actualWeightKg);
+                                      const val = parseFloat(e.target.value);
+                                      const nextVal = isNaN(val) ? 0 : Math.max(0, val);
+                                      handleUpdateSetVal(set.id, 'actualWeightKg', nextVal - set.actualWeightKg);
                                     }}
-                                    className="w-full bg-[#09090b] text-center font-mono font-bold text-xs sm:text-sm rounded-lg sm:rounded-xl py-1 sm:py-1.5 border border-white/10 focus:border-cyan-500 focus:outline-none text-white px-0.5"
+                                    className="w-full bg-[#09090b] text-center font-mono font-bold text-xs sm:text-sm rounded-lg sm:rounded-xl py-1 sm:py-1.5 border border-white/10 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/50 focus:outline-none text-white px-0.5"
+                                    title="Toca para escribir con el teclado"
                                   />
                                   {!isCardio && set.actualWeightKg > 0 && (
                                     <span className="text-[7.5px] sm:text-[9px] text-neutral-400 block font-mono mt-0.5 truncate">1RM:{estimated1rm}k</span>
@@ -1171,12 +1208,16 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
                                 <div className="flex-1 max-w-[50px] sm:max-w-[62px] text-center min-w-0">
                                   <input
                                     type="number"
+                                    inputMode="numeric"
                                     value={set.actualReps}
+                                    onFocus={(e) => e.target.select()}
                                     onChange={(e) => {
-                                      const val = parseInt(e.target.value) || 0;
-                                      handleUpdateSetVal(set.id, 'actualReps', val - set.actualReps);
+                                      const val = parseInt(e.target.value, 10);
+                                      const nextVal = isNaN(val) ? 0 : Math.max(0, val);
+                                      handleUpdateSetVal(set.id, 'actualReps', nextVal - set.actualReps);
                                     }}
-                                    className="w-full bg-[#09090b] text-center font-mono font-bold text-xs sm:text-sm rounded-lg sm:rounded-xl py-1 sm:py-1.5 border border-white/10 focus:border-cyan-500 focus:outline-none text-white px-0.5"
+                                    className="w-full bg-[#09090b] text-center font-mono font-bold text-xs sm:text-sm rounded-lg sm:rounded-xl py-1 sm:py-1.5 border border-white/10 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/50 focus:outline-none text-white px-0.5"
+                                    title="Toca para escribir repeticiones"
                                   />
                                 </div>
                                 <button
@@ -1307,7 +1348,7 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
                   />
                   <path
                     className="text-cyan-400 transition-all duration-1000"
-                    strokeDasharray={`${(restRemaining / totalRestTime) * 100}, 100`}
+                    strokeDasharray={`${(restRemaining / Math.max(1, totalRestTime)) * 100}, 100`}
                     strokeWidth="3.5"
                     strokeLinecap="round"
                     stroke="currentColor"
@@ -1327,15 +1368,37 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
             </div>
 
             {/* Rest control buttons */}
-            <div className="flex items-center gap-2.5 w-full sm:w-auto relative z-10">
+            <div className="flex items-center gap-2 w-full sm:w-auto relative z-10">
               <button
-                onClick={() => setRestRemaining((prev) => prev + 30)}
-                className="flex-1 sm:flex-initial px-4 py-2.5 rounded-2xl bg-white/5 hover:bg-white/10 text-xs font-mono font-bold text-cyan-400 border border-white/10 transition-colors text-center cursor-pointer shadow-sm"
+                onClick={() => {
+                  const next = Math.max(0, restRemaining - 15);
+                  if (next <= 0) {
+                    restEndTimestampRef.current = null;
+                    setRestRemaining(0);
+                    setIsResting(false);
+                  } else {
+                    restEndTimestampRef.current = Date.now() + next * 1000;
+                    setRestRemaining(next);
+                  }
+                }}
+                className="px-3 py-2.5 rounded-2xl bg-white/5 hover:bg-white/10 text-xs font-mono font-bold text-neutral-300 border border-white/10 transition-colors text-center cursor-pointer shadow-sm"
               >
-                +30s Descanso
+                -15s
               </button>
               <button
                 onClick={() => {
+                  const next = restRemaining + 30;
+                  restEndTimestampRef.current = Date.now() + next * 1000;
+                  setTotalRestTime((t) => Math.max(t, next));
+                  setRestRemaining(next);
+                }}
+                className="flex-1 sm:flex-initial px-3.5 py-2.5 rounded-2xl bg-white/5 hover:bg-white/10 text-xs font-mono font-bold text-cyan-400 border border-white/10 transition-colors text-center cursor-pointer shadow-sm"
+              >
+                +30s
+              </button>
+              <button
+                onClick={() => {
+                  restEndTimestampRef.current = null;
                   setIsResting(false);
                   setRestRemaining(0);
                 }}

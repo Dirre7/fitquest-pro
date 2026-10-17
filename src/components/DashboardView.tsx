@@ -21,6 +21,7 @@ import {
   ChevronDown,
   UtensilsCrossed,
   Droplet,
+  CheckCircle2,
 } from 'lucide-react';
 import {
   UserProfile,
@@ -28,6 +29,7 @@ import {
   CommunityChallenge,
   SmartwatchDevice,
   WorkoutHistoryEntry,
+  Achievement,
   Language,
 } from '../types';
 import { translations } from '../lib/i18n';
@@ -37,6 +39,10 @@ import {
   getNextMilestone,
   getXpProgressPercent,
 } from '../lib/progressionEngine';
+import {
+  getLeagueLeaderboard,
+  calculateUserWeeklyXp,
+} from '../lib/leagueEngine';
 
 interface DashboardViewProps {
   user: UserProfile;
@@ -44,6 +50,7 @@ interface DashboardViewProps {
   challenges: CommunityChallenge[];
   smartwatch: SmartwatchDevice;
   history?: WorkoutHistoryEntry[];
+  achievements?: Achievement[];
   lang: Language;
   onStartRoutine: (routine: WorkoutRoutine) => void;
   onNavigateTab: (tab: string) => void;
@@ -58,6 +65,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   challenges,
   smartwatch,
   history = [],
+  achievements = [],
   lang,
   onStartRoutine,
   onNavigateTab,
@@ -67,19 +75,48 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 }) => {
   const t = translations[lang];
 
-  // Active workout selection for "Misión del Día"
-  const [selectedRoutineId, setSelectedRoutineId] = useState<string>(() => {
+  // Smart default routine selection based on active Multi-Day Program or next uncompleted routine
+  const getRecommendedRoutineId = (): string => {
+    const programs = FitStorage.getPrograms();
+    if (user.programProgress) {
+      for (const prog of programs) {
+        const completedDays = user.programProgress[prog.id] || [];
+        if (completedDays.length > 0 && completedDays.length < prog.days.length) {
+          const nextDay = prog.days.find((d) => !completedDays.includes(d.dayNumber));
+          if (nextDay && routines.some((r) => r.id === nextDay.routine.id)) {
+            return nextDay.routine.id;
+          }
+        }
+      }
+    }
     return routines[0]?.id || '';
-  });
+  };
+
+  // Active workout selection for "Misión del Día"
+  const [selectedRoutineId, setSelectedRoutineId] = useState<string>(() => getRecommendedRoutineId());
 
   const currentRoutine = routines.find((r) => r.id === selectedRoutineId) || routines[0];
   const activeChallenge = challenges[0];
+
+  const todayIsoPrefix = new Date().toISOString().split('T')[0];
+  const workoutsToday = (history || []).filter((h) => h.date.startsWith(todayIsoPrefix));
+  const trainedToday = workoutsToday.length > 0;
   
   // Dynamic Athlete Progression calculations
   const currentTier = getLevelTier(user.level || 1);
   const nextMilestone = getNextMilestone(user.level || 1);
   const xpPercent = getXpProgressPercent(user.currentLevelXp, user.nextLevelXp);
   const remainingXp = Math.max(0, (user.nextLevelXp || 500) - (user.currentLevelXp || 0));
+
+  // Dynamic League Leaderboard & Achievement Teaser
+  const userWeeklyXp = calculateUserWeeklyXp(user, history);
+  const leagueEntries = getLeagueLeaderboard(user.league || 'Platinum', user, userWeeklyXp, history);
+  const topTwoRivals = leagueEntries.filter((e) => !e.isCurrentUser).slice(0, 2);
+  const currentUserEntry = leagueEntries.find((e) => e.isCurrentUser) || leagueEntries[0];
+
+  const featuredAchievement =
+    achievements.find((a) => a.unlocked) ||
+    [...achievements].sort((a, b) => b.progress / Math.max(1, b.maxProgress) - a.progress / Math.max(1, a.maxProgress))[0];
 
   // Calculate real workouts completed in the last 7 days
   const workoutsThisWeek = (history || []).filter((h) => {
@@ -102,6 +139,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const displayDistanceKm = Math.max(
     user.stats?.totalDistanceKm || 0,
     (history || []).reduce((s, h) => s + (h.totalDistanceKm || 0), 0)
+  );
+  const displayTotalMinutes = Math.max(
+    user.stats?.totalMinutes || 0,
+    (history || []).reduce((s, h) => s + (h.durationMinutes || 0), 0)
   );
 
   // Determine target muscles for preview badges
@@ -134,9 +175,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 relative z-10">
             <div className="space-y-2.5 max-w-2xl">
               <div className="flex items-center gap-2.5 flex-wrap">
-                <span className="text-xs font-mono font-black uppercase px-3 py-1 rounded-full bg-cyan-500 text-neutral-950 flex items-center gap-1.5 shadow-md shadow-cyan-500/30">
-                  <Zap className="w-3.5 h-3.5 fill-current animate-bounce" /> MISIÓN DEL DÍA
-                </span>
+                {trainedToday ? (
+                  <span className="text-xs font-mono font-black uppercase px-3 py-1 rounded-full bg-emerald-500 text-neutral-950 flex items-center gap-1.5 shadow-md shadow-emerald-500/30">
+                    <CheckCircle2 className="w-3.5 h-3.5" /> MISIÓN DE HOY COMPLETADA ({workoutsToday.length})
+                  </span>
+                ) : (
+                  <span className="text-xs font-mono font-black uppercase px-3 py-1 rounded-full bg-cyan-500 text-neutral-950 flex items-center gap-1.5 shadow-md shadow-cyan-500/30">
+                    <Zap className="w-3.5 h-3.5 fill-current animate-bounce" /> MISIÓN DEL DÍA
+                  </span>
+                )}
                 <span className="text-xs font-mono font-bold text-cyan-300 bg-cyan-500/10 border border-cyan-500/20 px-2.5 py-0.5 rounded-full">
                   +{currentRoutine.xpReward} XP Recompensa
                 </span>
@@ -191,8 +238,24 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 className="w-full lg:w-64 py-4 px-6 rounded-2xl bg-gradient-to-r from-cyan-400 via-cyan-500 to-blue-600 hover:from-cyan-300 hover:to-blue-500 text-neutral-950 font-display font-black text-sm uppercase tracking-wider shadow-[0_0_30px_rgba(6,182,212,0.45)] flex items-center justify-center gap-2.5 transition-all hover:scale-105 active:scale-95 cursor-pointer"
               >
                 <Play className="w-5 h-5 fill-current" />
-                <span>COMENZAR SESIÓN</span>
+                <span>{trainedToday ? 'ENTRENAR OTRA SESIÓN' : 'COMENZAR SESIÓN'}</span>
               </button>
+
+              {/* Quick routine selector dropdown right inside the hero card */}
+              <div className="relative w-full lg:w-64">
+                <select
+                  value={currentRoutine.id}
+                  onChange={(e) => setSelectedRoutineId(e.target.value)}
+                  className="w-full py-2 pl-3 pr-8 rounded-xl bg-neutral-950/80 border border-white/15 text-xs font-mono font-bold text-cyan-300 focus:outline-none focus:border-cyan-400 appearance-none cursor-pointer"
+                >
+                  {routines.map((r) => (
+                    <option key={r.id} value={r.id}>
+                      🎯 {r.title} ({r.durationMinutes}m)
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="w-3.5 h-3.5 text-cyan-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              </div>
 
               <div className="flex gap-2">
                 <button
@@ -200,7 +263,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   className="flex-1 py-2 px-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-mono font-bold text-neutral-300 hover:text-white flex items-center justify-center gap-1.5 transition-all cursor-pointer"
                 >
                   <Layers className="w-3.5 h-3.5 text-cyan-400" />
-                  <span>Cambiar Rutina</span>
+                  <span>Catálogo</span>
                 </button>
 
                 {onOpenQuickStart && (
@@ -312,25 +375,39 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           {/* Goal Ring + Metrics Grid */}
           <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center flex-1 relative z-10 pt-4 border-t border-white/5">
             
-            {/* Circular Mastery Ring & Level Progress */}
+            {/* Circular Mastery Ring & Level Progress (Real SVG Ring 0-100%) */}
             <div className="md:col-span-5 flex flex-col items-center justify-center gap-2 p-3 bg-black/30 rounded-2xl border border-white/5 shadow-inner">
               <div
                 onClick={onOpenLevelRoadmap}
-                className="w-28 h-28 sm:w-32 sm:h-32 rounded-full border-4 flex items-center justify-center relative cursor-pointer hover:scale-105 transition-transform"
+                className="w-28 h-28 sm:w-32 sm:h-32 rounded-full flex items-center justify-center relative cursor-pointer hover:scale-105 transition-transform"
                 style={{
-                  borderColor: `${currentTier.accentColor}25`,
                   boxShadow: `0 0 25px ${currentTier.glowColor}`,
                 }}
                 title="Haz clic para explorar la Ruta de Niveles"
               >
-                <div 
-                  className="absolute inset-0 border-4 rounded-full transition-all duration-700"
-                  style={{
-                    borderColor: currentTier.accentColor,
-                    clipPath: xpPercent >= 75 ? 'polygon(50% 0%, 100% 0%, 100% 100%, 0% 100%, 0% 50%, 50% 50%)' : 'polygon(50% 0%, 100% 0%, 100% 75%, 50% 50%)'
-                  }}
-                />
-                <div className="text-center">
+                <svg className="w-full h-full -rotate-90" viewBox="0 0 120 120">
+                  <circle
+                    cx="60"
+                    cy="60"
+                    r="52"
+                    fill="none"
+                    stroke={`${currentTier.accentColor}25`}
+                    strokeWidth="8"
+                  />
+                  <circle
+                    cx="60"
+                    cy="60"
+                    r="52"
+                    fill="none"
+                    stroke={currentTier.accentColor}
+                    strokeWidth="8"
+                    strokeLinecap="round"
+                    strokeDasharray={2 * Math.PI * 52}
+                    strokeDashoffset={2 * Math.PI * 52 * (1 - Math.min(100, Math.max(0, xpPercent)) / 100)}
+                    className="transition-all duration-700"
+                  />
+                </svg>
+                <div className="text-center absolute inset-0 flex flex-col items-center justify-center">
                   <span className="text-2xl sm:text-3xl font-black font-mono text-white tracking-tight block">
                     {xpPercent}<span className="text-xs font-normal opacity-50">%</span>
                   </span>
@@ -450,70 +527,88 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <div className="bg-[#121214] border border-white/5 rounded-3xl p-6 flex flex-col shadow-2xl">
             <div className="flex items-center justify-between mb-5">
               <h3 className="text-xs font-mono font-bold uppercase tracking-widest text-neutral-400">
-                GLOBAL LEADERBOARD
+                CLASIFICACIÓN LIGA {user.league}
               </h3>
               <button 
                 onClick={() => onNavigateTab('leaderboard')}
-                className="text-xs font-mono font-semibold text-cyan-400 hover:text-cyan-300 transition-colors"
+                className="text-xs font-mono font-semibold text-cyan-400 hover:text-cyan-300 transition-colors cursor-pointer"
               >
-                VER TOP 100 →
+                VER LIGA →
               </button>
             </div>
 
             <div className="space-y-3 flex-1">
-              <div className="flex items-center gap-3.5 bg-white/5 p-3.5 rounded-2xl border border-white/5 hover:border-white/10 transition-colors">
-                <div className="text-cyan-400 font-mono font-bold w-6 text-sm">01</div>
-                <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-yellow-400 to-orange-500 flex items-center justify-center text-black font-black text-xs shadow-md">
-                  👑
+              {topTwoRivals.map((rival, idx) => (
+                <div
+                  key={rival.name}
+                  className="flex items-center gap-3.5 bg-white/5 p-3.5 rounded-2xl border border-white/5 hover:border-white/10 transition-colors"
+                >
+                  <div className="text-neutral-400 font-mono font-bold w-6 text-sm">
+                    0{rival.rank}
+                  </div>
+                  <img
+                    src={rival.avatar}
+                    alt={rival.name}
+                    className="w-10 h-10 rounded-2xl object-cover border border-white/10 shadow-md"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold text-white truncate">{rival.name}</p>
+                    <p className="text-[10px] text-neutral-400 font-mono">
+                      Nvl {rival.level} • {rival.xpEarned.toLocaleString()} XP sem.
+                    </p>
+                  </div>
+                  <div className="text-xs font-mono font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-lg border border-emerald-500/20">
+                    {idx === 0 ? '👑' : '🥈'}
+                  </div>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-bold text-white truncate">Marcus_Fit</p>
-                  <p className="text-[10px] text-neutral-400 font-mono">14,850 XP</p>
-                </div>
-                <div className="text-xs font-mono font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-lg border border-emerald-500/20">
-                  +420
-                </div>
-              </div>
+              ))}
 
-              <div className="flex items-center gap-3.5 bg-white/5 p-3.5 rounded-2xl border border-white/5 hover:border-white/10 transition-colors">
-                <div className="text-neutral-400 font-mono font-bold w-6 text-sm">02</div>
-                <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-neutral-400 to-neutral-600 flex items-center justify-center text-white font-bold text-xs shadow-md">
-                  🥈
+              {currentUserEntry && (
+                <div className="flex items-center gap-3.5 bg-cyan-500/10 p-3.5 rounded-2xl border border-cyan-500/30 shadow-[0_0_15px_rgba(6,182,212,0.1)]">
+                  <div className="text-cyan-400 font-mono font-bold w-6 text-sm">
+                    {currentUserEntry.rank < 10 ? `0${currentUserEntry.rank}` : currentUserEntry.rank}
+                  </div>
+                  <div className="w-10 h-10 rounded-2xl bg-cyan-500 flex items-center justify-center text-neutral-950 font-bold text-xs shadow-[0_0_10px_rgba(6,182,212,0.4)]">
+                    TÚ
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold text-white truncate">{user.name}</p>
+                    <p className="text-[10px] text-cyan-300 font-mono">
+                      Nvl {user.level} • {currentUserEntry.xpEarned.toLocaleString()} XP sem.
+                    </p>
+                  </div>
+                  <div className="text-xs font-mono font-bold text-cyan-400">
+                    #{currentUserEntry.rank}
+                  </div>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-bold text-white truncate">Elena_Active</p>
-                  <p className="text-[10px] text-neutral-400 font-mono">13,920 XP</p>
-                </div>
-                <div className="text-xs font-mono font-bold text-neutral-400">
-                  +210
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3.5 bg-cyan-500/10 p-3.5 rounded-2xl border border-cyan-500/30 shadow-[0_0_15px_rgba(6,182,212,0.1)]">
-                <div className="text-cyan-400 font-mono font-bold w-6 text-sm">03</div>
-                <div className="w-10 h-10 rounded-2xl bg-cyan-500 flex items-center justify-center text-neutral-950 font-bold text-xs shadow-[0_0_10px_rgba(6,182,212,0.4)]">
-                  TÚ
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-bold text-white truncate">{user.name}</p>
-                  <p className="text-[10px] text-cyan-300 font-mono">{user.currentLevelXp} XP</p>
-                </div>
-                <div className="text-xs font-mono font-bold text-cyan-400">
-                  +850
-                </div>
-              </div>
+              )}
             </div>
 
             {/* Achievement Unlocked Teaser Banner */}
-            <div className="mt-5 p-4 bg-cyan-500/10 border border-cyan-500/20 rounded-2xl shadow-inner">
-              <p className="text-[10px] font-mono uppercase font-bold text-cyan-400 mb-2">LOGRO DESTACADO</p>
-              <div className="flex gap-3 items-center">
-                <div className="w-8 h-8 rounded-xl bg-cyan-500 flex items-center justify-center text-neutral-950 font-black shadow-[0_0_10px_rgba(6,182,212,0.4)]">
-                  <Sparkles className="w-4 h-4" />
+            {featuredAchievement && (
+              <div
+                onClick={() => onNavigateTab('achievements')}
+                className="mt-5 p-4 bg-cyan-500/10 hover:bg-cyan-500/15 border border-cyan-500/20 rounded-2xl shadow-inner cursor-pointer transition-colors"
+              >
+                <div className="flex items-center justify-between mb-1.5">
+                  <p className="text-[10px] font-mono uppercase font-bold text-cyan-400">
+                    {featuredAchievement.unlocked ? '🏆 LOGRO DESBLOQUEADO' : '🎯 PRÓXIMO LOGRO EN PROGRESO'}
+                  </p>
+                  <span className="text-[10px] font-mono font-bold text-cyan-300">
+                    {featuredAchievement.progress}/{featuredAchievement.maxProgress}
+                  </span>
                 </div>
-                <p className="text-xs font-medium text-neutral-200">Early Bird: 5 sesiones matutinas consecutivas.</p>
+                <div className="flex gap-3 items-center">
+                  <div className="w-8 h-8 rounded-xl bg-cyan-500 flex items-center justify-center text-neutral-950 font-black shadow-[0_0_10px_rgba(6,182,212,0.4)] shrink-0">
+                    <Sparkles className="w-4 h-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs font-bold text-white truncate">{featuredAchievement.title}</p>
+                    <p className="text-[11px] text-neutral-300 line-clamp-1">{featuredAchievement.description}</p>
+                  </div>
+                </div>
               </div>
-            </div>
+            )}
           </div>
 
           {/* Join Sprint / Community Challenge Card matching Immersive UI Design */}
@@ -686,22 +781,22 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <Clock className="w-4 h-4 text-cyan-400" />
           </div>
           <p className="font-mono font-extrabold text-3xl text-white">
-            {user.stats.totalMinutes < 60 ? (
+            {displayTotalMinutes < 60 ? (
               <>
-                {user.stats.totalMinutes}{' '}
+                {displayTotalMinutes}{' '}
                 <span className="text-sm font-sans font-normal text-neutral-400">min</span>
               </>
             ) : (
               <>
-                {(user.stats.totalMinutes / 60).toFixed(1)}{' '}
+                {(displayTotalMinutes / 60).toFixed(1)}{' '}
                 <span className="text-sm font-sans font-normal text-neutral-400">horas</span>
               </>
             )}
           </p>
           <span className="text-[11px] text-neutral-400 font-mono">
-            {user.stats.totalMinutes < 60
-              ? `${(user.stats.totalMinutes / 60).toFixed(1)} h totales`
-              : `${user.stats.totalMinutes} min acumulados`}
+            {displayTotalMinutes < 60
+              ? `${(displayTotalMinutes / 60).toFixed(1)} h totales`
+              : `${displayTotalMinutes} min acumulados`}
           </span>
         </div>
       </div>

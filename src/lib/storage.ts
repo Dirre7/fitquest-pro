@@ -87,10 +87,14 @@ export class FitStorage {
       const localWeighIns = this.getSaturdayWeighIns();
 
       const localHistory = this.getHistory();
+      const localCustomRoutines = this.getRoutines().filter((r) => r.isCustom);
+      const localAchievements = this.getAchievements();
 
       await setDoc(userRef, {
         ...user,
         workoutHistory: localHistory,
+        customRoutines: localCustomRoutines,
+        achievementsState: localAchievements,
         nutritionLogs: localNutritionLogs,
         saturdayWeighIns: localWeighIns,
         id: uid,
@@ -500,7 +504,44 @@ export class FitStorage {
       const mergedWeighIns = Array.from(weighInsMap.values()).sort((a, b) => b.date.localeCompare(a.date));
       if (mergedWeighIns.length > 0) {
         localStorage.setItem(KEYS.SATURDAY_WEIGH_INS, JSON.stringify(mergedWeighIns));
+        const latestWeight = mergedWeighIns[0].weightKg;
+        if (!userProfile.weightKg || userProfile.weightKg === 75) {
+          userProfile.weightKg = latestWeight;
+        }
+        if (!userProfile.targetWeightKg || userProfile.targetWeightKg === 72) {
+          userProfile.targetWeightKg = RENATO_PLAN_CONFIG.targetWeightKg;
+        }
       }
+
+      // 3. Merge Custom Routines from Cloud + Local
+      const customRoutinesMap = new Map<string, WorkoutRoutine>();
+      if (!isCloudResetActive) {
+        this.getRoutines().filter((r) => r.isCustom).forEach((r) => customRoutinesMap.set(r.id, r));
+      }
+      if (Array.isArray(cloudData.customRoutines)) {
+        (cloudData.customRoutines as WorkoutRoutine[]).forEach((r) => {
+          if (r && r.id) customRoutinesMap.set(r.id, { ...r, isCustom: true });
+        });
+      }
+      routinesList = [...defaultRoutines, ...Array.from(customRoutinesMap.values())];
+      localStorage.setItem(KEYS.ROUTINES, JSON.stringify(routinesList));
+
+      // 4. Merge Achievements State from Cloud + Local
+      const localAch = isCloudResetActive ? createFreshAchievements() : this.getAchievements();
+      const cloudAch: Achievement[] = Array.isArray(cloudData.achievementsState) ? cloudData.achievementsState : [];
+      const cloudAchMap = new Map(cloudAch.map((a) => [a.id, a]));
+      achievementsList = localAch.map((base) => {
+        const c = cloudAchMap.get(base.id);
+        if (!c) return base;
+        return {
+          ...base,
+          currentProgress: Math.max(base.currentProgress || 0, c.currentProgress || 0),
+          unlocked: Boolean(base.unlocked || c.unlocked),
+          unlockedAt: base.unlockedAt || c.unlockedAt,
+          rewardClaimed: Boolean((base as any).rewardClaimed || (c as any).rewardClaimed),
+        };
+      });
+      localStorage.setItem(KEYS.ACHIEVEMENTS, JSON.stringify(achievementsList));
 
       // Update local storage with combined sanitized history & user, and sync clean stats to cloud
       this.saveHistory(finalHistory);
@@ -542,9 +583,23 @@ export class FitStorage {
   public static saveRoutines(routines: WorkoutRoutine[]) {
     try {
       localStorage.setItem(KEYS.ROUTINES, JSON.stringify(routines));
+      const uid = auth.currentUser?.uid;
+      if (uid) {
+        const customOnly = routines.filter((r) => r.isCustom);
+        setDoc(doc(db, 'users', uid), {
+          customRoutines: customOnly,
+          updatedAt: new Date().toISOString(),
+        }, { merge: true }).catch((err) => console.warn('Custom routines cloud sync warning:', err));
+      }
     } catch (e) {
       console.error('Failed to save routines', e);
     }
+  }
+
+  public static deleteCustomRoutine(routineId: string): WorkoutRoutine[] {
+    const updated = this.getRoutines().filter((r) => !(r.isCustom && r.id === routineId));
+    this.saveRoutines(updated);
+    return updated;
   }
 
   public static getPrograms(): WorkoutProgram[] {
@@ -614,6 +669,7 @@ export class FitStorage {
           currentProgress: stored.currentProgress || 0,
           unlocked: stored.unlocked || false,
           unlockedAt: stored.unlockedAt,
+          rewardClaimed: (stored as any).rewardClaimed || false,
         };
       });
     } catch {
@@ -624,6 +680,13 @@ export class FitStorage {
   public static saveAchievements(achievements: Achievement[]) {
     try {
       localStorage.setItem(KEYS.ACHIEVEMENTS, JSON.stringify(achievements));
+      const uid = auth.currentUser?.uid;
+      if (uid) {
+        setDoc(doc(db, 'users', uid), {
+          achievementsState: achievements,
+          updatedAt: new Date().toISOString(),
+        }, { merge: true }).catch((err) => console.warn('Achievements cloud sync warning:', err));
+      }
     } catch (e) {
       console.error('Failed to save achievements', e);
     }
@@ -776,6 +839,59 @@ export class FitStorage {
         console.error('Failed to save workout entry to Firestore', err);
       }
     }
+  }
+
+  public static async deleteHistoryEntry(entryId: string, user?: UserProfile): Promise<WorkoutHistoryEntry[]> {
+    const history = this.getHistory();
+    const updated = history.filter((h) => h.id !== entryId);
+    this.saveHistory(updated);
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('fitquest_history_updated'));
+    }
+
+    const uid = auth.currentUser?.uid || (user?.id && !user.id.startsWith('guest_') ? user.id : null);
+    if (uid) {
+      try {
+        await setDoc(doc(db, 'users', uid), {
+          workoutHistory: updated,
+          updatedAt: new Date().toISOString(),
+        }, { merge: true });
+
+        await deleteDoc(doc(db, 'users', uid, 'history', entryId)).catch(() => {});
+      } catch (err) {
+        console.error('Failed to delete workout entry from Firestore', err);
+      }
+    }
+    return updated;
+  }
+
+  public static async updateHistoryEntry(updatedEntry: WorkoutHistoryEntry, user?: UserProfile): Promise<WorkoutHistoryEntry[]> {
+    const history = this.getHistory();
+    const updated = history.map((h) => (h.id === updatedEntry.id ? updatedEntry : h));
+    this.saveHistory(updated);
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('fitquest_history_updated'));
+    }
+
+    const uid = auth.currentUser?.uid || (user?.id && !user.id.startsWith('guest_') ? user.id : null);
+    if (uid) {
+      try {
+        await setDoc(doc(db, 'users', uid), {
+          workoutHistory: updated,
+          updatedAt: new Date().toISOString(),
+        }, { merge: true });
+
+        await setDoc(doc(db, 'users', uid, 'history', updatedEntry.id), {
+          ...updatedEntry,
+          updatedAt: new Date().toISOString(),
+        }, { merge: true });
+      } catch (err) {
+        console.error('Failed to update workout entry in Firestore', err);
+      }
+    }
+    return updated;
   }
 
   public static addXp(amount: number, currentUser?: UserProfile): UserProfile {
@@ -1191,6 +1307,15 @@ export class FitStorage {
     };
     this.saveUser(updatedUser);
     return updatedUser;
+  }
+
+  public static getAllNutritionLogs(): Record<string, DailyNutritionLog> {
+    try {
+      const logsRaw = localStorage.getItem(KEYS.NUTRITION_LOGS);
+      return logsRaw ? JSON.parse(logsRaw) : {};
+    } catch {
+      return {};
+    }
   }
 
   public static getNutritionLog(dateStr: string): DailyNutritionLog {

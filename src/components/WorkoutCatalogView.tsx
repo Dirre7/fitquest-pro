@@ -20,12 +20,14 @@ import {
   Play,
   Lock,
   RotateCcw,
-  CheckCircle2
+  CheckCircle2,
+  Edit2,
 } from 'lucide-react';
 import { WorkoutRoutine, WorkoutProgram, ProgramDay, Exercise, Language, UserProfile } from '../types';
 import { translations } from '../lib/i18n';
 import { sound } from '../lib/soundFx';
 import { FitStorage } from '../lib/storage';
+import { ExerciseSelectorModal } from './ExerciseSelectorModal';
 
 interface WorkoutCatalogViewProps {
   routines: WorkoutRoutine[];
@@ -33,6 +35,7 @@ interface WorkoutCatalogViewProps {
   lang: Language;
   onStartRoutine: (routine: WorkoutRoutine) => void;
   onCreateRoutine: (routine: WorkoutRoutine) => void;
+  onDeleteRoutine?: (routineId: string) => void;
   onUpdateProgramProgress?: (progress: { [id: string]: number }) => void;
 }
 
@@ -42,6 +45,7 @@ export const WorkoutCatalogView: React.FC<WorkoutCatalogViewProps> = ({
   lang,
   onStartRoutine,
   onCreateRoutine,
+  onDeleteRoutine,
   onUpdateProgramProgress,
 }) => {
   const t = translations[lang];
@@ -63,10 +67,13 @@ export const WorkoutCatalogView: React.FC<WorkoutCatalogViewProps> = ({
   const [selectedDifficulty, setSelectedDifficulty] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [showCreateModal, setShowCreateModal] = useState<boolean>(false);
+  const [editingRoutineId, setEditingRoutineId] = useState<string | null>(null);
+  const [confirmDeleteRoutineId, setConfirmDeleteRoutineId] = useState<string | null>(null);
+  const [showExerciseSelector, setShowExerciseSelector] = useState<boolean>(false);
   const [expandedRoutineId, setExpandedRoutineId] = useState<string | null>(null);
   const [expandedProgramId, setExpandedProgramId] = useState<string | null>('prog_ppl_3day');
 
-  // New Custom Routine Form State
+  // New / Edit Custom Routine Form State
   const [newTitle, setNewTitle] = useState<string>('');
   const [newDescription, setNewDescription] = useState<string>('');
   const [newCategory, setNewCategory] = useState<WorkoutRoutine['category']>('Strength');
@@ -86,6 +93,41 @@ export const WorkoutCatalogView: React.FC<WorkoutCatalogViewProps> = ({
       ],
     },
   ]);
+
+  const handleOpenCreateModal = () => {
+    setEditingRoutineId(null);
+    setNewTitle('');
+    setNewDescription('');
+    setNewCategory('Strength');
+    setNewDifficulty('Intermediate');
+    setNewDuration(45);
+    setNewExercises([
+      {
+        id: `ex_${Date.now()}_1`,
+        name: 'Press Militar con Mancuernas',
+        muscleGroup: 'Shoulders',
+        equipment: 'Dumbbell',
+        restSeconds: 60,
+        sets: [
+          { id: 'cs1', setNumber: 1, targetReps: 10, actualReps: 10, targetWeightKg: 20, actualWeightKg: 20, completed: false },
+          { id: 'cs2', setNumber: 2, targetReps: 10, actualReps: 10, targetWeightKg: 20, actualWeightKg: 20, completed: false },
+          { id: 'cs3', setNumber: 3, targetReps: 8, actualReps: 8, targetWeightKg: 22.5, actualWeightKg: 22.5, completed: false },
+        ],
+      },
+    ]);
+    setShowCreateModal(true);
+  };
+
+  const handleOpenEditRoutine = (routine: WorkoutRoutine) => {
+    setEditingRoutineId(routine.id);
+    setNewTitle(routine.title);
+    setNewDescription(routine.description);
+    setNewCategory(routine.category);
+    setNewDifficulty(routine.difficulty);
+    setNewDuration(routine.durationMinutes);
+    setNewExercises(routine.exercises.map((ex) => ({ ...ex, sets: ex.sets.map((s) => ({ ...s })) })));
+    setShowCreateModal(true);
+  };
 
   const categories = [
     { id: 'all', label: t.allCategories },
@@ -124,12 +166,12 @@ export const WorkoutCatalogView: React.FC<WorkoutCatalogViewProps> = ({
   };
 
   const handleSaveCustomRoutine = () => {
-    if (!newTitle.trim()) return;
+    if (!newTitle.trim() || newExercises.length === 0) return;
 
     const routine: WorkoutRoutine = {
-      id: `rt_custom_${Date.now()}`,
-      title: newTitle,
-      description: newDescription || 'Rutina personalizada diseñada por el usuario.',
+      id: editingRoutineId || `rt_custom_${Date.now()}`,
+      title: newTitle.trim(),
+      description: newDescription.trim() || 'Rutina personalizada diseñada por el usuario.',
       category: newCategory,
       difficulty: newDifficulty,
       durationMinutes: newDuration,
@@ -144,6 +186,7 @@ export const WorkoutCatalogView: React.FC<WorkoutCatalogViewProps> = ({
     onCreateRoutine(routine);
     sound.playAchievement();
     setShowCreateModal(false);
+    setEditingRoutineId(null);
     setNewTitle('');
     setNewDescription('');
   };
@@ -219,8 +262,8 @@ export const WorkoutCatalogView: React.FC<WorkoutCatalogViewProps> = ({
           {catalogTab === 'routines' && (
             <button
               id="btn-open-create-routine"
-              onClick={() => setShowCreateModal(true)}
-              className="px-3.5 py-2 rounded-2xl bg-white/5 hover:bg-white/10 text-cyan-400 border border-cyan-500/30 font-mono font-bold text-xs shadow flex items-center gap-1.5 transition-all shrink-0"
+              onClick={handleOpenCreateModal}
+              className="px-3.5 py-2 rounded-2xl bg-white/5 hover:bg-white/10 text-cyan-400 border border-cyan-500/30 font-mono font-bold text-xs shadow flex items-center gap-1.5 transition-all shrink-0 cursor-pointer"
             >
               <Plus className="w-3.5 h-3.5 stroke-[3]" />
               <span className="hidden sm:inline">Nueva Rutina</span>
@@ -477,7 +520,7 @@ export const WorkoutCatalogView: React.FC<WorkoutCatalogViewProps> = ({
                   <div className="relative z-10">
                     {/* Badges row */}
                     <div className="flex items-center justify-between gap-2 mb-3">
-                      <div className="flex items-center gap-1.5">
+                      <div className="flex items-center gap-1.5 flex-wrap">
                         <span className="text-[9px] font-mono font-black px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 uppercase tracking-wider">
                           {routine.category}
                         </span>
@@ -490,9 +533,55 @@ export const WorkoutCatalogView: React.FC<WorkoutCatalogViewProps> = ({
                           </span>
                         )}
                       </div>
-                      <span className="text-xs font-mono font-black text-cyan-400 bg-cyan-500/10 px-2.5 py-0.5 rounded-xl border border-cyan-500/20">
-                        +{routine.xpReward} XP
-                      </span>
+                      <div className="flex items-center gap-1.5">
+                        {routine.isCustom && (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => handleOpenEditRoutine(routine)}
+                              className="p-1.5 rounded-xl bg-white/5 hover:bg-cyan-500/20 text-neutral-400 hover:text-cyan-400 border border-white/5 hover:border-cyan-500/30 transition-all cursor-pointer"
+                              title="Editar rutina personalizada"
+                            >
+                              <Edit2 className="w-3.5 h-3.5" />
+                            </button>
+                            {onDeleteRoutine && (
+                              confirmDeleteRoutineId === routine.id ? (
+                                <div className="flex items-center gap-1">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      onDeleteRoutine(routine.id);
+                                      setConfirmDeleteRoutineId(null);
+                                    }}
+                                    className="px-2 py-1 rounded-xl bg-red-500 text-neutral-950 font-mono font-black text-[10px] hover:bg-red-400 transition-colors cursor-pointer"
+                                  >
+                                    Borrar
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => setConfirmDeleteRoutineId(null)}
+                                    className="p-1 rounded-xl bg-white/10 text-neutral-300 hover:text-white cursor-pointer"
+                                  >
+                                    <X className="w-3 h-3" />
+                                  </button>
+                                </div>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => setConfirmDeleteRoutineId(routine.id)}
+                                  className="p-1.5 rounded-xl bg-white/5 hover:bg-red-500/20 text-neutral-400 hover:text-red-400 border border-white/5 hover:border-red-500/30 transition-all cursor-pointer"
+                                  title="Eliminar rutina personalizada"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              )
+                            )}
+                          </>
+                        )}
+                        <span className="text-xs font-mono font-black text-cyan-400 bg-cyan-500/10 px-2.5 py-0.5 rounded-xl border border-cyan-500/20">
+                          +{routine.xpReward} XP
+                        </span>
+                      </div>
                     </div>
 
                     {/* Title and description */}
@@ -580,22 +669,25 @@ export const WorkoutCatalogView: React.FC<WorkoutCatalogViewProps> = ({
         </>
       )}
 
-      {/* Custom Routine Creation Modal */}
+      {/* Custom Routine Creation / Edit Modal */}
       {showCreateModal && (
         <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-xl flex items-center justify-center p-4">
           <div className="bg-[#121214] border border-cyan-500/30 rounded-3xl p-6 max-w-lg w-full shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto animate-in zoom-in-95">
             <div className="flex items-center justify-between pb-3 border-b border-white/5">
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 rounded-xl bg-cyan-500/10 text-cyan-400 flex items-center justify-center">
-                  <Plus className="w-5 h-5" />
+                  {editingRoutineId ? <Edit2 className="w-4 h-4" /> : <Plus className="w-5 h-5" />}
                 </div>
                 <h3 className="font-display font-bold text-white text-lg">
-                  {t.createCustom}
+                  {editingRoutineId ? 'Editar Rutina Personalizada' : t.createCustom}
                 </h3>
               </div>
               <button
-                onClick={() => setShowCreateModal(false)}
-                className="p-1 rounded-xl text-neutral-400 hover:text-white hover:bg-white/5"
+                onClick={() => {
+                  setShowCreateModal(false);
+                  setEditingRoutineId(null);
+                }}
+                className="p-1 rounded-xl text-neutral-400 hover:text-white hover:bg-white/5 cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -654,18 +746,28 @@ export const WorkoutCatalogView: React.FC<WorkoutCatalogViewProps> = ({
             </div>
 
             {/* Exercise Builder in Modal */}
-            <div className="pt-2 border-t border-white/5 space-y-2">
-              <div className="flex items-center justify-between">
+            <div className="pt-2 border-t border-white/5 space-y-2.5">
+              <div className="flex items-center justify-between flex-wrap gap-2">
                 <h4 className="text-xs font-mono font-bold text-white">Ejercicios ({newExercises.length})</h4>
-                <button
-                  onClick={handleAddExerciseToForm}
-                  className="text-xs font-mono text-cyan-400 hover:underline flex items-center gap-1"
-                >
-                  <Plus className="w-3.5 h-3.5" /> Agregar
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowExerciseSelector(true)}
+                    className="px-2.5 py-1 rounded-xl bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-500/30 text-[11px] font-mono font-bold text-cyan-300 flex items-center gap-1 cursor-pointer transition-colors"
+                  >
+                    <Search className="w-3 h-3" /> Catálogo (+100)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleAddExerciseToForm}
+                    className="px-2.5 py-1 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-[11px] font-mono font-bold text-neutral-300 flex items-center gap-1 cursor-pointer transition-colors"
+                  >
+                    <Plus className="w-3 h-3" /> Libre
+                  </button>
+                </div>
               </div>
 
-              <div className="space-y-2 max-h-48 overflow-y-auto">
+              <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
                 {newExercises.map((ex, idx) => (
                   <div key={ex.id} className="p-3 bg-white/5 rounded-xl border border-white/5 space-y-2">
                     <div className="flex items-center justify-between gap-2">
@@ -674,19 +776,27 @@ export const WorkoutCatalogView: React.FC<WorkoutCatalogViewProps> = ({
                         value={ex.name}
                         onChange={(e) => {
                           const updated = [...newExercises];
-                          updated[idx].name = e.target.value;
+                          updated[idx] = { ...updated[idx], name: e.target.value };
                           setNewExercises(updated);
                         }}
-                        className="bg-transparent font-medium text-xs text-white border-b border-white/10 focus:border-cyan-500 focus:outline-none flex-1 py-0.5"
+                        className="bg-transparent font-bold text-xs text-white border-b border-white/10 focus:border-cyan-500 focus:outline-none flex-1 py-0.5"
                       />
                       {newExercises.length > 1 && (
                         <button
+                          type="button"
                           onClick={() => setNewExercises(newExercises.filter((_, i) => i !== idx))}
-                          className="text-neutral-500 hover:text-red-400"
+                          className="text-neutral-500 hover:text-red-400 cursor-pointer"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
                       )}
+                    </div>
+                    <div className="flex items-center gap-3 text-[10px] font-mono text-neutral-400">
+                      <span>{ex.muscleGroup}</span>
+                      <span>•</span>
+                      <span>{ex.sets.length} series</span>
+                      <span>•</span>
+                      <span>{ex.restSeconds}s descanso</span>
                     </div>
                   </div>
                 ))}
@@ -696,21 +806,36 @@ export const WorkoutCatalogView: React.FC<WorkoutCatalogViewProps> = ({
             {/* Actions */}
             <div className="flex gap-3 pt-3 border-t border-white/5">
               <button
-                onClick={() => setShowCreateModal(false)}
-                className="flex-1 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-neutral-300 text-xs font-mono font-bold"
+                onClick={() => {
+                  setShowCreateModal(false);
+                  setEditingRoutineId(null);
+                }}
+                className="flex-1 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-neutral-300 text-xs font-mono font-bold cursor-pointer"
               >
                 Cancelar
               </button>
               <button
                 onClick={handleSaveCustomRoutine}
-                className="flex-1 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-neutral-950 text-xs font-mono font-bold shadow-md shadow-cyan-500/25"
+                className="flex-1 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-neutral-950 text-xs font-mono font-bold shadow-md shadow-cyan-500/25 cursor-pointer"
               >
-                Guardar Rutina
+                {editingRoutineId ? 'Guardar Cambios' : 'Guardar Rutina'}
               </button>
             </div>
           </div>
         </div>
       )}
+
+      {/* Exercise Selector Modal from +100 Exercise Database */}
+      <ExerciseSelectorModal
+        isOpen={showExerciseSelector}
+        onClose={() => setShowExerciseSelector(false)}
+        title="Añadir Ejercicios a la Rutina"
+        buttonLabel="Añadir a la Rutina"
+        onSelectExercises={(selectedExercises) => {
+          setNewExercises((prev) => [...prev, ...selectedExercises]);
+          setShowExerciseSelector(false);
+        }}
+      />
     </div>
   );
 };

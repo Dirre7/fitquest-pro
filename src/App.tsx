@@ -265,17 +265,6 @@ export default function App() {
               activeSessionClaimedAt?: string;
             };
 
-            // Single Active Session Exclusion Check (Móvil vs Tablet)
-            if (
-              data.activeSessionDeviceId &&
-              data.activeSessionDeviceId !== currentDeviceId
-            ) {
-              setIsSessionRevoked(true);
-              setRevokingDeviceName(data.activeSessionDeviceName || 'Tablet / Móvil');
-              sound.playWarning();
-              return;
-            }
-            
             const localResetAt = localStorage.getItem('fitquest_last_reset_at');
             const isSnapshotReset = Boolean(
               (data.level === 1 && (data.xp === 0 || !data.xp)) &&
@@ -292,24 +281,63 @@ export default function App() {
               setChallenges(defaultChallenges.map(c => ({ ...c, currentProgress: 0, completed: false })));
             }
 
-            // Real-time synchronization of workout history from master user document (identical to nutritionLogs)
+            // Real-time synchronization of workout history from master user document
             if (Array.isArray((data as any).workoutHistory)) {
               try {
                 const cloudHistory = (data as any).workoutHistory as WorkoutHistoryEntry[];
                 const localHistory = FitStorage.getHistory();
-                const historyMap = new Map<string, WorkoutHistoryEntry>();
-                localHistory.forEach((h) => historyMap.set(h.id, h));
-                cloudHistory.forEach((h) => historyMap.set(h.id, h));
-                const mergedHistory = Array.from(historyMap.values()).sort(
+                const sortedCloud = [...cloudHistory].sort(
                   (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
                 );
-                if (mergedHistory.length !== localHistory.length) {
-                  FitStorage.saveHistory(mergedHistory);
-                  setHistory(mergedHistory);
+                if (JSON.stringify(sortedCloud) !== JSON.stringify(localHistory)) {
+                  FitStorage.saveHistory(sortedCloud);
+                  setHistory(sortedCloud);
                   window.dispatchEvent(new CustomEvent('fitquest_history_updated'));
                 }
               } catch (e) {
                 console.warn('Live sync history parsing notice:', e);
+              }
+            }
+
+            // Real-time synchronization of custom routines
+            if (Array.isArray((data as any).customRoutines)) {
+              try {
+                const cloudCustom = (data as any).customRoutines as WorkoutRoutine[];
+                const currentRoutines = FitStorage.getRoutines();
+                const defaultsOnly = currentRoutines.filter((r) => !r.isCustom);
+                const mergedRoutines = [...defaultsOnly, ...cloudCustom.map((r) => ({ ...r, isCustom: true }))];
+                if (JSON.stringify(mergedRoutines) !== JSON.stringify(currentRoutines)) {
+                  localStorage.setItem('fitquest_routines', JSON.stringify(mergedRoutines));
+                  setRoutines(mergedRoutines);
+                }
+              } catch (e) {
+                console.warn('Live sync custom routines notice:', e);
+              }
+            }
+
+            // Real-time synchronization of achievements state
+            if (Array.isArray((data as any).achievementsState)) {
+              try {
+                const cloudAch = (data as any).achievementsState as Achievement[];
+                const currentAch = FitStorage.getAchievements();
+                const cloudMap = new Map(cloudAch.map((a) => [a.id, a]));
+                const mergedAch = currentAch.map((base) => {
+                  const c = cloudMap.get(base.id);
+                  if (!c) return base;
+                  return {
+                    ...base,
+                    currentProgress: Math.max(base.currentProgress || 0, c.currentProgress || 0),
+                    unlocked: Boolean(base.unlocked || c.unlocked),
+                    unlockedAt: base.unlockedAt || c.unlockedAt,
+                    rewardClaimed: Boolean((base as any).rewardClaimed || (c as any).rewardClaimed),
+                  };
+                });
+                if (JSON.stringify(mergedAch) !== JSON.stringify(currentAch)) {
+                  localStorage.setItem('fitquest_achievements', JSON.stringify(mergedAch));
+                  setAchievements(mergedAch);
+                }
+              } catch (e) {
+                console.warn('Live sync achievements notice:', e);
               }
             }
 
@@ -719,6 +747,22 @@ export default function App() {
     const updatedHistory = FitStorage.getHistory();
     setHistory(updatedHistory);
 
+    // 1b. Automatically switch today's Nutrition Log to Workout Day (2,300 kcal)
+    try {
+      const todayStr = new Date().toISOString().split('T')[0];
+      const todayNutrition = FitStorage.getNutritionLog(todayStr);
+      if (todayNutrition.dayType !== 'workout') {
+        FitStorage.saveNutritionLog({
+          ...todayNutrition,
+          dayType: 'workout',
+          targetCalories: 2300,
+          targetProtein: 180,
+          targetCarbs: 220,
+          targetFat: 70,
+        });
+      }
+    } catch {}
+
     // 2. Add XP to User Profile
     const updatedUser = FitStorage.addXp(totalXpToAward, user);
 
@@ -796,12 +840,68 @@ export default function App() {
     }
   };
 
-  // Handle Custom Routine Created
+  // Handle Custom Routine Created or Edited
   const handleCreateRoutine = (routine: WorkoutRoutine) => {
+    const isEditingExisting = routines.some((r) => r.id === routine.id);
     FitStorage.saveRoutine(routine);
     setRoutines(FitStorage.getRoutines());
-    const updatedUser = FitStorage.addXp(120, user);
+    if (!isEditingExisting) {
+      const updatedUser = FitStorage.addXp(120, user);
+      setUser(updatedUser);
+    } else {
+      FitStorage.syncUserToCloud(user);
+    }
+  };
+
+  // Handle Custom Routine Deleted
+  const handleDeleteRoutine = (routineId: string) => {
+    const updated = FitStorage.deleteCustomRoutine(routineId);
+    setRoutines(updated);
+    FitStorage.syncUserToCloud(user);
+  };
+
+  // Helper to recalculate user stats when history is edited or deleted
+  const recalculateUserStatsFromHistory = (updatedHistory: WorkoutHistoryEntry[]) => {
+    const realStreak = calculateRealStreak(updatedHistory);
+    const dynamicAttributes = calculateAthleteAttributes(
+      updatedHistory,
+      realStreak.currentStreak,
+      user.level,
+      user.attributes
+    );
+    const calculatedVolume = updatedHistory.reduce((sum, h) => sum + (h.totalVolumeKg || 0), 0);
+    const calculatedMinutes = updatedHistory.reduce((sum, h) => sum + (h.durationMinutes || 0), 0);
+    const calculatedCalories = updatedHistory.reduce((sum, h) => sum + (h.calories || 0), 0);
+    const calculatedDistance = updatedHistory.reduce((sum, h) => sum + (h.totalDistanceKm || 0), 0);
+
+    const updatedUser: UserProfile = {
+      ...user,
+      attributes: dynamicAttributes,
+      stats: {
+        ...user.stats,
+        totalWorkouts: updatedHistory.length,
+        totalVolumeKg: calculatedVolume,
+        totalDistanceKm: calculatedDistance,
+        totalMinutes: calculatedMinutes,
+        caloriesBurned: calculatedCalories,
+        currentStreak: realStreak.currentStreak,
+        bestStreak: Math.max(user.stats.bestStreak || 0, realStreak.bestStreak),
+      },
+    };
+    FitStorage.saveUser(updatedUser);
     setUser(updatedUser);
+  };
+
+  const handleDeleteHistoryEntry = async (entryId: string) => {
+    const updatedHistory = await FitStorage.deleteHistoryEntry(entryId, user);
+    setHistory(updatedHistory);
+    recalculateUserStatsFromHistory(updatedHistory);
+  };
+
+  const handleUpdateHistoryEntry = async (updatedEntry: WorkoutHistoryEntry) => {
+    const updatedHistory = await FitStorage.updateHistoryEntry(updatedEntry, user);
+    setHistory(updatedHistory);
+    recalculateUserStatsFromHistory(updatedHistory);
   };
 
   // Handle Duel Victory
@@ -971,6 +1071,7 @@ export default function App() {
             user={user}
             routines={routines}
             challenges={challenges}
+            achievements={achievements}
             smartwatch={smartwatch}
             history={history}
             lang={lang}
@@ -989,6 +1090,7 @@ export default function App() {
             lang={lang}
             onStartRoutine={handleStartRoutine}
             onCreateRoutine={handleCreateRoutine}
+            onDeleteRoutine={handleDeleteRoutine}
             onUpdateProgramProgress={(progMap) => {
               const updatedUser = { ...user, programProgress: progMap };
               setUser(updatedUser);
@@ -1000,6 +1102,7 @@ export default function App() {
         {activeTab === 'nutrition' && (
           <NutritionView
             user={user}
+            history={history}
             lang={lang}
             onUpdateUser={(updated) => setUser(updated)}
             onGrantXp={(amount, _reason) => {
@@ -1009,7 +1112,7 @@ export default function App() {
           />
         )}
 
-        {(activeTab === 'community' || activeTab === 'challenges' || activeTab === 'leaderboard' || activeTab === 'achievements') && (
+        {(activeTab === 'community' || activeTab === 'challenges' || activeTab === 'leaderboard' || activeTab === 'achievements' || activeTab === 'duels') && (
           <CommunityView
             challenges={challenges}
             leaderboard={leaderboard}
@@ -1017,11 +1120,20 @@ export default function App() {
             user={user}
             history={history}
             lang={lang}
-            initialSubTab={activeTab === 'leaderboard' ? 'leaderboard' : activeTab === 'achievements' ? 'achievements' : 'challenges'}
+            initialSubTab={
+              activeTab === 'leaderboard'
+                ? 'leaderboard'
+                : activeTab === 'achievements'
+                ? 'achievements'
+                : activeTab === 'duels'
+                ? 'duels'
+                : 'challenges'
+            }
             onJoinChallenge={handleJoinChallenge}
             onContribute={handleContributeChallenge}
             onClaimReward={handleClaimChallengeReward}
             onClaimAchievementXp={handleClaimAchievementXp}
+            onWinDuel={handleDuelWin}
             onEquipTitle={(newTitle) => {
               const updatedUser: UserProfile = {
                 ...user,
@@ -1051,6 +1163,16 @@ export default function App() {
             lang={lang}
             onNavigateTab={(tab) => setActiveTab(tab)}
             onUpdateUser={(updated) => setUser(updated)}
+            onDeleteHistoryEntry={handleDeleteHistoryEntry}
+            onUpdateHistoryEntry={handleUpdateHistoryEntry}
+          />
+        )}
+
+        {activeTab === 'smartwatch' && (
+          <SmartwatchView
+            smartwatch={smartwatch}
+            onUpdateSmartwatch={handleUpdateSmartwatch}
+            lang={lang}
           />
         )}
 

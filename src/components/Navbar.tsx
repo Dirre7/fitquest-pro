@@ -211,6 +211,25 @@ export const Navbar: React.FC<NavbarProps> = ({
               <span className="font-mono">{user?.stats?.currentStreak ?? 0}d</span>
             </div>
 
+            {/* Smartwatch Telemetry Quick Button */}
+            <button
+              id="btn-nav-smartwatch"
+              onClick={() => handleSetTab('smartwatch')}
+              className={`flex items-center gap-1 px-2 sm:px-2.5 py-1 rounded-xl sm:rounded-2xl border text-[11px] sm:text-xs font-mono font-bold transition-all shrink-0 cursor-pointer ${
+                currentTab === 'smartwatch'
+                  ? 'bg-cyan-500 text-neutral-950 border-cyan-400 shadow-[0_0_12px_rgba(6,182,212,0.4)]'
+                  : isWatchConnected
+                  ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20'
+                  : 'bg-white/5 border-white/10 text-neutral-400 hover:text-white'
+              }`}
+              title={`${watchName} (${isWatchConnected ? `${liveHeartRate} BPM` : 'Desconectado'})`}
+            >
+              <Watch className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+              {isWatchConnected && liveHeartRate > 0 && (
+                <span className="hidden xs:inline">{liveHeartRate}</span>
+              )}
+            </button>
+
             {/* Desktop Only Tools: Cloud Sync, Sound, Lang */}
             <div className="hidden md:flex items-center gap-1.5">
               {/* Cloud Sync Toggle */}
