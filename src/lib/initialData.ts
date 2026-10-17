@@ -1071,16 +1071,16 @@ export const defaultLeaderboard: LeaderboardUser[] = [
 
 export const defaultSmartwatch: SmartwatchDevice = {
   id: 'watch_user',
-  name: 'Smartwatch Telemetría',
-  brand: 'Apple Watch',
-  status: 'connected',
-  batteryLevel: 95,
-  liveHeartRate: 125,
-  hrvMs: 72,
-  activeZone: 'Cardio',
-  stepsToday: 4200,
-  vo2max: 48.0,
-  lastSyncTime: 'En vivo',
+  name: 'Sensor de Pulso / Smartwatch',
+  brand: 'WebBluetooth',
+  status: 'disconnected',
+  batteryLevel: 100,
+  liveHeartRate: 0,
+  hrvMs: 0,
+  activeZone: 'Rest',
+  stepsToday: 0,
+  vo2max: 0,
+  lastSyncTime: 'Sin vincular',
 };
 
 export const defaultPushReminders: PushReminder[] = [

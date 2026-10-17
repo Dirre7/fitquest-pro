@@ -777,7 +777,7 @@ export class FitStorage {
       return {
         ...defaultSmartwatch,
         ...parsed,
-        status: parsed.status || 'connected',
+        status: parsed.status || defaultSmartwatch.status,
       };
     } catch {
       return defaultSmartwatch;

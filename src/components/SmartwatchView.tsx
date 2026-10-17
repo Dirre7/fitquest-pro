@@ -65,54 +65,93 @@ export const SmartwatchView: React.FC<SmartwatchViewProps> = ({
     return () => clearInterval(stream);
   }, [smartwatch, onUpdateDevice]);
 
-  // Web Bluetooth or Simulator Pairing
-  const handleConnectDevice = async () => {
+  // Web Bluetooth Pairing (Real heart rate sensors / Polar / Garmin / Apple / Smartwatches with BLE HR)
+  const handleConnectRealBluetooth = async () => {
     setIsPairing(true);
     sound.playBeep(800, 100);
 
     try {
-      // Check if navigator.bluetooth exists (Chrome / Edge with Bluetooth capability)
       if (typeof navigator !== 'undefined' && 'bluetooth' in navigator) {
-        try {
-          // Attempt standard Heart Rate BLE service scan
-          const device = await (navigator as any).bluetooth.requestDevice({
-            filters: [{ services: ['heart_rate'] }],
-            optionalServices: ['battery_service'],
-          });
-          if (device) {
+        // Request real standard BLE Heart Rate service (0x180D)
+        const device = await (navigator as any).bluetooth.requestDevice({
+          filters: [{ services: ['heart_rate'] }],
+          optionalServices: ['battery_service'],
+        });
+
+        if (device) {
+          const server = await device.gatt.connect();
+          const hrService = await server.getPrimaryService('heart_rate');
+          const hrCharacteristic = await hrService.getCharacteristic('heart_rate_measurement');
+          await hrCharacteristic.startNotifications();
+
+          hrCharacteristic.addEventListener('characteristicvaluechanged', (event: any) => {
+            const value = event.target.value;
+            const flags = value.getUint8(0);
+            const rate16Bits = flags & 0x1;
+            const realBpm = rate16Bits ? value.getUint16(1, true) : value.getUint8(1);
+
+            let zone: SmartwatchDevice['activeZone'] = 'Rest';
+            if (realBpm >= 171) zone = 'Peak';
+            else if (realBpm >= 151) zone = 'Cardio';
+            else if (realBpm >= 131) zone = 'FatBurn';
+            else if (realBpm >= 110) zone = 'WarmUp';
+
             onUpdateDevice({
               ...smartwatch,
-              name: device.name || `${selectedBrand} Pro`,
-              brand: selectedBrand,
+              name: device.name || 'Sensor Bluetooth Real',
+              brand: 'WebBluetooth',
               status: 'connected',
-              lastSyncTime: 'Justo ahora',
+              liveHeartRate: realBpm,
+              activeZone: zone,
+              lastSyncTime: 'En vivo (Sensor real)',
             });
-            sound.playAchievement();
-            setIsPairing(false);
-            return;
-          }
-        } catch {
-          // Fallback to high-precision hardware simulator below
-        }
-      }
-    } catch {}
+            setLiveTelemetryHistory((prev) => [...prev.slice(1), realBpm]);
+          });
 
-    // Simulated reliable pairing
+          onUpdateDevice({
+            ...smartwatch,
+            name: device.name || 'Sensor Bluetooth Real',
+            brand: 'WebBluetooth',
+            status: 'connected',
+            lastSyncTime: 'En vivo (Sensor real)',
+          });
+          sound.playAchievement();
+          setIsPairing(false);
+          return;
+        }
+      } else {
+        alert('Tu navegador no soporta Web Bluetooth. Puedes usar Google Chrome en Android o activar el Modo Simulación.');
+      }
+    } catch (err: any) {
+      if (err.name !== 'NotFoundError') {
+        console.warn('Bluetooth pairing notice:', err);
+      }
+    }
+    setIsPairing(false);
+  };
+
+  // Demo / Simulation Mode
+  const handleStartSimulation = () => {
+    setIsPairing(true);
+    sound.playBeep(800, 100);
+
     setTimeout(() => {
       onUpdateDevice({
         ...smartwatch,
-        name: `${selectedBrand} Ultra Sincronizado`,
+        name: `${selectedBrand} (Modo Simulación)`,
         brand: selectedBrand,
         status: 'connected',
         batteryLevel: 92,
-        liveHeartRate: 138,
+        liveHeartRate: 135,
         hrvMs: 64,
         activeZone: 'Cardio',
-        lastSyncTime: 'Justo ahora',
+        stepsToday: 4500,
+        vo2max: 48.0,
+        lastSyncTime: 'Simulación activa',
       });
       sound.playAchievement();
       setIsPairing(false);
-    }, 1200);
+    }, 800);
   };
 
   const handleDisconnect = () => {
@@ -120,6 +159,8 @@ export const SmartwatchView: React.FC<SmartwatchViewProps> = ({
     onUpdateDevice({
       ...smartwatch,
       status: 'disconnected',
+      liveHeartRate: 0,
+      lastSyncTime: 'Desconectado',
     });
   };
 
@@ -154,25 +195,37 @@ export const SmartwatchView: React.FC<SmartwatchViewProps> = ({
         </div>
 
         {/* Pairing Actions */}
-        <div>
+        <div className="flex items-center gap-2 flex-wrap">
           {smartwatch?.status === 'connected' ? (
             <button
               id="btn-disconnect-watch"
               onClick={handleDisconnect}
-              className="px-4 py-2.5 rounded-2xl bg-neutral-900 border border-red-500/40 text-red-400 hover:bg-red-950/40 font-bold text-xs shadow-lg transition-colors"
+              className="px-4 py-2.5 rounded-2xl bg-neutral-900 border border-red-500/40 text-red-400 hover:bg-red-950/40 font-bold text-xs shadow-lg transition-colors cursor-pointer"
             >
-              {t.disconnectWatch}
+              Desconectar Sensor
             </button>
           ) : (
-            <button
-              id="btn-connect-watch"
-              disabled={isPairing}
-              onClick={handleConnectDevice}
-              className="px-5 py-2.5 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-black font-extrabold text-xs shadow-xl shadow-emerald-500/20 flex items-center gap-2 transition-all hover:scale-105"
-            >
-              {isPairing ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Bluetooth className="w-4 h-4 stroke-[2.5]" />}
-              <span>{isPairing ? t.bluetoothPairing : t.connectWatch}</span>
-            </button>
+            <>
+              <button
+                id="btn-connect-real-bluetooth"
+                disabled={isPairing}
+                onClick={handleConnectRealBluetooth}
+                className="px-4 py-2.5 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-black font-extrabold text-xs shadow-xl shadow-emerald-500/20 flex items-center gap-2 transition-all hover:scale-105 cursor-pointer"
+              >
+                {isPairing ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Bluetooth className="w-4 h-4 stroke-[2.5]" />}
+                <span>Vincular por Bluetooth (Real)</span>
+              </button>
+
+              <button
+                id="btn-start-simulation"
+                disabled={isPairing}
+                onClick={handleStartSimulation}
+                className="px-3.5 py-2.5 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 text-neutral-300 font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
+                <span>Modo Demo</span>
+              </button>
+            </>
           )}
         </div>
       </div>
@@ -215,13 +268,15 @@ export const SmartwatchView: React.FC<SmartwatchViewProps> = ({
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           <div className="bg-neutral-800/60 p-4 rounded-2xl border border-neutral-700/60">
             <div className="flex items-center gap-1.5 text-red-400 text-xs font-bold mb-1">
-              <Heart className="w-4 h-4 fill-current animate-heart-beat" />
+              <Heart className={`w-4 h-4 fill-current ${smartwatch.status === 'connected' ? 'animate-heart-beat' : 'opacity-40'}`} />
               <span>{t.liveBpm}</span>
             </div>
             <p className="font-mono font-black text-3xl text-white">
-              {smartwatch.liveHeartRate}
+              {smartwatch.status === 'connected' && smartwatch.liveHeartRate > 0 ? smartwatch.liveHeartRate : '--'}
             </p>
-            <span className="text-[11px] text-emerald-400 font-bold">Zona: {smartwatch.activeZone}</span>
+            <span className={`text-[11px] font-bold ${smartwatch.status === 'connected' ? 'text-emerald-400' : 'text-neutral-500'}`}>
+              {smartwatch.status === 'connected' ? `Zona: ${smartwatch.activeZone}` : 'Sin sensor vinculado'}
+            </span>
           </div>
 
           <div className="bg-neutral-800/60 p-4 rounded-2xl border border-neutral-700/60">
