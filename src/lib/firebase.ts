@@ -40,7 +40,25 @@ const firebaseConfig = {
   appId: config.appId,
 };
 
+import { initializeAppCheck, ReCaptchaV3Provider } from 'firebase/app-check';
+
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
+
+// Optional Firebase App Check (Activates automatically once recaptchaSiteKey is provided in config)
+if (typeof window !== 'undefined' && config.recaptchaSiteKey && config.recaptchaSiteKey.trim().length > 0) {
+  try {
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+      // @ts-ignore
+      self.FIREBASE_APPCHECK_DEBUG_TOKEN = true;
+    }
+    initializeAppCheck(app, {
+      provider: new ReCaptchaV3Provider(config.recaptchaSiteKey),
+      isTokenAutoRefreshEnabled: true,
+    });
+  } catch (err) {
+    console.warn('App Check initialization notice:', err);
+  }
+}
 
 export const auth = getAuth(app);
 export const db = config.firestoreDatabaseId 

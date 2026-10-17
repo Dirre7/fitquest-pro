@@ -75,6 +75,16 @@ export const ProfileEditModal: React.FC<ProfileEditModalProps> = ({
     const file = e.target.files?.[0];
     if (!file) return;
 
+    if (!file.type.startsWith('image/')) {
+      alert('Por favor selecciona un archivo de imagen válido (JPEG, PNG, WebP).');
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      alert('La imagen no puede superar los 5 MB de tamaño.');
+      return;
+    }
+
     const reader = new FileReader();
     reader.onload = (uploadEvent) => {
       const rawData = uploadEvent.target?.result as string;
@@ -115,13 +125,14 @@ export const ProfileEditModal: React.FC<ProfileEditModalProps> = ({
   };
 
   const handleSave = async () => {
-    if (!name.trim() || isSaving) return;
+    const cleanName = name.trim().slice(0, 50);
+    if (!cleanName || isSaving) return;
     setIsSaving(true);
 
     const updatedUser: UserProfile = {
       ...user,
-      name: name.trim(),
-      avatar: avatar || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(name.trim())}&backgroundColor=06b6d4,3b82f6`,
+      name: cleanName,
+      avatar: avatar || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(cleanName)}&backgroundColor=06b6d4,3b82f6`,
       rankTitle,
       weightKg: Number(weightKg) || 70,
       targetWeightKg: Number(targetWeightKg) || 70,
