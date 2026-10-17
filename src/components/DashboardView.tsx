@@ -55,6 +55,7 @@ interface DashboardViewProps {
   onStartRoutine: (routine: WorkoutRoutine) => void;
   onNavigateTab: (tab: string) => void;
   onOpenQuickStart?: () => void;
+  onOpenSportModal?: () => void;
   onOpenProfileModal?: () => void;
   onOpenLevelRoadmap?: () => void;
 }
@@ -70,6 +71,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onStartRoutine,
   onNavigateTab,
   onOpenQuickStart,
+  onOpenSportModal,
   onOpenProfileModal,
   onOpenLevelRoadmap,
 }) => {
@@ -276,6 +278,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   </button>
                 )}
               </div>
+
+              {onOpenSportModal && (
+                <button
+                  id="btn-dashboard-log-sport"
+                  onClick={onOpenSportModal}
+                  className="w-full lg:w-64 py-2.5 px-4 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/40 text-xs font-mono font-black text-emerald-300 hover:text-emerald-200 flex items-center justify-center gap-2 transition-all shadow-[0_0_15px_rgba(16,185,129,0.2)] cursor-pointer"
+                >
+                  <Watch className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>🎾 Registrar Deporte / Reloj</span>
+                </button>
+              )}
             </div>
           </div>
         </div>

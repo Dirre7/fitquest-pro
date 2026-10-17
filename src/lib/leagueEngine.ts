@@ -341,30 +341,55 @@ export function calculateAthleteAttributes(
   const totalVolumeKg = history.reduce((sum, h) => sum + (h.totalVolumeKg || 0), 0);
   const totalDistanceKm = history.reduce((sum, h) => sum + (h.totalDistanceKm || 0), 0);
   const totalMinutes = history.reduce((sum, h) => sum + (h.durationMinutes || 0), 0);
+  const totalSportCalories = history
+    .filter((h) => h.isSportActivity)
+    .reduce((sum, h) => sum + (h.calories || 0), 0);
 
   const strengthWorkouts = history.filter((h) => (h.totalVolumeKg || 0) > 300).length;
+  const sportWorkouts = history.filter(
+    (h) =>
+      h.isSportActivity ||
+      h.routineTitle?.toLowerCase().includes('tenis') ||
+      h.routineTitle?.toLowerCase().includes('pádel') ||
+      h.routineTitle?.toLowerCase().includes('padel') ||
+      h.routineTitle?.toLowerCase().includes('fútbol') ||
+      h.routineTitle?.toLowerCase().includes('baloncesto') ||
+      h.routineTitle?.toLowerCase().includes('boxeo') ||
+      h.routineTitle?.toLowerCase().includes('natación')
+  ).length;
   const cardioWorkouts = history.filter(
-    (h) => (h.totalDistanceKm || 0) > 0.5 || h.routineTitle?.toLowerCase().includes('cardio') || h.routineTitle?.toLowerCase().includes('runner')
+    (h) =>
+      (h.totalDistanceKm || 0) > 0.5 ||
+      h.isSportActivity ||
+      h.routineTitle?.toLowerCase().includes('cardio') ||
+      h.routineTitle?.toLowerCase().includes('runner')
   ).length;
   const hiitWorkouts = history.filter(
     (h) =>
+      h.isSportActivity ||
       h.routineTitle?.toLowerCase().includes('hiit') ||
       h.routineTitle?.toLowerCase().includes('tabata') ||
       h.routineTitle?.toLowerCase().includes('calistenia') ||
       h.routineTitle?.toLowerCase().includes('shred')
   ).length;
 
-  // 1. FUERZA: Level floor + volume lifted + heavy strength sessions (scale up to 100)
-  const strengthPoints = Math.floor(Math.min(80, (totalVolumeKg / 1000) * 1.5 + strengthWorkouts * 2.5));
+  // 1. FUERZA: Level floor + volume lifted + heavy strength sessions + power sports (scale up to 100)
+  const strengthPoints = Math.floor(
+    Math.min(80, (totalVolumeKg / 1000) * 1.5 + strengthWorkouts * 2.5 + sportWorkouts * 1.5)
+  );
   const strength = Math.min(100, Math.max(levelFloor, existingAttributes?.strength || 10, levelFloor + strengthPoints));
 
-  // 2. RESISTENCIA: Level floor + total distance (km) + cardio duration (scale up to 100)
+  // 2. RESISTENCIA: Level floor + total distance (km) + cardio/sport duration & sport calories (scale up to 100)
   const sanitizedDistance = history.reduce((sum, h) => sum + Math.min(30, h.totalDistanceKm || 0), 0);
-  const endurancePoints = Math.floor(Math.min(80, sanitizedDistance * 2.0 + (totalMinutes / 25) * 1.5 + cardioWorkouts * 3));
+  const endurancePoints = Math.floor(
+    Math.min(80, sanitizedDistance * 2.0 + (totalMinutes / 25) * 1.5 + cardioWorkouts * 3 + (totalSportCalories / 400) * 1.5)
+  );
   const endurance = Math.min(100, Math.max(levelFloor, existingAttributes?.endurance || 10, levelFloor + endurancePoints));
 
-  // 3. AGILIDAD: Level floor + HIIT sessions, calisthenics & fast reps (scale up to 100)
-  const agilityPoints = Math.floor(Math.min(80, hiitWorkouts * 6 + history.length * 2.0));
+  // 3. AGILIDAD: Level floor + Sport matches (Tenis/Pádel/Fútbol/etc.), HIIT sessions & calisthenics (scale up to 100)
+  const agilityPoints = Math.floor(
+    Math.min(80, hiitWorkouts * 5 + sportWorkouts * 4 + history.length * 2.0)
+  );
   const agility = Math.min(100, Math.max(levelFloor, existingAttributes?.agility || 10, levelFloor + agilityPoints));
 
   // 4. DISCIPLINA: Level floor + real streak days + total workouts completed (scale up to 100)

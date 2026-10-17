@@ -24,6 +24,7 @@ interface QuickStartModalProps {
   lang: Language;
   onStartRoutine: (routine: WorkoutRoutine) => void;
   onNavigateCatalog: () => void;
+  onOpenSportModal?: () => void;
 }
 
 export const QuickStartModal: React.FC<QuickStartModalProps> = ({
@@ -33,6 +34,7 @@ export const QuickStartModal: React.FC<QuickStartModalProps> = ({
   lang,
   onStartRoutine,
   onNavigateCatalog,
+  onOpenSportModal,
 }) => {
   const [selectorModalOpen, setSelectorModalOpen] = useState<boolean>(false);
   const [selectorCategory, setSelectorCategory] = useState<string>('all');
@@ -174,6 +176,39 @@ export const QuickStartModal: React.FC<QuickStartModalProps> = ({
               </p>
             </button>
           </div>
+
+          {/* Action 3: Sport / Smartwatch Activity Logger */}
+          {onOpenSportModal && (
+            <button
+              id="btn-quick-sport-watch"
+              onClick={() => {
+                sound.playBeep(750, 40);
+                onClose();
+                onOpenSportModal();
+              }}
+              className="w-full p-4 rounded-2xl bg-gradient-to-r from-emerald-900/40 via-emerald-950/40 to-cyan-900/30 border border-emerald-500/40 hover:border-emerald-400 flex items-center justify-between gap-4 text-left group transition-all hover:scale-[1.01] shadow-lg shadow-emerald-950/30 cursor-pointer"
+            >
+              <div className="flex items-center gap-3.5">
+                <div className="w-11 h-11 rounded-xl bg-emerald-500 flex items-center justify-center text-neutral-950 text-xl font-black shadow-[0_0_15px_rgba(16,185,129,0.5)] shrink-0">
+                  🎾
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h4 className="font-display font-bold text-sm sm:text-base text-white group-hover:text-emerald-300 transition-colors">
+                      Deporte / Actividad de Reloj
+                    </h4>
+                    <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                      ⌚ KCAL & MIN
+                    </span>
+                  </div>
+                  <p className="text-xs text-neutral-400 mt-0.5">
+                    Tenis, Pádel, Fútbol, Baloncesto, Boxeo... Introduce el tiempo y kcal de tu reloj.
+                  </p>
+                </div>
+              </div>
+              <ChevronRight className="w-5 h-5 text-emerald-400 shrink-0 group-hover:translate-x-1 transition-transform" />
+            </button>
+          )}
 
           {/* Section: Pick from Catalog Routines */}
           <div className="space-y-2.5 pt-2">

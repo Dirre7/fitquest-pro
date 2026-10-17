@@ -1348,10 +1348,118 @@ export const allInitialAchievements: Achievement[] = [
     isSecret: true,
     hint: 'La disciplina perfecta: sin atajos ni series a medias.',
   },
+
+  // ==========================================
+  // 8. DEPORTES & ACTIVIDAD DE RELOJ (8 LOGROS)
+  // ==========================================
+  {
+    id: 'ach_spt_first_match',
+    title: 'Debut Deportivo con Reloj',
+    description: 'Registra tu primera sesión de deporte (Tenis, Pádel, Fútbol, etc.) con tiempo y kcal de tu reloj.',
+    icon: 'Watch',
+    category: 'sports',
+    tier: 'Bronze',
+    currentProgress: 0,
+    maxProgress: 1,
+    unlocked: false,
+    xpReward: 150,
+    rewardTitle: 'Deportista Polivalente',
+  },
+  {
+    id: 'ach_spt_racket_3',
+    title: 'Rey de la Pista (3 Partidos)',
+    description: 'Completa y registra 3 partidos o sesiones de deportes de raqueta (Tenis o Pádel).',
+    icon: 'Trophy',
+    category: 'sports',
+    tier: 'Silver',
+    currentProgress: 0,
+    maxProgress: 3,
+    unlocked: false,
+    xpReward: 350,
+    rewardTitle: 'Rey de la Pista',
+  },
+  {
+    id: 'ach_spt_racket_10',
+    title: 'Leyenda del Grand Slam (10 Partidos)',
+    description: 'Alcanza 10 sesiones registradas de Tenis o Pádel dominando la pista.',
+    icon: 'Crown',
+    category: 'sports',
+    tier: 'Gold',
+    currentProgress: 0,
+    maxProgress: 10,
+    unlocked: false,
+    xpReward: 750,
+    rewardTitle: 'Maestro del Grand Slam',
+  },
+  {
+    id: 'ach_spt_cal_600',
+    title: 'Partido de Alto Voltaje (600+ kcal)',
+    description: 'Quema 600 kcal o más en una sola sesión deportiva registrada con tu reloj.',
+    icon: 'Flame',
+    category: 'sports',
+    tier: 'Silver',
+    currentProgress: 0,
+    maxProgress: 600,
+    unlocked: false,
+    xpReward: 400,
+    rewardTitle: 'Motor de Pista',
+  },
+  {
+    id: 'ach_spt_cal_1000',
+    title: 'Batalla Épica en Pista (1.000+ kcal)',
+    description: 'Quema 1.000 kcal o más en un solo partido o sesión deportiva maratoniana.',
+    icon: 'Crown',
+    category: 'sports',
+    tier: 'Titan',
+    currentProgress: 0,
+    maxProgress: 1000,
+    unlocked: false,
+    xpReward: 1000,
+    rewardTitle: 'Gladiador Inagotable',
+  },
+  {
+    id: 'ach_spt_minutes_300',
+    title: '5 Horas en Cancha (300 min)',
+    description: 'Acumula 300 minutos totales practicando deportes fuera del gimnasio.',
+    icon: 'Zap',
+    category: 'sports',
+    tier: 'Gold',
+    currentProgress: 0,
+    maxProgress: 300,
+    unlocked: false,
+    xpReward: 600,
+    rewardTitle: 'Atleta Todoterreno',
+  },
+  {
+    id: 'ach_spt_hybrid_athlete',
+    title: 'Atleta Híbrido: Hierro & Pista',
+    description: 'Combina al menos 3 entrenamientos de fuerza en gimnasio y 3 sesiones de deporte.',
+    icon: 'Swords',
+    category: 'sports',
+    tier: 'Gold',
+    currentProgress: 0,
+    maxProgress: 6,
+    unlocked: false,
+    xpReward: 700,
+    rewardTitle: 'Atleta Híbrido Élite',
+  },
+  {
+    id: 'ach_spt_multisport_15',
+    title: 'Campeón Multideporte (15 Sesiones)',
+    description: 'Registra 15 sesiones deportivas en tu historial oficial.',
+    icon: 'Crown',
+    category: 'sports',
+    tier: 'Titan',
+    currentProgress: 0,
+    maxProgress: 15,
+    unlocked: false,
+    xpReward: 1500,
+    rewardTitle: 'Leyenda Multideporte',
+  },
 ];
 
 /**
- * Automatically evaluates all 100 achievements based on live user data and history.
+ * Automatically evaluates all achievements based on live user data and history.
  */
 export function evaluateAllAchievements(
   user: UserProfile,
@@ -1370,9 +1478,39 @@ export function evaluateAllAchievements(
   const streak = Math.max(user.stats.currentStreak || 0, user.stats.bestStreak || 0);
   const userLevel = user.level || 1;
 
+  // Sport sessions breakdown
+  const sportEntries = history.filter(
+    (h) =>
+      h.isSportActivity ||
+      Boolean(h.sportType) ||
+      h.routineTitle?.toLowerCase().includes('tenis') ||
+      h.routineTitle?.toLowerCase().includes('pádel') ||
+      h.routineTitle?.toLowerCase().includes('padel') ||
+      h.routineTitle?.toLowerCase().includes('fútbol') ||
+      h.routineTitle?.toLowerCase().includes('futbol') ||
+      h.routineTitle?.toLowerCase().includes('baloncesto') ||
+      h.routineTitle?.toLowerCase().includes('boxeo') ||
+      h.routineTitle?.toLowerCase().includes('natación') ||
+      h.routineTitle?.toLowerCase().includes('ciclismo')
+  );
+  const sportSessionsCount = sportEntries.length;
+  const racketSessionsCount = sportEntries.filter(
+    (h) =>
+      h.sportType === 'tennis' ||
+      h.sportType === 'padel' ||
+      h.routineTitle?.toLowerCase().includes('tenis') ||
+      h.routineTitle?.toLowerCase().includes('pádel') ||
+      h.routineTitle?.toLowerCase().includes('padel') ||
+      h.routineTitle?.toLowerCase().includes('raqueta')
+  ).length;
+  const maxSportCaloriesSingle = sportEntries.reduce((max, h) => Math.max(max, h.calories || 0), 0);
+  const totalSportMinutes = sportEntries.reduce((sum, h) => sum + (h.durationMinutes || 0), 0);
+  const gymStrengthSessionsCount = history.filter((h) => !h.isSportActivity && (h.totalVolumeKg || 0) > 0).length;
+
   // Exercise and discipline session breakdowns
   const cardioSessions = history.filter(
     (h) =>
+      h.isSportActivity ||
       h.routineTitle?.toLowerCase().includes('cardio') ||
       h.routineTitle?.toLowerCase().includes('runner') ||
       h.routineTitle?.toLowerCase().includes('carrera') ||
@@ -1400,7 +1538,7 @@ export function evaluateAllAchievements(
     return day === 0 || day === 6;
   }).length;
 
-  const smartwatchWorkouts = history.filter((h) => (h.avgHeartRate || 0) > 60).length;
+  const smartwatchWorkouts = history.filter((h) => (h.avgHeartRate || 0) > 60 || h.isSportActivity).length;
   const maxBpmRecorded = history.reduce((max, h) => Math.max(max, h.maxHeartRate || h.avgHeartRate || 0), 0);
   const maxVolumeSingleSession = history.reduce((max, h) => Math.max(max, h.totalVolumeKg || 0), 0);
   const maxCaloriesSingleSession = history.reduce((max, h) => Math.max(max, h.calories || 0), 0);
@@ -1742,6 +1880,32 @@ export function evaluateAllAchievements(
         break;
       case 'ach_sec_perfectionist':
         progress = (workouts >= 15 && fiveStarWorkouts >= 15) ? 15 : Math.min(15, fiveStarWorkouts);
+        break;
+
+      // 8. DEPORTES & ACTIVIDAD DE RELOJ
+      case 'ach_spt_first_match':
+        progress = Math.min(1, sportSessionsCount);
+        break;
+      case 'ach_spt_racket_3':
+        progress = Math.min(3, racketSessionsCount);
+        break;
+      case 'ach_spt_racket_10':
+        progress = Math.min(10, racketSessionsCount);
+        break;
+      case 'ach_spt_cal_600':
+        progress = Math.min(600, maxSportCaloriesSingle);
+        break;
+      case 'ach_spt_cal_1000':
+        progress = Math.min(1000, maxSportCaloriesSingle);
+        break;
+      case 'ach_spt_minutes_300':
+        progress = Math.min(300, totalSportMinutes);
+        break;
+      case 'ach_spt_hybrid_athlete':
+        progress = Math.min(3, gymStrengthSessionsCount) + Math.min(3, sportSessionsCount);
+        break;
+      case 'ach_spt_multisport_15':
+        progress = Math.min(15, sportSessionsCount);
         break;
 
       default:

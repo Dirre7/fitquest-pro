@@ -42,6 +42,7 @@ import { AuthModal } from './components/AuthModal';
 import { AuthScreen } from './components/AuthScreen';
 import { ProfileEditModal } from './components/ProfileEditModal';
 import { QuickStartModal } from './components/QuickStartModal';
+import { SportActivityModal } from './components/SportActivityModal';
 import { LevelRoadmapModal } from './components/LevelRoadmapModal';
 import { LevelUpCelebrationModal } from './components/LevelUpCelebrationModal';
 
@@ -91,6 +92,7 @@ export default function App() {
   const [authModalOpen, setAuthModalOpen] = useState<boolean>(false);
   const [authLoading, setAuthLoading] = useState<boolean>(true);
   const [quickStartModalOpen, setQuickStartModalOpen] = useState<boolean>(false);
+  const [sportModalOpen, setSportModalOpen] = useState<boolean>(false);
   const [isMobileLandscape, setIsMobileLandscape] = useState<boolean>(false);
   const [isSessionRevoked, setIsSessionRevoked] = useState<boolean>(false);
   const [revokingDeviceName, setRevokingDeviceName] = useState<string>('Tablet / Móvil');
@@ -1078,6 +1080,7 @@ export default function App() {
             onStartRoutine={handleStartRoutine}
             onNavigateTab={setActiveTab}
             onOpenQuickStart={() => setQuickStartModalOpen(true)}
+            onOpenSportModal={() => setSportModalOpen(true)}
             onOpenProfileModal={() => setProfileModalOpen(true)}
             onOpenLevelRoadmap={() => setLevelRoadmapModalOpen(true)}
           />
@@ -1091,6 +1094,7 @@ export default function App() {
             onStartRoutine={handleStartRoutine}
             onCreateRoutine={handleCreateRoutine}
             onDeleteRoutine={handleDeleteRoutine}
+            onOpenSportModal={() => setSportModalOpen(true)}
             onUpdateProgramProgress={(progMap) => {
               const updatedUser = { ...user, programProgress: progMap };
               setUser(updatedUser);
@@ -1273,6 +1277,15 @@ export default function App() {
         lang={lang}
         onStartRoutine={handleStartRoutine}
         onNavigateCatalog={() => setActiveTab('routines')}
+        onOpenSportModal={() => setSportModalOpen(true)}
+      />
+
+      {/* Sport & Smartwatch Activity Logger Modal */}
+      <SportActivityModal
+        isOpen={sportModalOpen}
+        onClose={() => setSportModalOpen(false)}
+        userWeightKg={user.weightKg}
+        onCompleteSportActivity={handleCompleteWorkout}
       />
 
       {/* Interactive Level Progression Roadmap Modal */}

@@ -170,6 +170,9 @@ export interface WorkoutHistoryEntry {
   rating: number; // 1-5
   notes?: string;
   exercises?: Exercise[];
+  isSportActivity?: boolean;
+  sportType?: string;
+  sportIcon?: string;
 }
 
 export interface SmartwatchDevice {
@@ -212,7 +215,7 @@ export interface Achievement {
   title: string;
   description: string;
   icon: string;
-  category: 'strength' | 'speed' | 'calisthenics' | 'habits' | 'consistency' | 'programs' | 'secret' | 'social' | 'master';
+  category: 'strength' | 'speed' | 'calisthenics' | 'habits' | 'consistency' | 'programs' | 'sports' | 'secret' | 'social' | 'master';
   tier: 'Bronze' | 'Silver' | 'Gold' | 'Titan';
   currentProgress: number;
   maxProgress: number;

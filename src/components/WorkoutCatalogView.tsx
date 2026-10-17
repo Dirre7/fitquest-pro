@@ -37,6 +37,7 @@ interface WorkoutCatalogViewProps {
   onCreateRoutine: (routine: WorkoutRoutine) => void;
   onDeleteRoutine?: (routineId: string) => void;
   onUpdateProgramProgress?: (progress: { [id: string]: number }) => void;
+  onOpenSportModal?: () => void;
 }
 
 export const WorkoutCatalogView: React.FC<WorkoutCatalogViewProps> = ({
@@ -47,6 +48,7 @@ export const WorkoutCatalogView: React.FC<WorkoutCatalogViewProps> = ({
   onCreateRoutine,
   onDeleteRoutine,
   onUpdateProgramProgress,
+  onOpenSportModal,
 }) => {
   const t = translations[lang];
 
@@ -258,6 +260,17 @@ export const WorkoutCatalogView: React.FC<WorkoutCatalogViewProps> = ({
               <span>Planes Multidía ({programs.length})</span>
             </button>
           </div>
+
+          {onOpenSportModal && (
+            <button
+              id="btn-catalog-log-sport"
+              onClick={onOpenSportModal}
+              className="px-3.5 py-2 rounded-2xl bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/40 font-mono font-bold text-xs shadow flex items-center gap-1.5 transition-all shrink-0 cursor-pointer"
+            >
+              <span>🎾</span>
+              <span className="hidden sm:inline">Registrar Deporte</span>
+            </button>
+          )}
 
           {catalogTab === 'routines' && (
             <button

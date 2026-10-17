@@ -53,6 +53,7 @@ export const AchievementsView: React.FC<AchievementsViewProps> = ({
 
   const categories = [
     { id: 'all', label: 'Todos los Logros' },
+    { id: 'sports', label: '🎾 Deportes & Reloj' },
     { id: 'strength', label: '🏋️ Fuerza & Powerlifting' },
     { id: 'speed', label: '🏃 Running & Cardio' },
     { id: 'calisthenics', label: '🥋 Calistenia & Core' },
