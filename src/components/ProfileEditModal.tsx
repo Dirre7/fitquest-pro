@@ -17,8 +17,8 @@ import {
 } from 'lucide-react';
 import { UserProfile, Achievement, Language } from '../types';
 import { sound } from '../lib/soundFx';
-
 import { LEVEL_MILESTONES } from '../lib/progressionEngine';
+import { AVATAR_FRAMES, isFrameUnlocked } from '../lib/cosmeticFrames';
 
 interface ProfileEditModalProps {
   user: UserProfile;
@@ -38,6 +38,7 @@ export const ProfileEditModal: React.FC<ProfileEditModalProps> = ({
   const [name, setName] = useState(user.name);
   const [avatar, setAvatar] = useState(user.avatar || '');
   const [rankTitle, setRankTitle] = useState(user.rankTitle || 'Recluta Inicial');
+  const [equippedFrame, setEquippedFrame] = useState(user.equippedFrame || 'frame_default');
   const [weightKg, setWeightKg] = useState(user.weightKg || 70);
   const [targetWeightKg, setTargetWeightKg] = useState(user.targetWeightKg || 70);
   const [isSaving, setIsSaving] = useState(false);
@@ -124,6 +125,7 @@ export const ProfileEditModal: React.FC<ProfileEditModalProps> = ({
       rankTitle,
       weightKg: Number(weightKg) || 70,
       targetWeightKg: Number(targetWeightKg) || 70,
+      equippedFrame,
     };
 
     sound.playLevelUp();
@@ -136,6 +138,8 @@ export const ProfileEditModal: React.FC<ProfileEditModalProps> = ({
       onClose();
     }
   };
+
+  const activeFrame = AVATAR_FRAMES.find((f) => f.id === equippedFrame) || AVATAR_FRAMES[0];
 
   return (
     <div 
@@ -180,7 +184,7 @@ export const ProfileEditModal: React.FC<ProfileEditModalProps> = ({
               <img
                 src={avatar || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(name || 'FitQuest')}`}
                 alt="Avatar"
-                className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl object-cover border-2 border-cyan-500 shadow-[0_0_15px_rgba(6,182,212,0.35)]"
+                className={`w-14 h-14 sm:w-16 sm:h-16 rounded-2xl object-cover border-2 transition-all ${activeFrame.borderClass} ${activeFrame.glowClass}`}
               />
               <label
                 htmlFor="avatar-file-upload-quick"
@@ -264,6 +268,67 @@ export const ProfileEditModal: React.FC<ProfileEditModalProps> = ({
                   <img src={preset} alt={`Preset ${idx}`} className="w-8 h-8 sm:w-9 sm:h-9 object-cover rounded-lg" />
                 </button>
               ))}
+            </div>
+          </div>
+
+          {/* Cosmetic Avatar Frames & Auras Section */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="text-[11px] font-mono font-bold text-neutral-300 block uppercase tracking-wider flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                <span>Marcos & Auras Cosméticas</span>
+              </label>
+              <span className="text-[10px] font-mono text-cyan-400">
+                {activeFrame.name}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              {AVATAR_FRAMES.map((f) => {
+                const unlocked = isFrameUnlocked(f.id, user);
+                const isSelected = equippedFrame === f.id;
+
+                return (
+                  <button
+                    key={f.id}
+                    type="button"
+                    disabled={!unlocked}
+                    onClick={() => {
+                      if (unlocked) {
+                        setEquippedFrame(f.id);
+                        sound.playSuccess();
+                      }
+                    }}
+                    className={`p-2.5 rounded-2xl border text-left transition-all relative flex flex-col justify-between ${
+                      isSelected
+                        ? 'border-cyan-400 bg-cyan-500/15 ring-2 ring-cyan-400/40'
+                        : unlocked
+                        ? 'border-white/10 hover:border-white/20 bg-white/[0.03]'
+                        : 'border-white/5 bg-black/40 opacity-50 cursor-not-allowed'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-lg">{f.badgeEmoji}</span>
+                      {isSelected ? (
+                        <div className="w-4 h-4 rounded-full bg-cyan-400 text-neutral-950 flex items-center justify-center">
+                          <Check className="w-2.5 h-2.5 stroke-[3]" />
+                        </div>
+                      ) : !unlocked ? (
+                        <span className="text-[10px] text-neutral-500 font-mono">🔒</span>
+                      ) : null}
+                    </div>
+
+                    <div>
+                      <p className={`text-xs font-bold truncate ${isSelected ? 'text-cyan-300' : 'text-white'}`}>
+                        {f.name}
+                      </p>
+                      <p className="text-[10px] text-neutral-400 line-clamp-1 mt-0.5">
+                        {unlocked ? f.description : f.unlockRequirement}
+                      </p>
+                    </div>
+                  </button>
+                );
+              })}
             </div>
           </div>
 

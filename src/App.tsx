@@ -23,9 +23,11 @@ import { onSnapshot, doc, updateDoc, collection } from 'firebase/firestore';
 import {
   evaluateWeeklyLeagueReset,
   calculateRealStreak,
+  checkAndApplyStreakShield,
   calculateAthleteAttributes,
   calculateAttributeXpBonus,
 } from './lib/leagueEngine';
+import { attackBossRaid } from './lib/bossRaidEngine';
 import { evaluateAllAchievements } from './lib/achievementEngine';
 import { calculateLevelFromTotalXp } from './lib/progressionEngine';
 import { Smartphone, ShieldAlert } from 'lucide-react';
@@ -216,8 +218,10 @@ export default function App() {
           window.dispatchEvent(new CustomEvent('fitquest_weighins_updated'));
           window.dispatchEvent(new CustomEvent('fitquest_history_updated'));
         }
-        const evaluated = evaluateWeeklyLeagueReset(cloudData.user, cloudData.history);
-        const realStreak = calculateRealStreak(cloudData.history);
+        const shieldResult = checkAndApplyStreakShield(cloudData.user, cloudData.history);
+        const userToEvaluate = shieldResult.updatedUser;
+        const evaluated = evaluateWeeklyLeagueReset(userToEvaluate, cloudData.history);
+        const realStreak = calculateRealStreak(cloudData.history, userToEvaluate.shieldUsedDates);
         const dynamicAttributes = calculateAthleteAttributes(
           cloudData.history,
           realStreak.currentStreak,
@@ -396,7 +400,7 @@ export default function App() {
 
             setUser((prev) => {
               const currentHistory = isSnapshotReset ? [] : FitStorage.getHistory();
-              const realStreak = calculateRealStreak(currentHistory);
+              const realStreak = calculateRealStreak(currentHistory, (data.shieldUsedDates || prev.shieldUsedDates));
               const localHasMoreXp = !isSnapshotReset && (prev.xp || 0) > (data.xp || 0);
               const effectiveXp = isSnapshotReset
                 ? (data.xp || 0)
@@ -590,8 +594,10 @@ export default function App() {
         setIsAuthenticated(false);
         const localUser = FitStorage.getUser();
         const localHistory = FitStorage.getHistory();
-        const evaluated = evaluateWeeklyLeagueReset(localUser, localHistory);
-        const realStreak = calculateRealStreak(localHistory);
+        const shieldResult = checkAndApplyStreakShield(localUser, localHistory);
+        const userToEvaluate = shieldResult.updatedUser;
+        const evaluated = evaluateWeeklyLeagueReset(userToEvaluate, localHistory);
+        const realStreak = calculateRealStreak(localHistory, userToEvaluate.shieldUsedDates);
         const dynamicAttributes = calculateAthleteAttributes(localHistory, realStreak.currentStreak);
         const syncedLocalUser: UserProfile = {
           ...evaluated.updatedUser,
@@ -631,7 +637,7 @@ export default function App() {
     const handleHistoryUpdate = () => {
       const h = FitStorage.getHistory();
       setHistory(h);
-      const streak = calculateRealStreak(h);
+      const streak = calculateRealStreak(h, user.shieldUsedDates);
       setUser((prev) => ({
         ...prev,
         attributes: calculateAthleteAttributes(h, streak.currentStreak, prev.level),
@@ -639,7 +645,7 @@ export default function App() {
     };
     const handleNutritionUpdate = () => {
       const h = FitStorage.getHistory();
-      const streak = calculateRealStreak(h);
+      const streak = calculateRealStreak(h, user.shieldUsedDates);
       setUser((prev) => ({
         ...prev,
         attributes: calculateAthleteAttributes(h, streak.currentStreak, prev.level),
@@ -789,7 +795,7 @@ export default function App() {
 
     // Apply passive RPG Attribute XP bonus (Fuerza, Resistencia, Agilidad, Disciplina)
     const currentHistoryBeforeAdd = FitStorage.getHistory().filter((h) => h.id !== entry.id);
-    const previewStreak = calculateRealStreak([entry, ...currentHistoryBeforeAdd]);
+    const previewStreak = calculateRealStreak([entry, ...currentHistoryBeforeAdd], user.shieldUsedDates);
     const currentAttrs = calculateAthleteAttributes(
       currentHistoryBeforeAdd,
       previewStreak.currentStreak,
@@ -839,9 +845,19 @@ export default function App() {
       }
     } catch {}
 
+    // 1c. Monthly Boss Raid Attack: community damage from session volume & distance
+    try {
+      const sessionDamage = (finalEntry.totalVolumeKg || 0) + Math.round((finalEntry.totalDistanceKm || 0) * 100);
+      if (sessionDamage > 0) {
+        attackBossRaid(sessionDamage, user);
+      }
+    } catch (e) {
+      console.warn('Boss raid attack warning:', e);
+    }
+
     // 2. Add XP to User Profile & calculate exact cumulative stats + RPG attributes from updatedHistory
     const updatedUser = FitStorage.addXp(totalXpToAward, user, true);
-    const realStreak = calculateRealStreak(updatedHistory);
+    const realStreak = calculateRealStreak(updatedHistory, updatedUser.shieldUsedDates);
     const dynamicAttributes = calculateAthleteAttributes(
       updatedHistory,
       realStreak.currentStreak,
@@ -937,7 +953,7 @@ export default function App() {
 
   // Helper to recalculate user stats when history is edited or deleted
   const recalculateUserStatsFromHistory = (updatedHistory: WorkoutHistoryEntry[]) => {
-    const realStreak = calculateRealStreak(updatedHistory);
+    const realStreak = calculateRealStreak(updatedHistory, user.shieldUsedDates);
     const historyXp = updatedHistory.reduce((sum, h) => sum + (Number(h.xpEarned) || 0), 0);
     const claimedAchXp = FitStorage.getAchievements()
       .filter((a) => Boolean((a as any).rewardClaimed))
@@ -1213,7 +1229,7 @@ export default function App() {
           />
         )}
 
-        {(activeTab === 'community' || activeTab === 'challenges' || activeTab === 'leaderboard' || activeTab === 'achievements' || activeTab === 'duels') && (
+        {(activeTab === 'community' || activeTab === 'challenges' || activeTab === 'leaderboard' || activeTab === 'achievements' || activeTab === 'duels' || activeTab === 'raid') && (
           <CommunityView
             challenges={challenges}
             leaderboard={leaderboard}
@@ -1228,6 +1244,8 @@ export default function App() {
                 ? 'achievements'
                 : activeTab === 'duels'
                 ? 'duels'
+                : activeTab === 'raid'
+                ? 'raid'
                 : 'challenges'
             }
             onJoinChallenge={handleJoinChallenge}
@@ -1235,6 +1253,7 @@ export default function App() {
             onClaimReward={handleClaimChallengeReward}
             onClaimAchievementXp={handleClaimAchievementXp}
             onWinDuel={handleDuelWin}
+            onNavigateRoutines={() => setActiveTab('routines')}
             onEquipTitle={(newTitle) => {
               const updatedUser: UserProfile = {
                 ...user,

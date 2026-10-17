@@ -59,6 +59,42 @@ export interface UserProfile {
   followers?: string[];
   nutritionLogs?: Record<string, DailyNutritionLog>;
   saturdayWeighIns?: SaturdayWeighIn[];
+  streakShields?: number; // 0 to 2 shields
+  shieldUsedDates?: string[]; // ISO date strings where a streak shield protected the streak
+  equippedFrame?: string; // ID of the equipped cosmetic avatar frame
+}
+
+export interface AvatarFrame {
+  id: string;
+  name: string;
+  description: string;
+  borderClass: string;
+  glowClass: string;
+  badgeEmoji: string;
+  unlockRequirement: string;
+}
+
+export interface BossRaid {
+  id: string;
+  name: string;
+  month: string;
+  description: string;
+  maxHpKg: number;
+  currentDamageKg: number;
+  avatar: string;
+  element: string;
+  rewardBadgeId: string;
+  rewardBadgeName: string;
+  rewardXp: number;
+  status: 'active' | 'defeated' | 'expired';
+}
+
+export interface BossContribution {
+  userId: string;
+  userName: string;
+  userAvatar?: string;
+  damageKg: number;
+  attacksCount: number;
 }
 
 export interface ExerciseSet {

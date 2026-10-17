@@ -18,12 +18,14 @@ import {
   LogOut,
   UserCheck,
   Heart,
-  UtensilsCrossed
+  UtensilsCrossed,
+  Shield,
 } from 'lucide-react';
 import { UserProfile, ThemeMode, Language, SmartwatchDevice } from '../types';
 import { translations } from '../lib/i18n';
 import { sound } from '../lib/soundFx';
 import { getLevelTier, getXpProgressPercent } from '../lib/progressionEngine';
+import { getEquippedFrameClasses } from '../lib/cosmeticFrames';
 
 interface NavbarProps {
   currentTab?: string;
@@ -114,6 +116,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   const tier = getLevelTier(user?.level || 1);
   const xpPercent = getXpProgressPercent(user?.currentLevelXp || 0, user?.nextLevelXp || 500);
+  const frameClasses = getEquippedFrameClasses(user);
 
   // 5 Core Master Sections for maximum comfort & zero clutter
   const dockItems = [
@@ -167,7 +170,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <img
                   src={user.avatar || `https://api.dicebear.com/7.x/initials/svg?seed=${user.name}`}
                   alt={user.name}
-                  className={`w-6 h-6 sm:w-7 sm:h-7 rounded-lg sm:rounded-xl object-cover border ${tier.borderColor} ${tier.frameClass}`}
+                  className={`w-6 h-6 sm:w-7 sm:h-7 rounded-lg sm:rounded-xl object-cover border ${frameClasses.borderClass} ${frameClasses.glowClass}`}
                 />
                 <span className="absolute -bottom-1 -right-1 text-[8px] sm:text-[9px] leading-none drop-shadow">
                   {tier.badgeIcon}
@@ -202,13 +205,20 @@ export const Navbar: React.FC<NavbarProps> = ({
           {/* Right Header: Streak + Smartwatch + Config + Quick Action */}
           <div className="flex items-center gap-1 sm:gap-2 shrink-0">
             
-            {/* Streak Counter */}
+            {/* Streak Counter + Shield Protection */}
             <div 
-              className="flex items-center gap-1 bg-orange-500/10 border border-orange-500/30 rounded-xl sm:rounded-2xl px-2 sm:px-2.5 py-1 text-orange-400 text-[11px] sm:text-xs font-bold shrink-0"
-              title={`${user?.stats?.currentStreak ?? 0} ${t.streakDays}`}
+              className="flex items-center gap-1.5 bg-orange-500/10 border border-orange-500/30 rounded-xl sm:rounded-2xl px-2 sm:px-2.5 py-1 text-orange-400 text-[11px] sm:text-xs font-bold shrink-0"
+              title={`${user?.stats?.currentStreak ?? 0} ${t.streakDays} · ${user?.streakShields ?? 1} Escudo(s) de Racha activos`}
             >
-              <Flame className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-orange-400 animate-bounce" />
-              <span className="font-mono">{user?.stats?.currentStreak ?? 0}d</span>
+              <div className="flex items-center gap-1">
+                <Flame className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-orange-400 animate-bounce" />
+                <span className="font-mono">{user?.stats?.currentStreak ?? 0}d</span>
+              </div>
+              <div className="w-[1px] h-3 bg-orange-500/30" />
+              <div className="flex items-center gap-0.5 text-cyan-300" title="Escudos de Racha disponibles (protegen tus días de descanso)">
+                <Shield className="w-3 h-3 text-cyan-400 fill-cyan-400/20" />
+                <span className="font-mono text-[10px]">{user?.streakShields ?? 1}</span>
+              </div>
             </div>
 
             {/* Smartwatch Telemetry Quick Button */}

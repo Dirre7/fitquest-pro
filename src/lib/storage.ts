@@ -986,7 +986,8 @@ export class FitStorage {
     const prog = calculateLevelFromTotalXp(newTotalXp);
 
     let rankTitle = user.rankTitle || 'Recluta Inicial';
-    if (prog.level > (user.level || 1)) {
+    const didLevelUp = prog.level > (user.level || 1);
+    if (didLevelUp) {
       const milestone = LEVEL_MILESTONES.find((m) => m.level === prog.level);
       if (milestone?.title && (!user.rankTitle || user.rankTitle === 'Recluta Inicial')) {
         rankTitle = milestone.title;
@@ -1000,6 +1001,7 @@ export class FitStorage {
       currentLevelXp: prog.currentLevelXp,
       nextLevelXp: prog.nextLevelXp,
       rankTitle,
+      streakShields: didLevelUp ? Math.min(2, (user.streakShields ?? 1) + 1) : (user.streakShields ?? 1),
       attributes: {
         strength: Math.min(100, user.attributes.strength + Math.floor(amount / 300)),
         endurance: Math.min(100, user.attributes.endurance + Math.floor(amount / 350)),
@@ -1077,6 +1079,7 @@ export class FitStorage {
       nextLevelXp: prog.nextLevelXp,
       rankTitle,
       claimedChallenges: updatedClaimed,
+      streakShields: Math.min(2, (user.streakShields ?? 1) + 1),
       stats: {
         ...user.stats,
         challengesCompleted: (user.stats.challengesCompleted || 0) + 1,

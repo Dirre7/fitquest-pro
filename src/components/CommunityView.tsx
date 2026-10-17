@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Target, Trophy, Sparkles, Swords } from 'lucide-react';
+import { Target, Trophy, Sparkles, Swords, Skull } from 'lucide-react';
 import {
   CommunityChallenge,
   LeaderboardUser,
@@ -13,6 +13,7 @@ import { WeeklyChallengesView } from './WeeklyChallengesView';
 import { LeaderboardView } from './LeaderboardView';
 import { AchievementsView } from './AchievementsView';
 import { SocialLiveDuelView } from './SocialLiveDuelView';
+import { MonthlyBossRaidView } from './MonthlyBossRaidView';
 
 interface CommunityViewProps {
   challenges: CommunityChallenge[];
@@ -22,7 +23,7 @@ interface CommunityViewProps {
   history?: WorkoutHistoryEntry[];
   smartwatch?: SmartwatchDevice;
   lang: Language;
-  initialSubTab?: 'challenges' | 'leaderboard' | 'achievements' | 'duels';
+  initialSubTab?: 'challenges' | 'leaderboard' | 'achievements' | 'duels' | 'raid';
   onJoinChallenge: (challengeId: string) => void;
   onContribute: (challengeId: string, amount: number) => void;
   onClaimReward: (challengeId: string, rewardXp: number) => void;
@@ -30,6 +31,7 @@ interface CommunityViewProps {
   onEquipTitle?: (title: string) => void;
   onUpdateUser?: (updated: Partial<UserProfile>) => void;
   onWinDuel?: (xpGained: number) => void;
+  onNavigateRoutines?: () => void;
 }
 
 export const CommunityView: React.FC<CommunityViewProps> = ({
@@ -48,8 +50,9 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
   onEquipTitle,
   onUpdateUser,
   onWinDuel,
+  onNavigateRoutines,
 }) => {
-  const [subTab, setSubTab] = useState<'challenges' | 'leaderboard' | 'achievements' | 'duels'>(initialSubTab);
+  const [subTab, setSubTab] = useState<'challenges' | 'leaderboard' | 'achievements' | 'duels' | 'raid'>(initialSubTab);
 
   const fallbackWatch: SmartwatchDevice = smartwatch || {
     id: 'sw_default',
@@ -116,6 +119,18 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
             <Swords className="w-4 h-4 shrink-0" />
             <span>Cara a Cara</span>
           </button>
+
+          <button
+            onClick={() => setSubTab('raid')}
+            className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-mono font-bold flex items-center justify-center gap-1.5 whitespace-nowrap transition-all cursor-pointer ${
+              subTab === 'raid'
+                ? 'bg-gradient-to-r from-rose-500 to-amber-500 text-neutral-950 shadow-md scale-[1.02]'
+                : 'text-neutral-400 hover:text-white hover:bg-white/5'
+            }`}
+          >
+            <Skull className="w-4 h-4 shrink-0" />
+            <span>Incursión</span>
+          </button>
         </div>
       </div>
 
@@ -155,6 +170,14 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
           user={user}
           history={history}
           lang={lang}
+        />
+      )}
+
+      {subTab === 'raid' && (
+        <MonthlyBossRaidView
+          user={user}
+          lang={lang}
+          onNavigateRoutines={onNavigateRoutines}
         />
       )}
     </div>

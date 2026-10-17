@@ -346,8 +346,16 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
                   const prMsg = `${exercise.name}: ${runKm} km (Récord de distancia)`;
                   setUnlockedPrs((prs) => (prs.includes(prMsg) ? prs : [...prs, prMsg]));
                   setShowPrNotification(prMsg);
-                  sound.playAchievement();
-                  setTimeout(() => setShowPrNotification(null), 4000);
+                  sound.playPrFanfare();
+                  try {
+                    confetti({
+                      particleCount: 70,
+                      spread: 60,
+                      origin: { y: 0.6 },
+                      colors: ['#F59E0B', '#FBBF24', '#10B981', '#06B6D4', '#FFFFFF'],
+                    });
+                  } catch {}
+                  setTimeout(() => setShowPrNotification(null), 5000);
                 }
               } else {
                 // Check if 1RM is a new strength PR
@@ -358,8 +366,16 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
                   const prMsg = `${exercise.name}: ${set.actualWeightKg} kg (${estimated1RM} kg 1RM)`;
                   setUnlockedPrs((prs) => (prs.includes(prMsg) ? prs : [...prs, prMsg]));
                   setShowPrNotification(prMsg);
-                  sound.playAchievement();
-                  setTimeout(() => setShowPrNotification(null), 4000);
+                  sound.playPrFanfare();
+                  try {
+                    confetti({
+                      particleCount: 100,
+                      spread: 75,
+                      origin: { y: 0.6 },
+                      colors: ['#F59E0B', '#FBBF24', '#10B981', '#06B6D4', '#FFFFFF'],
+                    });
+                  } catch {}
+                  setTimeout(() => setShowPrNotification(null), 5000);
                 }
               }
 
@@ -816,11 +832,24 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
 
       {/* PR Celebration Floating Toast Notification */}
       {showPrNotification && (
-        <div className="fixed top-14 sm:top-16 right-3 sm:right-6 z-50 bg-gradient-to-r from-amber-400 to-yellow-500 text-neutral-950 px-3.5 py-2 rounded-2xl shadow-[0_0_25px_rgba(245,158,11,0.5)] flex items-center gap-2 animate-bounce font-mono font-bold text-xs border border-amber-300">
-          <Award className="w-4 h-4 fill-current" />
-          <span>{t.personalRecord}: {showPrNotification}</span>
-          <button onClick={() => setShowPrNotification(null)} className="ml-1 text-neutral-950/70 hover:text-neutral-950">
-            <X className="w-3.5 h-3.5" />
+        <div className="fixed top-14 sm:top-16 left-3 right-3 sm:left-auto sm:right-6 z-50 bg-gradient-to-r from-amber-400 via-amber-300 to-yellow-400 text-neutral-950 px-4 py-2.5 rounded-2xl shadow-[0_0_35px_rgba(245,158,11,0.85)] flex items-center justify-between gap-3 animate-bounce font-mono border-2 border-white ring-4 ring-amber-400/40">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-8 h-8 rounded-xl bg-neutral-950 text-amber-400 flex items-center justify-center shrink-0 shadow">
+              <Trophy className="w-4 h-4 fill-current animate-pulse" />
+            </div>
+            <div className="flex flex-col min-w-0">
+              <span className="text-[10px] uppercase tracking-wider text-neutral-900 font-black flex items-center gap-1.5">
+                💥 ¡NUEVO RÉCORD PERSONAL!
+                <span className="bg-neutral-950 text-amber-300 px-1.5 py-0.5 rounded text-[9px] font-black">+50 XP</span>
+              </span>
+              <span className="text-xs sm:text-sm text-neutral-950 font-black truncate">{showPrNotification}</span>
+            </div>
+          </div>
+          <button
+            onClick={() => setShowPrNotification(null)}
+            className="p-1 rounded-lg text-neutral-950/70 hover:text-neutral-950 hover:bg-black/10 shrink-0 cursor-pointer"
+          >
+            <X className="w-4 h-4" />
           </button>
         </div>
       )}

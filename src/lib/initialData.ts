@@ -47,6 +47,8 @@ export const createFreshUser = (id: string, name: string, email?: string): UserP
     joinedAt: new Date().toISOString().split('T')[0],
     weightKg: 70.0,
     targetWeightKg: 70.0,
+    streakShields: 1,
+    shieldUsedDates: [],
   };
 };
 

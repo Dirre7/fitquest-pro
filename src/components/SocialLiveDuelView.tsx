@@ -19,6 +19,7 @@ import {
   LEAGUE_BOTS,
 } from '../lib/leagueEngine';
 import { translations } from '../lib/i18n';
+import { getEquippedFrameClasses } from '../lib/cosmeticFrames';
 
 interface RivalCardProfile {
   id: string;
@@ -59,9 +60,10 @@ export const SocialLiveDuelView: React.FC<SocialLiveDuelViewProps> = ({
   const t = translations[lang];
 
   // 1. Calculate Real User Attributes Breakdown
-  const realStreakObj = calculateRealStreak(history);
+  const realStreakObj = calculateRealStreak(history, user.shieldUsedDates);
   const effectiveStreak = Math.max(user.stats?.currentStreak || 0, realStreakObj.currentStreak);
   const userBreakdown = getAthleteAttributesBreakdown(history, effectiveStreak, user.level, user);
+  const userFrame = getEquippedFrameClasses(user);
 
   // 2. Build Realistic Rivals from the Current User League
   const leagueBots = LEAGUE_BOTS[user.league] || LEAGUE_BOTS['Bronze'];
@@ -207,7 +209,7 @@ export const SocialLiveDuelView: React.FC<SocialLiveDuelViewProps> = ({
                   <img
                     src={user.avatar}
                     alt={user.name}
-                    className="w-16 h-16 rounded-2xl object-cover border-2 border-cyan-400 shadow-xl"
+                    className={`w-16 h-16 rounded-2xl object-cover border-2 shadow-xl ${userFrame.borderClass} ${userFrame.glowClass}`}
                   />
                   <span className="absolute -bottom-1 -right-1 px-1.5 py-0.5 rounded-md bg-cyan-500 text-neutral-950 font-mono font-black text-[9px]">
                     TÚ

@@ -48,6 +48,7 @@ import {
   getAthleteAttributesBreakdown,
 } from '../lib/leagueEngine';
 import { getWeeklyChallengesForRotation } from '../lib/weeklyChallengesEngine';
+import { getEquippedFrameClasses } from '../lib/cosmeticFrames';
 
 interface DashboardViewProps {
   user: UserProfile;
@@ -103,9 +104,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const [selectedRoutineId, setSelectedRoutineId] = useState<string>(() => getRecommendedRoutineId());
   const [selectedAttrKey, setSelectedAttrKey] = useState<'strength' | 'endurance' | 'agility' | 'discipline' | null>(null);
 
-  const realStreakObj = calculateRealStreak(history);
+  const realStreakObj = calculateRealStreak(history, user.shieldUsedDates);
   const effectiveStreak = Math.max(user.stats?.currentStreak || 0, realStreakObj.currentStreak);
   const attrBreakdown = getAthleteAttributesBreakdown(history, effectiveStreak, user.level, user);
+  const equippedFrameClasses = getEquippedFrameClasses(user);
 
   const currentRoutine = routines.find((r) => r.id === selectedRoutineId) || routines[0];
   const weeklyRotationData = getWeeklyChallengesForRotation(history);
@@ -203,7 +205,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 <img
                   src={user.avatar}
                   alt={user.name}
-                  className={`w-20 h-20 sm:w-24 sm:h-24 rounded-3xl object-cover border-2 shadow-2xl group-hover:scale-105 transition-all ${currentTier.frameClass} ${currentTier.borderColor}`}
+                  className={`w-20 h-20 sm:w-24 sm:h-24 rounded-3xl object-cover border-2 shadow-2xl group-hover:scale-105 transition-all ${equippedFrameClasses.borderClass} ${equippedFrameClasses.glowClass}`}
                 />
                 <div
                   onClick={(e) => {
@@ -267,6 +269,28 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 <p className="text-xs text-neutral-400 mt-1 font-mono">
                   {displayTotalWorkouts} entrenos completados • {Math.round(displayTotalVolumeKg / 1000)}t tonelaje levantado
                 </p>
+
+                {/* 🛡️ Streak & Shields Status + Weekend Beast Event */}
+                <div className="flex items-center gap-2 mt-2 flex-wrap">
+                  <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-orange-500/10 border border-orange-500/30 text-orange-400 text-xs font-mono font-bold shadow-sm">
+                    <Flame className="w-3.5 h-3.5 text-orange-400 fill-orange-400/20 animate-pulse" />
+                    <span>Racha: {effectiveStreak}d</span>
+                  </div>
+
+                  <div
+                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 text-xs font-mono font-bold shadow-sm"
+                    title="Escudos de Racha: protegen tu racha automáticamente los días de descanso. Ganas 1 escudo al subir de nivel o al completar retos semanales (máx 2)."
+                  >
+                    <Shield className="w-3.5 h-3.5 text-cyan-400 fill-cyan-400/20" />
+                    <span>{user.streakShields ?? 1}/2 Escudos</span>
+                  </div>
+
+                  {(new Date().getDay() === 0 || new Date().getDay() === 6) && (
+                    <div className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-gradient-to-r from-amber-500/20 to-yellow-500/20 border border-amber-400/40 text-amber-300 text-xs font-mono font-black shadow-[0_0_15px_rgba(251,191,36,0.25)] animate-pulse">
+                      <span>⚡ WEEKEND BEAST (XP x1.5)</span>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 

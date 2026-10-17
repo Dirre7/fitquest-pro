@@ -135,6 +135,29 @@ class SoundManager {
     this.vibrate([100, 60, 150]);
   }
 
+  public playPrFanfare() {
+    const ctx = this.getContext();
+    if (!ctx) return;
+
+    const notes = [
+      { freq: 523.25, dur: 100 },
+      { freq: 659.25, dur: 100 },
+      { freq: 783.99, dur: 120 },
+      { freq: 1046.5, dur: 350 },
+      { freq: 1318.51, dur: 450 },
+    ];
+
+    let delay = 0;
+    notes.forEach((note) => {
+      setTimeout(() => {
+        this.playBeep(note.freq, note.dur, 'triangle');
+      }, delay);
+      delay += Math.round(note.dur * 0.85);
+    });
+
+    this.vibrate([120, 60, 120, 60, 300]);
+  }
+
   public playWarning() {
     this.playBeep(240, 300, 'sawtooth');
     this.vibrate([150, 100, 150]);

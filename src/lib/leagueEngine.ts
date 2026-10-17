@@ -254,20 +254,25 @@ export function evaluateWeeklyLeagueReset(
 }
 
 /**
- * Calculates real calendar daily streak based on unique workout dates in history.
+ * Calculates real calendar daily streak based on unique workout dates and shield protected dates.
  */
-export function calculateRealStreak(history: WorkoutHistoryEntry[]): { currentStreak: number; bestStreak: number } {
-  if (!history || history.length === 0) {
+export function calculateRealStreak(
+  history: WorkoutHistoryEntry[],
+  shieldUsedDates: string[] = []
+): { currentStreak: number; bestStreak: number } {
+  const safeHistory = history || [];
+  const safeShields = Array.isArray(shieldUsedDates) ? shieldUsedDates : [];
+
+  if (safeHistory.length === 0 && safeShields.length === 0) {
     return { currentStreak: 0, bestStreak: 0 };
   }
 
-  // Get unique sorted dates in descending order (YYYY-MM-DD)
+  // Get unique sorted dates in descending order (YYYY-MM-DD), combining workouts + shield-protected rest days
   const uniqueDates = Array.from(
-    new Set(
-      history
-        .map((h) => (h.date ? h.date.split('T')[0] : ''))
-        .filter((d) => Boolean(d))
-    )
+    new Set([
+      ...safeHistory.map((h) => (h.date ? h.date.split('T')[0] : '')),
+      ...safeShields.map((d) => (d ? d.split('T')[0] : '')),
+    ].filter((d) => Boolean(d)))
   ).sort().reverse();
 
   if (uniqueDates.length === 0) {
@@ -315,6 +320,59 @@ export function calculateRealStreak(history: WorkoutHistoryEntry[]): { currentSt
   }
 
   return { currentStreak, bestStreak: Math.max(1, bestStreak) };
+}
+
+/**
+ * Automatically checks if the user missed yesterday and had an active streak.
+ * If user has streakShields > 0, it consumes 1 shield to protect the streak.
+ */
+export function checkAndApplyStreakShield(
+  user: UserProfile,
+  history: WorkoutHistoryEntry[]
+): { updatedUser: UserProfile; shieldConsumed: boolean; consumedDate?: string } {
+  const currentShields = user.streakShields ?? 0;
+  const currentShieldDates = Array.isArray(user.shieldUsedDates) ? [...user.shieldUsedDates] : [];
+
+  if (currentShields <= 0) {
+    return { updatedUser: user, shieldConsumed: false };
+  }
+
+  const today = new Date();
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const yesterdayStr = yesterday.toISOString().split('T')[0];
+
+  const loggedDates = new Set(
+    (history || [])
+      .map((h) => (h.date ? h.date.split('T')[0] : ''))
+      .filter(Boolean)
+  );
+
+  // If user already logged a workout yesterday or yesterday is already shielded, nothing to consume
+  if (loggedDates.has(yesterdayStr) || currentShieldDates.includes(yesterdayStr)) {
+    return { updatedUser: user, shieldConsumed: false };
+  }
+
+  // Check if shielding yesterday preserves a positive streak
+  const streakWithoutShield = calculateRealStreak(history, currentShieldDates);
+  const streakWithYesterday = calculateRealStreak(history, [...currentShieldDates, yesterdayStr]);
+
+  if (streakWithYesterday.currentStreak > 0 && streakWithYesterday.currentStreak > streakWithoutShield.currentStreak) {
+    const updatedDates = [...currentShieldDates, yesterdayStr];
+    const updatedUser: UserProfile = {
+      ...user,
+      streakShields: Math.max(0, currentShields - 1),
+      shieldUsedDates: updatedDates,
+      stats: {
+        ...user.stats,
+        currentStreak: streakWithYesterday.currentStreak,
+        bestStreak: Math.max(user.stats?.bestStreak || 0, streakWithYesterday.bestStreak),
+      },
+    };
+    return { updatedUser, shieldConsumed: true, consumedDate: yesterdayStr };
+  }
+
+  return { updatedUser: user, shieldConsumed: false };
 }
 
 export interface AttributeSourceItem {
@@ -838,6 +896,14 @@ export function calculateAttributeXpBonus(
       totalPct += disPct;
       activeBonuses.push(`+${disPct}% Disciplina`);
     }
+  }
+
+  // ⚡ Weekend Beast Event: +50% XP multiplier on Saturdays and Sundays
+  const todayDay = new Date().getDay(); // 0 is Sunday, 6 is Saturday
+  const isWeekend = todayDay === 0 || todayDay === 6;
+  if (isWeekend) {
+    totalPct += 50;
+    activeBonuses.push('⚡ +50% Weekend Beast (x1.5)');
   }
 
   const bonusXp = Math.round(safeBaseXp * (totalPct / 100));
