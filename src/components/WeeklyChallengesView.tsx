@@ -1,22 +1,25 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Target,
   Flame,
-  Trophy,
-  Users,
   Clock,
   Sparkles,
   CheckCircle2,
-  Award,
   Dumbbell,
   Calendar,
   Zap,
-  Activity
+  Activity,
+  Watch,
+  RotateCw,
+  Lock,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { CommunityChallenge, Language, WorkoutHistoryEntry, UserProfile } from '../types';
-import { translations } from '../lib/i18n';
 import { sound } from '../lib/soundFx';
+import {
+  getWeeklyChallengesForRotation,
+  WEEKLY_ROTATIONS_META,
+  WeeklyChallengeItem,
+} from '../lib/weeklyChallengesEngine';
 
 interface WeeklyChallengesViewProps {
   challenges: CommunityChallenge[];
@@ -29,17 +32,16 @@ interface WeeklyChallengesViewProps {
 }
 
 export const WeeklyChallengesView: React.FC<WeeklyChallengesViewProps> = ({
-  challenges,
   user,
   history = [],
-  lang,
-  onJoinChallenge,
   onClaimReward,
 }) => {
-  const t = translations[lang];
-
   // Calculate days/hours left until Sunday 23:59:59
-  const [timeLeft, setTimeLeft] = useState<{ days: number; hours: number; mins: number }>({ days: 6, hours: 12, mins: 30 });
+  const [timeLeft, setTimeLeft] = useState<{ days: number; hours: number; mins: number }>({
+    days: 6,
+    hours: 12,
+    mins: 30,
+  });
 
   useEffect(() => {
     const updateCountdown = () => {
@@ -63,37 +65,27 @@ export const WeeklyChallengesView: React.FC<WeeklyChallengesViewProps> = ({
     return () => clearInterval(interval);
   }, []);
 
-  // Compute real user stats for current week (Monday 00:00:00 to now)
-  const mondayMidnight = (() => {
-    const d = new Date();
-    const day = d.getDay();
-    const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-    const monday = new Date(d.setDate(diff));
-    monday.setHours(0, 0, 0, 0);
-    return monday.getTime();
-  })();
+  // Compute current active week info & allow previewing any of the 4 weekly rotations
+  const currentRotationData = getWeeklyChallengesForRotation(history);
+  const activeRotationIndex = currentRotationData.weekInfo.activeRotationIndex;
 
-  const weekEntries = history.filter((h) => {
-    const entryTime = new Date(h.date).getTime();
-    return entryTime >= mondayMidnight || !isNaN(entryTime);
-  });
+  const [selectedRotationIndex, setSelectedRotationIndex] = useState<number>(activeRotationIndex);
 
-  const weeklyVolumeKg = weekEntries.reduce((acc, h) => acc + (h.totalVolumeKg || 0), 0);
-  const weeklyWorkoutsCount = weekEntries.length;
-  const weeklyDaysCount = new Set(weekEntries.map((h) => h.date)).size;
-  const weeklyCalories = weekEntries.reduce((acc, h) => acc + (h.calories || 0), 0);
-  const weeklyDistanceKm = Math.round(weekEntries.reduce((acc, h) => acc + (h.totalDistanceKm || 0), 0) * 10) / 10;
+  const displayedData = getWeeklyChallengesForRotation(history, selectedRotationIndex);
+  const { weekInfo, rotationMeta, challenges: activeChallenges, metrics } = displayedData;
+  const isViewingActiveWeek = selectedRotationIndex === activeRotationIndex;
 
   // Reactive State for claimed challenges directly from user profile
-  const [claimedList, setClaimedList] = useState<string[]>(() => user.claimedChallenges || []);
+  const [claimedList, setClaimedList] = useState<string[]>(() => user?.claimedChallenges || []);
 
   // Sync whenever user.claimedChallenges updates (e.g. from cloud sync or reset)
   useEffect(() => {
-    setClaimedList(user.claimedChallenges || []);
-  }, [user.claimedChallenges]);
+    setClaimedList(user?.claimedChallenges || []);
+  }, [user?.claimedChallenges]);
 
-  const handleClaim = (chId: string, rewardXp: number) => {
-    if (claimedList.includes(chId)) return;
+  const handleClaim = (ch: WeeklyChallengeItem) => {
+    if (!isViewingActiveWeek) return;
+    if (claimedList.includes(ch.claimId) || claimedList.includes(ch.id)) return;
 
     sound.playLevelUp();
     try {
@@ -103,96 +95,149 @@ export const WeeklyChallengesView: React.FC<WeeklyChallengesViewProps> = ({
         origin: { y: 0.6 },
       });
     } catch {}
-    
-    const updated = [...claimedList, chId];
+
+    const updated = [...claimedList, ch.claimId];
     setClaimedList(updated);
     try {
       localStorage.setItem('fitquest_claimed_challenges', JSON.stringify(updated));
     } catch {}
-    onClaimReward(chId, rewardXp);
+    onClaimReward(ch.claimId, ch.rewardXp);
   };
 
-  // Predefined real dynamic weekly challenges
-  const activeChallenges = [
-    {
-      id: 'ch_weekly_volume_titan_100k',
-      title: 'Levantamiento de Titán Semanal (100.000 kg)',
-      description: 'Acumula al menos 100.000 kg de volumen total levantado en tus rutinas de gimnasio esta semana.',
-      category: 'VOLUMEN',
-      icon: Dumbbell,
-      color: 'from-cyan-500 to-blue-600',
-      unit: 'kg',
-      goal: 100000,
-      userCurrent: weeklyVolumeKg,
-      rewardXp: 1000,
-    },
-    {
-      id: 'ch_weekly_cardio_40k',
-      title: 'Desafío Fondista: 40 km de Carrera',
-      description: 'Acumula al menos 40 km de carrera, cinta o cardio exterior antes del domingo.',
-      category: 'DISTANCIA',
-      icon: Activity,
-      color: 'from-purple-500 to-indigo-600',
-      unit: 'km',
-      goal: 40,
-      userCurrent: weeklyDistanceKm,
-      rewardXp: 800,
-    },
-    {
-      id: 'ch_weekly_consistency_5days',
-      title: 'Consistencia de Hierro (5 Días)',
-      description: 'Entrena en al menos 5 días diferentes de esta semana antes de la medianoche del domingo.',
-      category: 'DÍAS',
-      icon: Calendar,
-      color: 'from-emerald-500 to-teal-600',
-      unit: 'días',
-      goal: 5,
-      userCurrent: weeklyDaysCount,
-      rewardXp: 600,
-    },
-    {
-      id: 'ch_weekly_calorie_inferno_5k',
-      title: 'Infierno Metabólico (5.000 kcal)',
-      description: 'Quema 5.000 calorías activas acumuladas durante tus entrenamientos de esta semana.',
-      category: 'CALORÍAS',
-      icon: Flame,
-      color: 'from-orange-500 to-amber-600',
-      unit: 'kcal',
-      goal: 5000,
-      userCurrent: weeklyCalories,
-      rewardXp: 800,
-    },
-  ];
+  const renderChallengeIcon = (iconName: WeeklyChallengeItem['iconName']) => {
+    switch (iconName) {
+      case 'dumbbell':
+        return Dumbbell;
+      case 'flame':
+        return Flame;
+      case 'calendar':
+        return Calendar;
+      case 'clock':
+        return Clock;
+      case 'watch':
+        return Watch;
+      case 'zap':
+      default:
+        return Zap;
+    }
+  };
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
-      
       {/* Header with real-time Sunday timer */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-white/5">
         <div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <span className="text-xs font-mono font-black uppercase px-2.5 py-0.5 rounded-full bg-cyan-500/20 text-cyan-400 border border-cyan-500/30">
-              ⚔️ RETOS ACTIVOS
+              ⚔️ ROTACIÓN SEMANAL ({rotationMeta.badge})
             </span>
-            <span className="text-xs font-mono font-bold text-neutral-400">
-              Semana en Curso
+            <span className="text-xs font-mono font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/25 px-2.5 py-0.5 rounded-full">
+              📅 Semana Actual: {weekInfo.weekDateRangeLabel}
             </span>
           </div>
-          <h2 className="font-display font-black text-2xl sm:text-3xl text-white mt-1">
-            Retos de la Comunidad
+          <h2 className="font-display font-black text-2xl sm:text-3xl text-white mt-1.5">
+            {rotationMeta.title}
           </h2>
           <p className="text-xs sm:text-sm text-neutral-400 mt-0.5">
-            El progreso se sincroniza automáticamente al completar tus entrenamientos.
+            {rotationMeta.subtitle} Los retos rotan automáticamente cada lunes a las 00:00.
           </p>
         </div>
 
         {/* Global Timer Badge */}
-        <div className="bg-[#121214] border border-cyan-500/30 rounded-2xl px-4 py-2 flex items-center gap-2.5 shadow-lg shrink-0">
+        <div className="bg-[#121214] border border-cyan-500/30 rounded-2xl px-4 py-2.5 flex items-center gap-2.5 shadow-lg shrink-0">
           <Clock className="w-4 h-4 text-cyan-400 animate-pulse" />
           <div className="text-left">
-            <span className="text-[10px] font-mono uppercase text-neutral-400 block font-bold">Cierre de Retos:</span>
+            <span className="text-[10px] font-mono uppercase text-neutral-400 block font-bold">
+              Próxima Rotación de Retos:
+            </span>
             <span className="text-xs font-mono font-black text-cyan-300">
               {timeLeft.days}d {timeLeft.hours}h {timeLeft.mins}m restantes
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* 4-Week Cycle Selector Tabs */}
+      <div className="bg-[#121214] border border-white/10 rounded-3xl p-4 sm:p-5 space-y-4">
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <div className="flex items-center gap-2 text-xs font-mono font-bold text-neutral-300">
+            <RotateCw className="w-4 h-4 text-cyan-400" />
+            <span>CICLO DE 4 SEMANAS DE RETOS (CAMBIA CADA LUNES)</span>
+          </div>
+          {!isViewingActiveWeek && (
+            <button
+              type="button"
+              onClick={() => setSelectedRotationIndex(activeRotationIndex)}
+              className="text-xs font-mono font-bold text-cyan-400 hover:text-cyan-300 underline cursor-pointer"
+            >
+              Volver a la Semana Activa (Semana {activeRotationIndex + 1})
+            </button>
+          )}
+        </div>
+
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
+          {WEEKLY_ROTATIONS_META.map((meta, idx) => {
+            const isActiveWeek = idx === activeRotationIndex;
+            const isSelected = idx === selectedRotationIndex;
+            return (
+              <button
+                key={meta.weekNumber}
+                type="button"
+                onClick={() => setSelectedRotationIndex(idx)}
+                className={`p-3 rounded-2xl border text-left transition-all cursor-pointer relative ${
+                  isSelected
+                    ? 'bg-cyan-500/15 border-cyan-400 shadow-[0_0_20px_rgba(6,182,212,0.2)]'
+                    : 'bg-white/[0.03] border-white/10 hover:border-white/25'
+                }`}
+              >
+                <div className="flex items-center justify-between gap-1 mb-1">
+                  <span className="text-[10px] font-mono font-black uppercase text-cyan-400">
+                    Semana {meta.weekNumber}
+                  </span>
+                  {isActiveWeek ? (
+                    <span className="text-[9px] font-mono font-black uppercase px-2 py-0.5 rounded-full bg-emerald-500 text-neutral-950">
+                      ACTIVA
+                    </span>
+                  ) : (
+                    <span className="text-[9px] font-mono text-neutral-500">Vista previa</span>
+                  )}
+                </div>
+                <p className="text-xs font-bold text-white truncate">
+                  {meta.title.replace(/^Semana \d:\s*/, '')}
+                </p>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Live Telemetry Summary of Current Week (Monday -> Sunday) */}
+        <div className="pt-3 border-t border-white/5 grid grid-cols-2 sm:grid-cols-5 gap-2.5 text-center font-mono">
+          <div className="bg-black/40 border border-white/5 rounded-xl p-2.5">
+            <span className="text-[10px] text-neutral-400 uppercase block">Días Únicos (Sem.)</span>
+            <span className="text-base font-black text-emerald-400">
+              {metrics.weeklyUniqueDaysCount} {metrics.weeklyUniqueDaysCount === 1 ? 'día' : 'días'}
+            </span>
+          </div>
+          <div className="bg-black/40 border border-white/5 rounded-xl p-2.5">
+            <span className="text-[10px] text-neutral-400 uppercase block">Sesiones Totales</span>
+            <span className="text-base font-black text-white">{metrics.weeklyWorkoutsCount}</span>
+          </div>
+          <div className="bg-black/40 border border-white/5 rounded-xl p-2.5">
+            <span className="text-[10px] text-neutral-400 uppercase block">Kcal Quemadas</span>
+            <span className="text-base font-black text-orange-400">
+              {metrics.weeklyCalories.toLocaleString()} kcal
+            </span>
+          </div>
+          <div className="bg-black/40 border border-white/5 rounded-xl p-2.5">
+            <span className="text-[10px] text-neutral-400 uppercase block">Volumen Pesas</span>
+            <span className="text-base font-black text-cyan-400">
+              {metrics.weeklyVolumeKg.toLocaleString()} kg
+            </span>
+          </div>
+          <div className="bg-black/40 border border-white/5 rounded-xl p-2.5 col-span-2 sm:col-span-1">
+            <span className="text-[10px] text-neutral-400 uppercase block">Minutos Deporte</span>
+            <span className="text-base font-black text-purple-400">
+              {metrics.weeklySportOrCardioMinutes} min
             </span>
           </div>
         </div>
@@ -203,18 +248,20 @@ export const WeeklyChallengesView: React.FC<WeeklyChallengesViewProps> = ({
         {activeChallenges.map((ch) => {
           const percent = Math.min(100, Math.round((ch.userCurrent / ch.goal) * 100));
           const isCompleted = percent >= 100;
-          const isClaimed = 
-            claimedList.includes(ch.id) || 
-            (user?.claimedChallenges || []).includes(ch.id) ||
+
+          const isClaimed =
+            claimedList.includes(ch.claimId) ||
+            (user?.claimedChallenges || []).includes(ch.claimId) ||
             (() => {
               try {
                 const stored = localStorage.getItem('fitquest_claimed_challenges');
-                return stored ? JSON.parse(stored).includes(ch.id) : false;
+                return stored ? JSON.parse(stored).includes(ch.claimId) : false;
               } catch {
                 return false;
               }
             })();
-          const Icon = ch.icon;
+
+          const Icon = renderChallengeIcon(ch.iconName);
 
           return (
             <div
@@ -222,7 +269,7 @@ export const WeeklyChallengesView: React.FC<WeeklyChallengesViewProps> = ({
               className={`bg-[#121214] border rounded-3xl p-5 sm:p-7 shadow-xl space-y-4 transition-all ${
                 isClaimed
                   ? 'border-emerald-500/40 bg-emerald-950/[0.04]'
-                  : isCompleted
+                  : isCompleted && isViewingActiveWeek
                   ? 'border-cyan-500/60 ring-1 ring-cyan-500/30 shadow-[0_0_25px_rgba(6,182,212,0.15)]'
                   : 'border-white/10 hover:border-white/20'
               }`}
@@ -230,17 +277,24 @@ export const WeeklyChallengesView: React.FC<WeeklyChallengesViewProps> = ({
               {/* Top Row: Info, Category, Reward & Status */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="flex items-start gap-3.5">
-                  <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${ch.color} flex items-center justify-center text-neutral-950 shrink-0 shadow-lg`}>
+                  <div
+                    className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${ch.color} flex items-center justify-center text-neutral-950 shrink-0 shadow-lg`}
+                  >
                     <Icon className="w-6 h-6 stroke-[2.5]" />
                   </div>
                   <div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <span className="text-[9px] font-mono font-black uppercase px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
                         {ch.category}
                       </span>
                       <span className="text-xs font-mono text-neutral-400">
                         Objetivo: {ch.goal.toLocaleString()} {ch.unit}
                       </span>
+                      {!isViewingActiveWeek && (
+                        <span className="text-[10px] font-mono text-amber-300 bg-amber-500/10 border border-amber-500/30 px-2 py-0.5 rounded-full flex items-center gap-1">
+                          <Lock className="w-3 h-3" /> Semana {ch.rotationWeek} (En rotación)
+                        </span>
+                      )}
                     </div>
                     <h3 className="font-display font-black text-lg sm:text-xl text-white mt-1">
                       {ch.title}
@@ -254,13 +308,20 @@ export const WeeklyChallengesView: React.FC<WeeklyChallengesViewProps> = ({
                 {/* Reward & Action Button */}
                 <div className="flex items-center gap-3 self-end sm:self-center shrink-0">
                   <div className="text-right">
-                    <span className="text-[10px] font-mono text-neutral-400 block uppercase font-bold">Recompensa</span>
+                    <span className="text-[10px] font-mono text-neutral-400 block uppercase font-bold">
+                      Recompensa
+                    </span>
                     <span className="font-mono font-black text-base sm:text-lg text-yellow-400">
                       +{ch.rewardXp} XP
                     </span>
                   </div>
 
-                  {isClaimed ? (
+                  {!isViewingActiveWeek ? (
+                    <div className="px-3.5 py-1.5 rounded-2xl bg-white/5 border border-white/10 text-neutral-400 text-xs font-mono font-bold flex items-center gap-1.5">
+                      <Lock className="w-3.5 h-3.5" />
+                      <span>Semana {ch.rotationWeek}</span>
+                    </div>
+                  ) : isClaimed ? (
                     <div className="px-4 py-2 rounded-2xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 text-xs font-mono font-bold flex items-center gap-1.5 shadow-inner">
                       <CheckCircle2 className="w-4 h-4 text-emerald-400" />
                       <span>Reclamado</span>
@@ -268,8 +329,8 @@ export const WeeklyChallengesView: React.FC<WeeklyChallengesViewProps> = ({
                   ) : isCompleted ? (
                     <button
                       id={`btn-claim-ch-${ch.id}`}
-                      onClick={() => handleClaim(ch.id, ch.rewardXp)}
-                      className="px-5 py-2.5 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-neutral-950 font-mono font-black text-xs shadow-lg shadow-cyan-500/30 flex items-center gap-1.5 animate-bounce transition-all hover:scale-105"
+                      onClick={() => handleClaim(ch)}
+                      className="px-5 py-2.5 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-neutral-950 font-mono font-black text-xs shadow-lg shadow-cyan-500/30 flex items-center gap-1.5 animate-bounce transition-all hover:scale-105 cursor-pointer"
                     >
                       <Sparkles className="w-4 h-4 fill-current" />
                       <span>Reclamar XP</span>
@@ -286,9 +347,15 @@ export const WeeklyChallengesView: React.FC<WeeklyChallengesViewProps> = ({
               <div>
                 <div className="flex justify-between text-xs font-mono font-bold mb-1.5">
                   <span className="text-neutral-300">
-                    Tu avance: <span className="text-white font-black">{ch.userCurrent.toLocaleString()}</span> / {ch.goal.toLocaleString()} {ch.unit}
+                    Tu avance esta semana ({weekInfo.weekDateRangeLabel}):{' '}
+                    <span className="text-white font-black">{ch.userCurrent.toLocaleString()}</span> /{' '}
+                    {ch.goal.toLocaleString()} {ch.unit}
                   </span>
-                  <span className={`font-mono font-black ${isCompleted ? 'text-cyan-400' : 'text-neutral-400'}`}>
+                  <span
+                    className={`font-mono font-black ${
+                      isCompleted ? 'text-cyan-400' : 'text-neutral-400'
+                    }`}
+                  >
                     {percent}%
                   </span>
                 </div>
@@ -308,10 +375,14 @@ export const WeeklyChallengesView: React.FC<WeeklyChallengesViewProps> = ({
               <div className="pt-2 border-t border-white/5 flex items-center justify-between text-[11px] font-mono text-neutral-400">
                 <div className="flex items-center gap-1.5 text-cyan-400/80">
                   <Activity className="w-3.5 h-3.5" />
-                  <span>Sincronizado automáticamente con tus entrenamientos de esta semana</span>
+                  <span>
+                    Calculado estrictamente de lunes a domingo ({weekInfo.weekDateRangeLabel})
+                  </span>
                 </div>
-                <span className="text-neutral-500">
-                  {ch.userCurrent >= ch.goal ? '¡Completado!' : `Faltan ${(ch.goal - ch.userCurrent).toLocaleString()} ${ch.unit}`}
+                <span className="text-neutral-400 font-bold">
+                  {ch.userCurrent >= ch.goal
+                    ? '¡Objetivo semanal superado!'
+                    : `Faltan ${(ch.goal - ch.userCurrent).toLocaleString()} ${ch.unit}`}
                 </span>
               </div>
             </div>

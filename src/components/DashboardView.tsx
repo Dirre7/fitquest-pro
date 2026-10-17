@@ -43,6 +43,7 @@ import {
   getLeagueLeaderboard,
   calculateUserWeeklyXp,
 } from '../lib/leagueEngine';
+import { getWeeklyChallengesForRotation } from '../lib/weeklyChallengesEngine';
 
 interface DashboardViewProps {
   user: UserProfile;
@@ -98,7 +99,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const [selectedRoutineId, setSelectedRoutineId] = useState<string>(() => getRecommendedRoutineId());
 
   const currentRoutine = routines.find((r) => r.id === selectedRoutineId) || routines[0];
-  const activeChallenge = challenges[0];
+  const weeklyRotationData = getWeeklyChallengesForRotation(history);
+  const claimedChallengeIds = user.claimedChallenges || [];
+  const activeChallenge =
+    [...weeklyRotationData.challenges]
+      .filter((c) => !claimedChallengeIds.includes(c.claimId))
+      .sort((a, b) => b.userCurrent / Math.max(1, b.goal) - a.userCurrent / Math.max(1, a.goal))[0] ||
+    weeklyRotationData.challenges[0];
 
   const todayIsoPrefix = new Date().toISOString().split('T')[0];
   const workoutsToday = (history || []).filter((h) => h.date.startsWith(todayIsoPrefix));
@@ -624,22 +631,54 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             )}
           </div>
 
-          {/* Join Sprint / Community Challenge Card matching Immersive UI Design */}
+          {/* Join Sprint / Weekly Rotating Challenge Card matching Immersive UI Design */}
           {activeChallenge && (
             <div 
               onClick={() => onNavigateTab('challenges')}
               className="bg-gradient-to-br from-cyan-600 to-blue-700 rounded-3xl p-6 relative overflow-hidden group cursor-pointer shadow-2xl hover:scale-[1.02] transition-transform"
             >
               <div className="relative z-10">
-                <span className="text-[10px] font-mono uppercase font-bold px-2 py-0.5 rounded-full bg-white/20 text-white tracking-widest mb-2 inline-block">
-                  RETO COMUNITARIO
-                </span>
-                <h3 className="text-xl font-black italic tracking-tighter uppercase mb-1 text-white">
+                <div className="flex items-center justify-between gap-2 mb-2">
+                  <span className="text-[10px] font-mono uppercase font-bold px-2.5 py-0.5 rounded-full bg-white/20 text-white tracking-widest inline-block">
+                    ⚔️ RETO SEMANAL ({weeklyRotationData.rotationMeta.badge})
+                  </span>
+                  {activeChallenge.userCurrent >= activeChallenge.goal &&
+                    !claimedChallengeIds.includes(activeChallenge.claimId) && (
+                      <span className="text-[10px] font-mono font-black uppercase px-2 py-0.5 rounded-full bg-yellow-400 text-neutral-950 animate-bounce">
+                        ¡LISTO PARA RECLAMAR!
+                      </span>
+                    )}
+                </div>
+                <h3 className="text-lg sm:text-xl font-black italic tracking-tighter uppercase mb-1 text-white">
                   {activeChallenge.title}
                 </h3>
-                <p className="text-xs text-cyan-100 leading-tight mb-4 max-w-[200px]">
+                <p className="text-xs text-cyan-100 leading-tight mb-3 max-w-[260px]">
                   {activeChallenge.description}
                 </p>
+
+                {/* Live Weekly Challenge Progress Bar */}
+                <div className="mb-3.5 bg-black/25 rounded-2xl p-2.5 border border-white/15">
+                  <div className="flex justify-between text-[11px] font-mono font-bold text-white mb-1">
+                    <span>
+                      {activeChallenge.userCurrent.toLocaleString()} / {activeChallenge.goal.toLocaleString()}{' '}
+                      {activeChallenge.unit}
+                    </span>
+                    <span>
+                      {Math.min(100, Math.round((activeChallenge.userCurrent / Math.max(1, activeChallenge.goal)) * 100))}%
+                    </span>
+                  </div>
+                  <div className="h-2 bg-black/40 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-white rounded-full transition-all duration-700"
+                      style={{
+                        width: `${Math.min(
+                          100,
+                          Math.round((activeChallenge.userCurrent / Math.max(1, activeChallenge.goal)) * 100)
+                        )}%`,
+                      }}
+                    />
+                  </div>
+                </div>
                 
                 <div className="flex items-center justify-between">
                   <div className="flex -space-x-2">
@@ -647,7 +686,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     <div className="w-7 h-7 rounded-full border-2 border-cyan-600 bg-neutral-400"></div>
                     <div className="w-7 h-7 rounded-full border-2 border-cyan-600 bg-neutral-500"></div>
                     <div className="px-2 h-7 rounded-full border-2 border-cyan-600 bg-black/40 text-white flex items-center justify-center text-[9px] font-mono font-bold">
-                      +{activeChallenge.participantsCount || 142}
+                      +{activeChallenge.participantsCount || 184}
                     </div>
                   </div>
                   <span className="text-xs font-mono font-bold text-white bg-black/30 px-3 py-1 rounded-xl border border-white/10">

@@ -1002,6 +1002,20 @@ export default function App() {
     );
     FitStorage.saveChallenges(updatedChallenges);
     setChallenges(updatedChallenges);
+
+    const totalClaimedCount = Math.max(
+      (updatedUser.claimedChallenges || []).length,
+      updatedUser.stats?.challengesCompleted || 0
+    );
+    const updatedAchievements = evaluateAllAchievements(
+      updatedUser,
+      history,
+      FitStorage.getAchievements(),
+      routines.filter((r) => r.isCustom).length,
+      totalClaimedCount
+    );
+    FitStorage.saveAchievements(updatedAchievements);
+    setAchievements(updatedAchievements);
   };
 
   // Handle Claim Achievement XP
