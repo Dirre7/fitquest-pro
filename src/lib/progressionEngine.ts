@@ -286,3 +286,75 @@ export function getXpProgressPercent(currentXp: number, nextXp: number): number 
   if (!nextXp || nextXp <= 0) return 0;
   return Math.min(100, Math.max(0, Math.round((currentXp / nextXp) * 100)));
 }
+
+/**
+ * Curva de XP equilibrada estilo RPG Deportivo:
+ * - Nivel 1 -> 2: 600 XP (~2 entrenos completos)
+ * - Nivel 2 -> 3: 800 XP (1.400 XP acumulados)
+ * - Nivel 3 -> 4: 1.000 XP
+ * - Nivel 4 -> 5: 1.200 XP
+ * - Nivel 5 -> 6: 1.400 XP (5.000 XP acumulados -> Rango Neón)
+ * - Crecimiento progresivo suave sin muros exponenciales imposibles en niveles 20-50.
+ */
+export function getXpRequiredForLevel(level: number): number {
+  const safeLevel = Math.max(1, Math.floor(level || 1));
+  if (safeLevel <= 5) {
+    return 600 + (safeLevel - 1) * 200; // 600, 800, 1000, 1200, 1400
+  }
+  if (safeLevel <= 12) {
+    return 1400 + (safeLevel - 5) * 250; // 1650 .. 3150
+  }
+  if (safeLevel <= 20) {
+    return 3150 + (safeLevel - 12) * 350; // 3500 .. 5950
+  }
+  if (safeLevel <= 35) {
+    return 5950 + (safeLevel - 20) * 450; // 6400 .. 12700
+  }
+  return 12700 + (safeLevel - 35) * 600;
+}
+
+/**
+ * Devuelve el XP total acumulado necesario para alcanzar `targetLevel` desde el Nivel 1 (0 XP).
+ */
+export function getCumulativeXpForLevel(targetLevel: number): number {
+  const safeTarget = Math.max(1, Math.floor(targetLevel || 1));
+  let total = 0;
+  for (let lvl = 1; lvl < safeTarget; lvl++) {
+    total += getXpRequiredForLevel(lvl);
+  }
+  return total;
+}
+
+/**
+ * Calcula determinísticamente el nivel, currentLevelXp y nextLevelXp a partir del XP total acumulado.
+ */
+export function calculateLevelFromTotalXp(totalXp: number): {
+  level: number;
+  xp: number;
+  currentLevelXp: number;
+  nextLevelXp: number;
+  milestoneTitle: string;
+} {
+  const safeTotalXp = Math.max(0, Math.round(totalXp || 0));
+  let level = 1;
+  let remaining = safeTotalXp;
+  let nextLevelXp = getXpRequiredForLevel(level);
+
+  while (remaining >= nextLevelXp && level < 999) {
+    remaining -= nextLevelXp;
+    level += 1;
+    nextLevelXp = getXpRequiredForLevel(level);
+  }
+
+  const unlockedMilestones = LEVEL_MILESTONES.filter((m) => m.level <= level);
+  const highestMilestone = unlockedMilestones[unlockedMilestones.length - 1] || LEVEL_MILESTONES[0];
+
+  return {
+    level,
+    xp: safeTotalXp,
+    currentLevelXp: remaining,
+    nextLevelXp,
+    milestoneTitle: highestMilestone.title,
+  };
+}
+

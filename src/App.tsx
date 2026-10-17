@@ -22,6 +22,7 @@ import { auth, db, onAuthStateChanged, signOut as fbSignOut } from './lib/fireba
 import { onSnapshot, doc, updateDoc, collection } from 'firebase/firestore';
 import { evaluateWeeklyLeagueReset, calculateRealStreak, calculateAthleteAttributes } from './lib/leagueEngine';
 import { evaluateAllAchievements } from './lib/achievementEngine';
+import { calculateLevelFromTotalXp } from './lib/progressionEngine';
 import { Smartphone, ShieldAlert } from 'lucide-react';
 
 // Components
@@ -392,24 +393,13 @@ export default function App() {
               const currentHistory = isSnapshotReset ? [] : FitStorage.getHistory();
               const realStreak = calculateRealStreak(currentHistory);
               const localHasMoreXp = !isSnapshotReset && (prev.xp || 0) > (data.xp || 0);
-              const effectiveLevel = isSnapshotReset
-                ? (data.level || 1)
-                : localHasMoreXp
-                ? prev.level
-                : Math.max(data.level || 1, prev.level || 1);
               const effectiveXp = isSnapshotReset
                 ? (data.xp || 0)
                 : Math.max(data.xp || 0, prev.xp || 0);
-              const effectiveCurrentLevelXp = isSnapshotReset
-                ? (data.currentLevelXp || 0)
-                : localHasMoreXp
-                ? prev.currentLevelXp
-                : (data.currentLevelXp !== undefined ? data.currentLevelXp : prev.currentLevelXp);
-              const effectiveNextLevelXp = isSnapshotReset
-                ? (data.nextLevelXp || 500)
-                : localHasMoreXp
-                ? prev.nextLevelXp
-                : (data.nextLevelXp || prev.nextLevelXp);
+              const prog = calculateLevelFromTotalXp(effectiveXp);
+              const effectiveLevel = prog.level;
+              const effectiveCurrentLevelXp = prog.currentLevelXp;
+              const effectiveNextLevelXp = prog.nextLevelXp;
 
               const dynamicAttributes = calculateAthleteAttributes(
                 currentHistory,
@@ -444,7 +434,7 @@ export default function App() {
                 ...data,
                 name: data.name || prev.name,
                 avatar: data.avatar || prev.avatar,
-                rankTitle: localHasMoreXp ? (prev.rankTitle || data.rankTitle || 'Recluta Inicial') : (data.rankTitle || (isSnapshotReset ? 'Gladiador de Bronce' : prev.rankTitle)),
+                rankTitle: localHasMoreXp ? (prev.rankTitle || data.rankTitle || 'Recluta Inicial') : (data.rankTitle || (isSnapshotReset ? 'Recluta Inicial' : prev.rankTitle)),
                 level: effectiveLevel,
                 xp: effectiveXp,
                 currentLevelXp: effectiveCurrentLevelXp,
@@ -906,10 +896,16 @@ export default function App() {
   // Helper to recalculate user stats when history is edited or deleted
   const recalculateUserStatsFromHistory = (updatedHistory: WorkoutHistoryEntry[]) => {
     const realStreak = calculateRealStreak(updatedHistory);
+    const historyXp = updatedHistory.reduce((sum, h) => sum + (Number(h.xpEarned) || 0), 0);
+    const claimedAchXp = FitStorage.getAchievements()
+      .filter((a) => Boolean((a as any).rewardClaimed))
+      .reduce((sum, a) => sum + (Number(a.xpReward) || 0), 0);
+    const prog = calculateLevelFromTotalXp(Math.max(0, historyXp + claimedAchXp));
+
     const dynamicAttributes = calculateAthleteAttributes(
       updatedHistory,
       realStreak.currentStreak,
-      user.level,
+      prog.level,
       user.attributes
     );
     const calculatedVolume = updatedHistory.reduce((sum, h) => sum + (h.totalVolumeKg || 0), 0);
@@ -919,6 +915,10 @@ export default function App() {
 
     const updatedUser: UserProfile = {
       ...user,
+      level: prog.level,
+      xp: prog.xp,
+      currentLevelXp: prog.currentLevelXp,
+      nextLevelXp: prog.nextLevelXp,
       attributes: dynamicAttributes,
       stats: {
         ...user.stats,

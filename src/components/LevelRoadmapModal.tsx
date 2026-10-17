@@ -18,7 +18,8 @@ import {
   getNextMilestone,
   LEVEL_MILESTONES,
   getXpProgressPercent,
-  PRESTIGE_TIERS
+  PRESTIGE_TIERS,
+  getCumulativeXpForLevel,
 } from '../lib/progressionEngine';
 import { sound } from '../lib/soundFx';
 
@@ -295,6 +296,9 @@ export const LevelRoadmapModal: React.FC<LevelRoadmapModalProps> = ({
                         }}
                       >
                         {tierInfo.name}
+                      </span>
+                      <span className="text-[10px] font-mono text-neutral-400 bg-white/5 border border-white/10 px-2 py-0.5 rounded-full">
+                        {getCumulativeXpForLevel(m.level).toLocaleString()} XP acum.
                       </span>
                       {isCurrent && (
                         <span className="text-[10px] font-mono font-black uppercase px-2 py-0.5 rounded bg-cyan-500 text-neutral-950">

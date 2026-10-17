@@ -15,7 +15,7 @@ import {
   SaturdayWeighIn,
 } from '../types';
 import { RENATO_PLAN_CONFIG } from './nutritionData';
-import { LEVEL_MILESTONES } from './progressionEngine';
+import { LEVEL_MILESTONES, calculateLevelFromTotalXp } from './progressionEngine';
 import {
   createFreshUser,
   createFreshAchievements,
@@ -81,7 +81,16 @@ export class FitStorage {
   public static getUser(): UserProfile {
     try {
       const data = localStorage.getItem(KEYS.USER);
-      return data ? JSON.parse(data) : createFreshUser('guest_user', 'Atleta Nuevo');
+      if (!data) return createFreshUser('guest_user', 'Atleta Nuevo');
+      const parsed: UserProfile = JSON.parse(data);
+      const prog = calculateLevelFromTotalXp(parsed.xp || 0);
+      return {
+        ...parsed,
+        level: prog.level,
+        xp: prog.xp,
+        currentLevelXp: prog.currentLevelXp,
+        nextLevelXp: prog.nextLevelXp,
+      };
     } catch {
       return createFreshUser('guest_user', 'Atleta Nuevo');
     }
@@ -208,38 +217,24 @@ export class FitStorage {
               ...(defaults.unlockedBadges || []),
             ]));
 
-        const maxLevel = isCloudResetActive
-          ? (cloudData.level || 1)
-          : Math.max(cloudData.level || 1, existingLocalUser.level || 1, defaults.level || 1);
-
         const maxTotalXp = isCloudResetActive
           ? (cloudData.xp || 0)
           : Math.max(cloudData.xp || 0, existingLocalUser.xp || 0);
 
-        const effectiveCurrentLevelXp = isCloudResetActive
-          ? (cloudData.currentLevelXp || 0)
-          : (cloudData.xp !== undefined && cloudData.xp >= (existingLocalUser.xp || 0))
-          ? (cloudData.currentLevelXp ?? existingLocalUser.currentLevelXp ?? defaults.currentLevelXp)
-          : (existingLocalUser.currentLevelXp ?? defaults.currentLevelXp);
-
-        const effectiveNextLevelXp = isCloudResetActive
-          ? (cloudData.nextLevelXp || 500)
-          : (cloudData.xp !== undefined && cloudData.xp >= (existingLocalUser.xp || 0))
-          ? (cloudData.nextLevelXp || existingLocalUser.nextLevelXp || defaults.nextLevelXp)
-          : (existingLocalUser.nextLevelXp || defaults.nextLevelXp);
+        const initialProg = calculateLevelFromTotalXp(maxTotalXp);
 
         userProfile = {
           ...defaults,
           ...(isCloudResetActive ? {} : existingLocalUser),
           ...cloudData,
           id: uid,
-          level: maxLevel,
-          xp: maxTotalXp,
-          currentLevelXp: effectiveCurrentLevelXp,
-          nextLevelXp: effectiveNextLevelXp,
+          level: initialProg.level,
+          xp: initialProg.xp,
+          currentLevelXp: initialProg.currentLevelXp,
+          nextLevelXp: initialProg.nextLevelXp,
           name: cloudData.name || existingLocalUser.name || defaults.name,
           avatar: cloudData.avatar || existingLocalUser.avatar || defaults.avatar,
-          rankTitle: cloudData.rankTitle || (isCloudResetActive ? 'Gladiador de Bronce' : (existingLocalUser.rankTitle || defaults.rankTitle)),
+          rankTitle: cloudData.rankTitle || (isCloudResetActive ? 'Recluta Inicial' : (existingLocalUser.rankTitle || initialProg.milestoneTitle || defaults.rankTitle)),
           weightKg: cloudData.weightKg ?? existingLocalUser.weightKg ?? defaults.weightKg,
           targetWeightKg: cloudData.targetWeightKg ?? existingLocalUser.targetWeightKg ?? defaults.targetWeightKg,
           claimedChallenges: mergedClaimed,
@@ -577,6 +572,23 @@ export class FitStorage {
         };
       });
       localStorage.setItem(KEYS.ACHIEVEMENTS, JSON.stringify(achievementsList));
+
+      // Recalculate exact total XP and balanced level from history + claimed achievements + profile XP
+      if (!isCloudResetActive) {
+        const historyXp = finalHistory.reduce((s, h) => s + (Number(h.xpEarned) || 0), 0);
+        const claimedAchXp = achievementsList
+          .filter((a) => Boolean((a as any).rewardClaimed))
+          .reduce((s, a) => s + (Number(a.xpReward) || 0), 0);
+        const effectiveTotalXp = Math.max(userProfile.xp || 0, historyXp + claimedAchXp);
+        const balancedProg = calculateLevelFromTotalXp(effectiveTotalXp);
+        userProfile = {
+          ...userProfile,
+          level: balancedProg.level,
+          xp: balancedProg.xp,
+          currentLevelXp: balancedProg.currentLevelXp,
+          nextLevelXp: balancedProg.nextLevelXp,
+        };
+      }
 
       // Update local storage with combined sanitized history & user, and sync clean stats to cloud
       this.saveHistory(finalHistory);
@@ -970,16 +982,12 @@ export class FitStorage {
 
   public static addXp(amount: number, currentUser?: UserProfile, skipSave: boolean = false): UserProfile {
     const user = currentUser || this.getUser();
-    let currentXp = user.currentLevelXp + amount;
-    let nextXp = user.nextLevelXp;
-    let level = user.level;
-    let rankTitle = user.rankTitle || 'Recluta Inicial';
+    const newTotalXp = Math.max(0, (user.xp || 0) + amount);
+    const prog = calculateLevelFromTotalXp(newTotalXp);
 
-    while (currentXp >= nextXp) {
-      currentXp -= nextXp;
-      level += 1;
-      nextXp = Math.round(nextXp * 1.3);
-      const milestone = LEVEL_MILESTONES.find((m) => m.level === level);
+    let rankTitle = user.rankTitle || 'Recluta Inicial';
+    if (prog.level > (user.level || 1)) {
+      const milestone = LEVEL_MILESTONES.find((m) => m.level === prog.level);
       if (milestone?.title && (!user.rankTitle || user.rankTitle === 'Recluta Inicial')) {
         rankTitle = milestone.title;
       }
@@ -987,10 +995,10 @@ export class FitStorage {
 
     const updatedUser: UserProfile = {
       ...user,
-      level,
-      xp: user.xp + amount,
-      currentLevelXp: currentXp,
-      nextLevelXp: nextXp,
+      level: prog.level,
+      xp: prog.xp,
+      currentLevelXp: prog.currentLevelXp,
+      nextLevelXp: prog.nextLevelXp,
       rankTitle,
       attributes: {
         strength: Math.min(100, user.attributes.strength + Math.floor(amount / 300)),
@@ -1050,17 +1058,12 @@ export class FitStorage {
       return user;
     }
     const updatedClaimed = [...existing, challengeId];
+    const newTotalXp = Math.max(0, (user.xp || 0) + rewardXp);
+    const prog = calculateLevelFromTotalXp(newTotalXp);
 
-    let currentXp = user.currentLevelXp + rewardXp;
-    let nextXp = user.nextLevelXp;
-    let level = user.level;
     let rankTitle = user.rankTitle || 'Recluta Inicial';
-
-    while (currentXp >= nextXp) {
-      currentXp -= nextXp;
-      level += 1;
-      nextXp = Math.round(nextXp * 1.3);
-      const milestone = LEVEL_MILESTONES.find((m) => m.level === level);
+    if (prog.level > (user.level || 1)) {
+      const milestone = LEVEL_MILESTONES.find((m) => m.level === prog.level);
       if (milestone?.title && (!user.rankTitle || user.rankTitle === 'Recluta Inicial')) {
         rankTitle = milestone.title;
       }
@@ -1068,10 +1071,10 @@ export class FitStorage {
 
     const updatedUser: UserProfile = {
       ...user,
-      level,
-      xp: user.xp + rewardXp,
-      currentLevelXp: currentXp,
-      nextLevelXp: nextXp,
+      level: prog.level,
+      xp: prog.xp,
+      currentLevelXp: prog.currentLevelXp,
+      nextLevelXp: prog.nextLevelXp,
       rankTitle,
       claimedChallenges: updatedClaimed,
       stats: {
@@ -1254,8 +1257,8 @@ export class FitStorage {
       level: 1,
       xp: 0,
       currentLevelXp: 0,
-      nextLevelXp: 500,
-      rankTitle: 'Gladiador de Bronce',
+      nextLevelXp: 600,
+      rankTitle: 'Recluta Inicial',
       league: 'Bronze',
       leaguePoints: 0,
       joinedAt: existingUser.joinedAt || resetTimestamp.split('T')[0],

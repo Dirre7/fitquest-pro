@@ -22,7 +22,7 @@ export const createFreshUser = (id: string, name: string, email?: string): UserP
     level: 1,
     xp: 0,
     currentLevelXp: 0,
-    nextLevelXp: 250,
+    nextLevelXp: 600,
     rankTitle: 'Recluta Inicial',
     league: 'Bronze',
     leaguePoints: 0,
