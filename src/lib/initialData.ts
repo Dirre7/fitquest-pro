@@ -800,7 +800,7 @@ export const defaultPrograms: WorkoutProgram[] = [
     difficulty: 'Intermediate',
     category: 'Strength',
     targetMuscles: ['Pectoral', 'Espalda', 'Piernas', 'Hombros', 'Brazos'],
-    xpReward: 1200,
+    xpReward: 300,
     days: [
       {
         dayNumber: 1,
@@ -830,7 +830,7 @@ export const defaultPrograms: WorkoutProgram[] = [
     difficulty: 'Advanced',
     category: 'Hypertrophy',
     targetMuscles: ['Full Body', 'Fuerza', 'Hipertrofia'],
-    xpReward: 1600,
+    xpReward: 450,
     days: [
       {
         dayNumber: 1,
@@ -866,7 +866,7 @@ export const defaultPrograms: WorkoutProgram[] = [
     difficulty: 'Intermediate',
     category: 'Calisthenics',
     targetMuscles: ['Espalda', 'Pectoral', 'Hombros', 'Core'],
-    xpReward: 1100,
+    xpReward: 300,
     days: [
       {
         dayNumber: 1,
@@ -896,7 +896,7 @@ export const defaultPrograms: WorkoutProgram[] = [
     difficulty: 'Intermediate',
     category: 'Cardio',
     targetMuscles: ['Cardio', 'Piernas', 'Capacidad Aeróbica'],
-    xpReward: 1300,
+    xpReward: 325,
     days: [
       {
         dayNumber: 1,
@@ -926,7 +926,7 @@ export const defaultPrograms: WorkoutProgram[] = [
     difficulty: 'Advanced',
     category: 'HIIT',
     targetMuscles: ['Full Body', 'Cardio', 'Core'],
-    xpReward: 1250,
+    xpReward: 325,
     days: [
       {
         dayNumber: 1,
@@ -956,7 +956,7 @@ export const defaultPrograms: WorkoutProgram[] = [
     difficulty: 'Elite',
     category: 'Hybrid',
     targetMuscles: ['Fuerza', 'Hipertrofia', 'Cardio', 'Running'],
-    xpReward: 1750,
+    xpReward: 500,
     days: [
       {
         dayNumber: 1,

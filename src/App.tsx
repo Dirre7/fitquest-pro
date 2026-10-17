@@ -755,16 +755,22 @@ export default function App() {
     if (activeRoutine?.programId && activeRoutine?.programDayNumber) {
       const progId = activeRoutine.programId;
       const dayNum = activeRoutine.programDayNumber;
-      updatedProgramProgress[progId] = Math.max(updatedProgramProgress[progId] || 0, dayNum);
+      const prevCompletedDay = updatedProgramProgress[progId] || 0;
+      updatedProgramProgress[progId] = Math.max(prevCompletedDay, dayNum);
       localStorage.setItem('fitquest_program_progress', JSON.stringify(updatedProgramProgress));
 
-      // Check if this completes the entire program cycle
+      // Only award the cycle completion bonus when completing the final day for the first time in this cycle
       const targetProgram = FitStorage.getPrograms().find((p) => p.id === progId);
-      if (targetProgram && dayNum >= targetProgram.days.length) {
-        totalXpToAward += (targetProgram.xpReward || 500);
+      if (targetProgram && prevCompletedDay < targetProgram.days.length && dayNum >= targetProgram.days.length) {
+        totalXpToAward += (targetProgram.xpReward || 300);
         sound.playLevelUp();
       }
     }
+
+    const finalEntry: WorkoutHistoryEntry = {
+      ...entry,
+      xpEarned: totalXpToAward,
+    };
 
     // Clear active session in local memory & localStorage first without triggering a premature cloud snapshot
     localStorage.removeItem('fitquest_active_session');
@@ -772,8 +778,8 @@ export default function App() {
     setActiveRoutine(null);
 
     // 1. Prepend new history entry synchronously to localStorage
-    const existingHistory = FitStorage.getHistory().filter((h) => h.id !== entry.id);
-    const updatedHistory = [entry, ...existingHistory].sort(
+    const existingHistory = FitStorage.getHistory().filter((h) => h.id !== finalEntry.id);
+    const updatedHistory = [finalEntry, ...existingHistory].sort(
       (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
     );
     FitStorage.saveHistory(updatedHistory);
@@ -844,7 +850,7 @@ export default function App() {
     const updatedChallenges = challenges.map((ch) => {
       if (!ch.joined) return ch;
       if (ch.category === 'volume') {
-        const newP = Math.min(ch.goalTarget, ch.currentProgress + entry.totalVolumeKg);
+        const newP = Math.min(ch.goalTarget, ch.currentProgress + finalEntry.totalVolumeKg);
         return { ...ch, currentProgress: newP };
       }
       if (ch.category === 'workouts') {
@@ -852,7 +858,7 @@ export default function App() {
         return { ...ch, currentProgress: newP };
       }
       if (ch.category === 'calories') {
-        const newP = Math.min(ch.goalTarget, ch.currentProgress + entry.calories);
+        const newP = Math.min(ch.goalTarget, ch.currentProgress + finalEntry.calories);
         return { ...ch, currentProgress: newP };
       }
       return ch;
@@ -862,7 +868,7 @@ export default function App() {
 
     // 5. Persist finalUser + updatedHistory + updatedAchievements to localStorage & Firestore in one clean pass
     FitStorage.saveUser(finalUser);
-    FitStorage.addHistoryEntry(entry, finalUser);
+    FitStorage.addHistoryEntry(finalEntry, finalUser);
     setUser(finalUser);
 
     // 6. Close active routine modal & show appropriate view

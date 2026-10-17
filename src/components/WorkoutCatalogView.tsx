@@ -325,16 +325,25 @@ export const WorkoutCatalogView: React.FC<WorkoutCatalogViewProps> = ({
                     </div>
 
                     {/* XP Reward & Days Progress Badge */}
-                    <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-2 shrink-0">
-                      <span className="text-xs font-mono font-black text-yellow-400 bg-yellow-500/10 px-3 py-1 rounded-xl border border-yellow-500/20 shadow">
-                        +{program.xpReward} XP Recompensa
-                      </span>
-                      <div className="text-right">
-                        <span className="text-[11px] font-mono font-bold text-neutral-400">
-                          {currentCompletedDays} de {program.days.length} Días ({percent}%)
-                        </span>
-                      </div>
-                    </div>
+                    {(() => {
+                      const totalSessionsXp = program.days.reduce(
+                        (sum, d) => sum + (d.routine?.xpReward || 300),
+                        0
+                      );
+                      const totalCycleXp = totalSessionsXp + (program.xpReward || 300);
+                      return (
+                        <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-1.5 shrink-0">
+                          <span className="text-xs font-mono font-black text-yellow-400 bg-yellow-500/10 px-3 py-1 rounded-xl border border-yellow-500/20 shadow">
+                            +{totalCycleXp} XP Total Ciclo ({totalSessionsXp} XP días + {program.xpReward} Bono)
+                          </span>
+                          <div className="text-right">
+                            <span className="text-[11px] font-mono font-bold text-neutral-400">
+                              {currentCompletedDays} de {program.days.length} Días ({percent}%)
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </div>
 
                   {/* Program Progress Bar */}
@@ -463,8 +472,8 @@ export const WorkoutCatalogView: React.FC<WorkoutCatalogViewProps> = ({
                             <CheckCircle2 className="w-5 h-5" />
                           </div>
                           <div>
-                            <h5 className="font-display font-bold text-white text-sm">¡Ciclo Semanal Completado! (+{program.xpReward} XP)</h5>
-                            <p className="text-xs text-neutral-400">Has superado todas las sesiones del plan. Puedes iniciar un nuevo ciclo para seguir progresando.</p>
+                            <h5 className="font-display font-bold text-white text-sm">¡Ciclo Semanal Completado! (+{program.xpReward} XP Bono Final)</h5>
+                            <p className="text-xs text-neutral-400">Has superado todas las sesiones del plan y recibido el bono final. Reinicia el ciclo para la próxima semana.</p>
                           </div>
                         </div>
                         <button
