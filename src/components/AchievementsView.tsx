@@ -450,8 +450,8 @@ export const AchievementsView: React.FC<AchievementsViewProps> = ({
         </div>
       </div>
 
-      {/* 4. Achievements Cards Grid (Smartly Ordered) */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      {/* 4. Achievements Cards Grid (Sleek Compact Gamer Layout) */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 sm:gap-3">
         {sortedAndFilteredAchievements.map((ach) => {
           const progressPercent = Math.min(100, Math.round((ach.currentProgress / ach.maxProgress) * 100));
           const isEquippedTitle = ach.rewardTitle && user.rankTitle === ach.rewardTitle;
@@ -464,100 +464,104 @@ export const AchievementsView: React.FC<AchievementsViewProps> = ({
           return (
             <div
               key={ach.id}
-              className={`rounded-3xl p-5 sm:p-6 border transition-all flex flex-col justify-between relative overflow-hidden group ${
+              className={`rounded-2xl p-3 sm:p-3.5 border transition-all relative overflow-hidden group flex flex-col justify-between ${
                 isLockedSecret
-                  ? 'border-purple-500/20 bg-gradient-to-b from-purple-950/10 to-neutral-950 hover:border-purple-500/40'
+                  ? 'border-purple-500/20 bg-gradient-to-b from-purple-950/20 to-neutral-950/80 hover:border-purple-500/40'
                   : getTierCardBorder(ach.tier, ach.unlocked)
               }`}
             >
-              {/* Unlocked Sparkle Indicator */}
+              {/* Unlocked Subtle Sparkle Glow */}
               {ach.unlocked && (
-                <div className="absolute -right-8 -top-8 w-24 h-24 bg-amber-500/10 blur-2xl pointer-events-none group-hover:bg-amber-500/20 transition-colors" />
+                <div className="absolute -right-6 -top-6 w-20 h-20 bg-amber-500/10 blur-xl pointer-events-none group-hover:bg-amber-500/20 transition-colors" />
               )}
 
-              <div>
-                {/* Header: Icon + Status Badge + Tier Badge */}
-                <div className="flex items-center justify-between gap-3 mb-4">
-                  <div
-                    className={`w-12 h-12 rounded-2xl flex items-center justify-center border transition-transform group-hover:scale-110 duration-200 ${
-                      ach.unlocked
-                        ? 'bg-amber-500/20 border-amber-500/40 text-amber-300 shadow-lg shadow-amber-500/20'
-                        : isLockedSecret
-                        ? 'bg-purple-950/40 border-purple-500/40 text-purple-400'
-                        : ach.currentProgress > 0
-                        ? 'bg-cyan-500/15 border-cyan-500/30 text-cyan-400'
-                        : 'bg-neutral-800/80 border-neutral-700/60 text-neutral-500'
-                    }`}
-                  >
-                    {ach.unlocked ? getIcon(ach.icon) : isLockedSecret ? <Sparkles className="w-5 h-5 text-purple-400 animate-pulse" /> : ach.currentProgress > 0 ? getIcon(ach.icon) : <Lock className="w-5 h-5" />}
-                  </div>
-
-                  <div className="flex items-center gap-1.5">
-                    {ach.unlocked ? (
-                      <span className="text-[10px] font-mono font-black uppercase px-2 py-0.5 rounded-lg bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center gap-1">
-                        <Check className="w-3 h-3" /> Completado
-                      </span>
-                    ) : isLockedSecret ? (
-                      <span className="text-[10px] font-mono font-black uppercase px-2 py-0.5 rounded-lg bg-purple-500/20 text-purple-300 border border-purple-500/30 flex items-center gap-1">
-                        🔒 Secreto
-                      </span>
-                    ) : ach.currentProgress > 0 ? (
-                      <span className="text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded-lg bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
-                        {progressPercent}%
-                      </span>
-                    ) : null}
-
-                    <span className={`text-[10px] font-mono font-black uppercase px-2.5 py-1 rounded-xl border ${getTierBadge(ach.tier)}`}>
-                      {ach.tier}
-                    </span>
-                  </div>
+              {/* Main Compact Row: Icon + Main Info + Badges */}
+              <div className="flex items-start gap-3">
+                {/* Icon Container */}
+                <div
+                  className={`w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex-shrink-0 flex items-center justify-center border transition-transform group-hover:scale-105 duration-200 ${
+                    ach.unlocked
+                      ? 'bg-amber-500/20 border-amber-500/40 text-amber-300 shadow-md shadow-amber-500/20'
+                      : isLockedSecret
+                      ? 'bg-purple-950/40 border-purple-500/40 text-purple-400'
+                      : ach.currentProgress > 0
+                      ? 'bg-cyan-500/15 border-cyan-500/30 text-cyan-400'
+                      : 'bg-neutral-800/80 border-neutral-700/60 text-neutral-500'
+                  }`}
+                >
+                  {ach.unlocked ? getIcon(ach.icon) : isLockedSecret ? <Sparkles className="w-4 h-4 text-purple-400 animate-pulse" /> : ach.currentProgress > 0 ? getIcon(ach.icon) : <Lock className="w-4 h-4" />}
                 </div>
 
-                {/* Title & Description */}
-                <h3 className={`font-display font-extrabold text-lg transition-colors ${
-                  isLockedSecret ? 'text-purple-300 font-mono' : 'text-white group-hover:text-amber-300'
-                }`}>
-                  {displayTitle}
-                </h3>
-                <p className={`text-xs mt-1 leading-relaxed ${isLockedSecret ? 'text-purple-300/80 italic' : 'text-neutral-400'}`}>
-                  {displayDesc}
-                </p>
+                {/* Content: Title, Badges & Description */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between gap-1.5 flex-wrap">
+                    <h3 className={`font-display font-extrabold text-sm sm:text-base truncate transition-colors ${
+                      isLockedSecret ? 'text-purple-300 font-mono' : 'text-white group-hover:text-amber-300'
+                    }`}>
+                      {displayTitle}
+                    </h3>
 
-                {/* Reward Title Badge if applicable */}
-                {ach.rewardTitle && !isLockedSecret && (
-                  <div className="mt-3 pt-2.5 border-t border-white/5 flex items-center justify-between gap-2">
-                    <span className="text-[10px] font-mono text-neutral-400 flex items-center gap-1">
-                      <Tag className="w-3 h-3 text-cyan-400" /> Título:
-                      <span className="text-cyan-300 font-bold font-mono">"{ach.rewardTitle}"</span>
-                    </span>
+                    {/* Tier & Status Badges */}
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                      {ach.unlocked ? (
+                        <span className="text-[9px] font-mono font-black uppercase px-1.5 py-0.5 rounded-md bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center gap-0.5">
+                          <Check className="w-2.5 h-2.5" /> Hecho
+                        </span>
+                      ) : isLockedSecret ? (
+                        <span className="text-[9px] font-mono font-black uppercase px-1.5 py-0.5 rounded-md bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                          🔒 Secreto
+                        </span>
+                      ) : null}
 
-                    {ach.unlocked && onEquipTitle && (
-                      <button
-                        onClick={() => handleEquipTitleClick(ach.rewardTitle!)}
-                        className={`text-[10px] font-mono font-bold px-2 py-1 rounded-lg transition-all border cursor-pointer ${
-                          isEquippedTitle
-                            ? 'bg-cyan-500/20 border-cyan-500/60 text-cyan-300 font-extrabold'
-                            : 'bg-white/5 border-white/10 text-neutral-300 hover:bg-cyan-500 hover:text-neutral-950 hover:border-cyan-400'
-                        }`}
-                        title={isEquippedTitle ? 'Título actualmente equipado' : 'Equipar este título honorífico'}
-                      >
-                        {isEquippedTitle ? '✓ Equipado' : 'Equipar'}
-                      </button>
-                    )}
+                      <span className={`text-[9px] font-mono font-black uppercase px-1.5 py-0.5 rounded-md border ${getTierBadge(ach.tier)}`}>
+                        {ach.tier}
+                      </span>
+                    </div>
                   </div>
-                )}
 
-                {/* Progress Bar */}
-                <div className="mt-4">
-                  <div className="flex justify-between text-[11px] font-mono font-semibold text-neutral-400 mb-1">
-                    <span>Progreso: {ach.currentProgress} / {ach.maxProgress}</span>
-                    <span className="font-bold">{progressPercent}%</span>
+                  <p className={`text-xs mt-0.5 leading-tight line-clamp-2 ${isLockedSecret ? 'text-purple-300/80 italic' : 'text-neutral-400'}`}>
+                    {displayDesc}
+                  </p>
+
+                  {/* Reward Title if present */}
+                  {ach.rewardTitle && !isLockedSecret && (
+                    <div className="mt-1.5 flex items-center gap-1.5 flex-wrap">
+                      <span className="text-[10px] font-mono text-neutral-400 flex items-center gap-1">
+                        <Tag className="w-2.5 h-2.5 text-cyan-400" />
+                        <span className="text-cyan-300 font-bold font-mono">"{ach.rewardTitle}"</span>
+                      </span>
+
+                      {ach.unlocked && onEquipTitle && (
+                        <button
+                          onClick={() => handleEquipTitleClick(ach.rewardTitle!)}
+                          className={`text-[9px] font-mono font-bold px-1.5 py-0.5 rounded transition-all border cursor-pointer ${
+                            isEquippedTitle
+                              ? 'bg-cyan-500/20 border-cyan-500/60 text-cyan-300 font-extrabold'
+                              : 'bg-white/5 border-white/10 text-neutral-300 hover:bg-cyan-500 hover:text-neutral-950 hover:border-cyan-400'
+                          }`}
+                          title={isEquippedTitle ? 'Título actualmente equipado' : 'Equipar este título honorífico'}
+                        >
+                          {isEquippedTitle ? '✓ Equipado' : 'Equipar'}
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Progress & Bottom Actions Bar (Streamlined) */}
+              <div className="mt-2.5 pt-2 border-t border-white/5 flex items-center justify-between gap-3">
+                {/* Thin Progress bar with numbers */}
+                <div className="flex-1 max-w-[65%]">
+                  <div className="flex justify-between text-[10px] font-mono text-neutral-400 mb-1 leading-none">
+                    <span>{ach.currentProgress}/{ach.maxProgress}</span>
+                    <span className="font-semibold">{progressPercent}%</span>
                   </div>
-                  <div className="h-2 bg-neutral-950 rounded-full overflow-hidden border border-white/5">
+                  <div className="h-1.5 bg-neutral-950 rounded-full overflow-hidden border border-white/5">
                     <div
                       className={`h-full rounded-full transition-all duration-500 ${
                         ach.unlocked
-                          ? 'bg-gradient-to-r from-amber-400 to-yellow-500 shadow-[0_0_10px_rgba(245,158,11,0.5)]'
+                          ? 'bg-gradient-to-r from-amber-400 to-yellow-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]'
                           : ach.currentProgress > 0
                           ? 'bg-cyan-400'
                           : 'bg-neutral-800'
@@ -566,28 +570,30 @@ export const AchievementsView: React.FC<AchievementsViewProps> = ({
                     />
                   </div>
                 </div>
-              </div>
 
-              {/* Bottom Card Actions: Share or Locked status */}
-              <div className="mt-5 pt-3 border-t border-white/5 flex items-center justify-between">
-                <span className="font-mono font-black text-xs text-amber-400 flex items-center gap-1">
-                  <Sparkles className="w-3.5 h-3.5" /> +{ach.xpReward} XP
-                </span>
-
-                {ach.unlocked ? (
-                  <button
-                    id={`btn-share-ach-${ach.id}`}
-                    onClick={() => handleShareClick(ach)}
-                    className="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-amber-500/20 text-amber-300 border border-white/10 hover:border-amber-500/40 text-xs font-mono font-bold flex items-center gap-1.5 transition-all cursor-pointer"
-                  >
-                    <Share2 className="w-3.5 h-3.5" />
-                    <span>Compartir</span>
-                  </button>
-                ) : (
-                  <span className="text-[11px] font-mono font-semibold text-neutral-500 flex items-center gap-1">
-                    <Lock className="w-3 h-3" /> Bloqueado
+                {/* Right: XP & Share Action */}
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <span className="font-mono font-black text-[11px] text-amber-400 flex items-center gap-0.5">
+                    <Sparkles className="w-3 h-3" /> +{ach.xpReward} XP
                   </span>
-                )}
+
+                  {ach.unlocked ? (
+                    <button
+                      id={`btn-share-ach-${ach.id}`}
+                      onClick={() => handleShareClick(ach)}
+                      aria-label="Compartir logro"
+                      className="p-1.5 rounded-lg bg-white/5 hover:bg-amber-500/20 text-amber-300 border border-white/10 hover:border-amber-500/40 text-xs font-mono font-bold flex items-center gap-1 transition-all cursor-pointer"
+                      title="Compartir logro"
+                    >
+                      <Share2 className="w-3 h-3" />
+                      <span className="hidden sm:inline text-[10px]">Compartir</span>
+                    </button>
+                  ) : (
+                    <span className="text-[10px] font-mono text-neutral-500 flex items-center gap-1">
+                      <Lock className="w-2.5 h-2.5" />
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
           );
