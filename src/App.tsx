@@ -452,6 +452,13 @@ export default function App() {
                 nextLevelXp: effectiveNextLevelXp,
                 weightKg: data.weightKg ?? prev.weightKg,
                 targetWeightKg: data.targetWeightKg ?? prev.targetWeightKg,
+                heightCm: data.heightCm ?? prev.heightCm,
+                age: data.age ?? prev.age,
+                gender: data.gender ?? prev.gender,
+                fitnessGoal: data.fitnessGoal ?? prev.fitnessGoal,
+                trainingDaysPerWeek: data.trainingDaysPerWeek ?? prev.trainingDaysPerWeek,
+                experienceLevel: data.experienceLevel ?? prev.experienceLevel,
+                onboardingCompleted: data.onboardingCompleted ?? prev.onboardingCompleted,
                 unlockedBadges: isSnapshotReset ? (data.unlockedBadges || []) : (data.unlockedBadges !== undefined ? data.unlockedBadges : (prev.unlockedBadges || [])),
                 claimedChallenges: isSnapshotReset ? (data.claimedChallenges || []) : (data.claimedChallenges !== undefined ? data.claimedChallenges : (prev.claimedChallenges || [])),
                 attributes: isSnapshotReset ? { strength: 10, endurance: 10, agility: 10, discipline: 10 } : dynamicAttributes,
@@ -1400,10 +1407,16 @@ export default function App() {
           user={user}
           lang={lang}
           onComplete={async (updatedUser) => {
+            // Close modal immediately and set active tab to dashboard
+            setOnboardingModalOpen(false);
+            setActiveTab('dashboard');
             setUser(updatedUser);
             FitStorage.saveUser(updatedUser);
-            await FitStorage.syncUserToCloud(updatedUser);
-            setOnboardingModalOpen(false);
+            try {
+              await FitStorage.syncUserToCloud(updatedUser);
+            } catch (err) {
+              console.warn('Onboarding cloud sync non-blocking warning:', err);
+            }
           }}
         />
       )}

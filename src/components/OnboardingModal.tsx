@@ -35,6 +35,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Form State
+  const [name, setName] = useState<string>(user.name || '');
   const [gender, setGender] = useState<'male' | 'female' | 'other'>(user.gender || 'male');
   const [age, setAge] = useState<number>(user.age || 25);
   const [heightCm, setHeightCm] = useState<number>(user.heightCm || 175);
@@ -69,8 +70,11 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
     setIsSubmitting(true);
     sound.playLevelUp();
 
+    const cleanName = name.trim() || user.name || 'Atleta';
     const updated: UserProfile = {
       ...user,
+      name: cleanName,
+      avatar: user.avatar || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(cleanName)}&backgroundColor=06b6d4,3b82f6`,
       gender,
       age: Number(age) || 25,
       heightCm: Number(heightCm) || 175,
@@ -80,7 +84,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
       trainingDaysPerWeek: Number(trainingDaysPerWeek) || 4,
       experienceLevel,
       onboardingCompleted: true,
-      // Give initial completion XP boost if user is Level 1
+      // Give initial completion XP boost
       xp: (user.xp || 0) + 150,
       currentLevelXp: (user.currentLevelXp || 0) + 150,
     };
@@ -146,9 +150,25 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
         {/* Step Body Content */}
         <div className="p-5 sm:p-6 space-y-4 overflow-y-auto flex-1 relative z-10 no-scrollbar">
           
-          {/* STEP 1: Biometrics (Gender, Age, Height, Weight) */}
+          {/* STEP 1: Biometrics (Name, Gender, Age, Height, Weight) */}
           {step === 1 && (
             <div className="space-y-4">
+              {/* Name Confirmation Input */}
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-mono font-bold text-neutral-300 flex items-center gap-1.5 uppercase tracking-wider">
+                  <User className="w-3.5 h-3.5 text-cyan-400" />
+                  <span>Nombre o Apodo de Atleta *</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Ej. David Guerrero"
+                  className="w-full bg-[#09090b] border border-white/10 rounded-2xl px-4 py-3 text-sm font-mono font-bold text-white placeholder-neutral-500 focus:border-cyan-400 focus:outline-none"
+                />
+              </div>
+
               {/* Gender Selection */}
               <div>
                 <label className="block text-[11px] font-mono font-bold text-neutral-300 mb-2 uppercase tracking-wider">

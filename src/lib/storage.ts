@@ -149,6 +149,13 @@ export class FitStorage {
           activeSession: user.activeSession !== undefined ? user.activeSession : (this.getActiveSession() || null),
           weightKg: user.weightKg,
           targetWeightKg: user.targetWeightKg,
+          heightCm: user.heightCm ?? 175,
+          age: user.age ?? 25,
+          gender: user.gender || 'male',
+          fitnessGoal: user.fitnessGoal || 'Hypertrophy',
+          trainingDaysPerWeek: user.trainingDaysPerWeek ?? 4,
+          experienceLevel: user.experienceLevel || 'Intermediate',
+          onboardingCompleted: user.onboardingCompleted ?? true,
           name: user.name,
           avatar: user.avatar,
           league: user.league || 'Bronze',
@@ -239,7 +246,7 @@ export class FitStorage {
           xp: initialProg.xp,
           currentLevelXp: initialProg.currentLevelXp,
           nextLevelXp: initialProg.nextLevelXp,
-          name: cloudData.name || existingLocalUser.name || defaults.name,
+          name: cloudData.name || displayName || existingLocalUser.name || defaults.name,
           avatar: cloudData.avatar || existingLocalUser.avatar || defaults.avatar,
           rankTitle: cloudData.rankTitle || (isCloudResetActive ? 'Recluta Inicial' : (existingLocalUser.rankTitle || initialProg.milestoneTitle || defaults.rankTitle)),
           weightKg: cloudData.weightKg ?? existingLocalUser.weightKg ?? defaults.weightKg,
@@ -271,8 +278,11 @@ export class FitStorage {
           this.syncUserToCloud(userProfile);
         }
       } else {
-        // Brand-new user: initialize from zero
-        userProfile = createFreshUser(uid, displayName || (email ? email.split('@')[0] : 'Nuevo Atleta'), email);
+        // Brand-new user: initialize from zero with clean name
+        const cleanName = displayName || (email ? email.split('@')[0] : 'Nuevo Atleta');
+        userProfile = createFreshUser(uid, cleanName, email);
+        userProfile.name = cleanName;
+        userProfile.onboardingCompleted = false;
         await setDoc(userRef, {
           ...userProfile,
           createdAt: new Date().toISOString(),
