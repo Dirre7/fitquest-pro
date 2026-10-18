@@ -15,6 +15,8 @@ import {
   Flame,
   Moon,
   Smartphone,
+  ArrowLeft,
+  X,
 } from 'lucide-react';
 import { SmartwatchDevice, Language } from '../types';
 import { translations } from '../lib/i18n';
@@ -25,14 +27,19 @@ import { SleepTrackerCard } from './SleepTrackerCard';
 interface SmartwatchViewProps {
   smartwatch: SmartwatchDevice;
   lang: Language;
-  onUpdateDevice: (device: SmartwatchDevice) => void;
+  onUpdateDevice?: (device: SmartwatchDevice) => void;
+  onUpdateSmartwatch?: (device: SmartwatchDevice) => void;
+  onBack?: () => void;
 }
 
 export const SmartwatchView: React.FC<SmartwatchViewProps> = ({
   smartwatch,
   lang,
-  onUpdateDevice,
+  onUpdateDevice: propOnUpdateDevice,
+  onUpdateSmartwatch,
+  onBack,
 }) => {
+  const onUpdateDevice = onUpdateSmartwatch || propOnUpdateDevice || (() => {});
   const t = translations[lang];
 
   const [isPairing, setIsPairing] = useState<boolean>(false);
@@ -183,6 +190,38 @@ export const SmartwatchView: React.FC<SmartwatchViewProps> = ({
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
       
+      {/* Top Navigation & Back Action Bar */}
+      <div className="flex items-center justify-between pb-3 border-b border-white/10">
+        <button
+          type="button"
+          onClick={() => {
+            sound.playClick();
+            if (onBack) onBack();
+            else window.history.back();
+          }}
+          className="flex items-center gap-2 px-3.5 py-2 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 text-neutral-200 hover:text-white text-xs font-mono font-bold transition-all cursor-pointer group shadow-sm active:scale-95"
+          title="Volver al Inicio"
+        >
+          <ArrowLeft className="w-4 h-4 text-cyan-400 group-hover:-translate-x-0.5 transition-transform" />
+          <span>Volver al Inicio</span>
+        </button>
+
+        {onBack && (
+          <button
+            type="button"
+            onClick={() => {
+              sound.playClick();
+              onBack();
+            }}
+            className="p-2 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 text-neutral-400 hover:text-white transition-all cursor-pointer active:scale-95 shadow-sm"
+            title="Cerrar y volver al inicio"
+            aria-label="Cerrar"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        )}
+      </div>
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>

@@ -1370,6 +1370,7 @@ export default function App() {
           <SmartwatchView
             smartwatch={smartwatch}
             onUpdateSmartwatch={handleUpdateSmartwatch}
+            onBack={() => setActiveTab('dashboard')}
             lang={lang}
           />
         )}
@@ -1378,6 +1379,7 @@ export default function App() {
           <CloudAndSettingsView
             user={user}
             lang={lang}
+            onBack={() => setActiveTab('dashboard')}
             setLang={(l) => {
               setLang(l);
               FitStorage.saveLanguage(l);
