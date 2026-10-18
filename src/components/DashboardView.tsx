@@ -120,8 +120,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     weeklyRotationData.challenges[0];
 
   const todayIsoPrefix = new Date().toISOString().split('T')[0];
-  const workoutsToday = (history || []).filter((h) => h.date.startsWith(todayIsoPrefix));
+  const workoutsToday = (history || []).filter((h) => h.date && h.date.startsWith(todayIsoPrefix));
   const trainedToday = workoutsToday.length > 0;
+  const todayVolumeKg = workoutsToday.reduce((sum, w) => sum + (Number(w.totalVolumeKg) || 0), 0);
+  const todayCalories = workoutsToday.reduce((sum, w) => sum + (Number(w.calories) || 0), 0);
+  const todayMinutes = workoutsToday.reduce((sum, w) => sum + (Number(w.durationMinutes) || 0), 0);
+  const todayDistanceKm = workoutsToday.reduce((sum, w) => sum + (Number(w.totalDistanceKm) || 0), 0);
   
   // Dynamic Athlete Progression calculations
   const currentTier = getLevelTier(user.level || 1);
@@ -379,41 +383,75 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </div>
             </div>
 
-            {/* Live Telemetry Aggregate Metric Cards */}
+            {/* ⚡ Today's Real-Time Activity & Performance Cards */}
             <div className="md:col-span-7 space-y-3">
+              <div className="flex items-center justify-between px-1">
+                <span className="text-[11px] font-mono font-black uppercase tracking-wider text-cyan-400 flex items-center gap-1.5">
+                  <Activity className="w-3.5 h-3.5" />
+                  <span>Tu Actividad de Hoy</span>
+                </span>
+                {trainedToday ? (
+                  <span className="text-[10px] font-mono font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center gap-1">
+                    <CheckCircle2 className="w-3 h-3" />
+                    <span>{workoutsToday.length} {workoutsToday.length === 1 ? 'entreno' : 'entrenos'} hoy</span>
+                  </span>
+                ) : (
+                  <span className="text-[10px] font-mono text-neutral-400">
+                    Pendiente / Día de Descanso
+                  </span>
+                )}
+              </div>
+
+              {/* Card 1: Volumen Hoy */}
               <div className="bg-white/5 border border-white/5 p-4 rounded-2xl flex justify-between items-center hover:border-cyan-500/30 transition-colors">
                 <div>
-                  <p className="text-xs text-neutral-400 font-medium">Volumen Total Levantado (Hierro)</p>
+                  <p className="text-xs text-neutral-400 font-medium">Volumen Levantado Hoy (Hierro)</p>
                   <p className="text-2xl font-mono font-bold text-white mt-0.5">
-                    {displayTotalVolumeKg.toLocaleString()} <span className="text-xs text-cyan-400 font-semibold">KG</span>
+                    {todayVolumeKg.toLocaleString()} <span className="text-xs text-cyan-400 font-semibold">KG</span>
                   </p>
+                  <span className="text-[10px] font-mono text-neutral-400">
+                    {todayVolumeKg > 0 ? 'Fuerza e hipertrofia registradas hoy' : 'Sin tonelaje registrado hoy'}
+                  </span>
                 </div>
-                <div className="w-11 h-11 rounded-2xl border border-cyan-500/30 bg-cyan-500/10 flex items-center justify-center shadow-[0_0_12px_rgba(6,182,212,0.2)]">
+                <div className="w-11 h-11 rounded-2xl border border-cyan-500/30 bg-cyan-500/10 flex items-center justify-center shadow-[0_0_12px_rgba(6,182,212,0.2)] shrink-0">
                   <Dumbbell className="w-5 h-5 text-cyan-400" />
                 </div>
               </div>
 
-              <div className="bg-white/5 border border-white/5 p-4 rounded-2xl flex justify-between items-center hover:border-cyan-500/30 transition-colors">
+              {/* Card 2: Calorías Quemadas Hoy */}
+              <div className="bg-white/5 border border-white/5 p-4 rounded-2xl flex justify-between items-center hover:border-orange-500/30 transition-colors">
                 <div>
-                  <p className="text-xs text-neutral-400 font-medium">Distancia Recorrida (Cardio & Running)</p>
+                  <p className="text-xs text-neutral-400 font-medium">Gasto Calórico en Entrenamientos Hoy</p>
                   <p className="text-2xl font-mono font-bold text-white mt-0.5">
-                    {displayDistanceKm.toFixed(1)} <span className="text-xs text-cyan-400 font-semibold">KM</span>
+                    {todayCalories.toLocaleString()} <span className="text-xs text-orange-400 font-semibold">KCAL</span>
                   </p>
+                  <span className="text-[10px] font-mono text-neutral-400">
+                    {todayCalories > 0 ? 'Energía consumida en tus sesiones de hoy' : 'Quema activa pendiente hoy'}
+                  </span>
                 </div>
-                <div className="w-11 h-11 rounded-2xl border border-cyan-500/30 bg-cyan-500/10 flex items-center justify-center shadow-[0_0_12px_rgba(6,182,212,0.2)]">
-                  <Activity className="w-5 h-5 text-cyan-400" />
+                <div className="w-11 h-11 rounded-2xl border border-orange-500/30 bg-orange-500/10 flex items-center justify-center shadow-[0_0_12px_rgba(249,115,22,0.2)] shrink-0">
+                  <Flame className="w-5 h-5 text-orange-400" />
                 </div>
               </div>
 
-              <div className="bg-white/5 border border-white/5 p-4 rounded-2xl flex justify-between items-center hover:border-white/10 transition-colors">
+              {/* Card 3: Tiempo & Distancia Hoy */}
+              <div className="bg-white/5 border border-white/5 p-4 rounded-2xl flex justify-between items-center hover:border-cyan-500/30 transition-colors">
                 <div>
-                  <p className="text-xs text-neutral-400 font-medium">Gasto Calórico en Entrenamientos</p>
+                  <p className="text-xs text-neutral-400 font-medium">Tiempo &amp; Movimiento Hoy</p>
                   <p className="text-2xl font-mono font-bold text-white mt-0.5">
-                    {displayCaloriesBurned.toLocaleString()} <span className="text-xs text-orange-400 font-semibold">KCAL</span>
+                    {todayMinutes} <span className="text-xs text-cyan-400 font-semibold">MIN</span>
+                    {todayDistanceKm > 0 && (
+                      <span className="text-base text-neutral-300 font-mono ml-2">
+                        • {todayDistanceKm.toFixed(1)} <span className="text-xs text-cyan-400">KM</span>
+                      </span>
+                    )}
                   </p>
+                  <span className="text-[10px] font-mono text-neutral-400">
+                    {todayMinutes > 0 ? 'Minutos totales en movimiento registrados hoy' : 'Listo para iniciar tu sesión'}
+                  </span>
                 </div>
-                <div className="w-11 h-11 rounded-2xl border border-orange-500/30 bg-orange-500/10 flex items-center justify-center shadow-[0_0_12px_rgba(249,115,22,0.2)]">
-                  <Flame className="w-5 h-5 text-orange-400" />
+                <div className="w-11 h-11 rounded-2xl border border-cyan-500/30 bg-cyan-500/10 flex items-center justify-center shadow-[0_0_12px_rgba(6,182,212,0.2)] shrink-0">
+                  <Clock className="w-5 h-5 text-cyan-400" />
                 </div>
               </div>
             </div>
@@ -970,75 +1008,88 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         );
       })()}
 
-      {/* Global Quick Stats Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <div className="bg-[#121214] border border-white/5 hover:border-cyan-500/30 rounded-3xl p-5 shadow-xl transition-all">
-          <div className="flex items-center justify-between text-neutral-400 mb-2">
-            <span className="text-xs font-mono font-bold uppercase tracking-wider">{t.totalWorkouts}</span>
-            <Dumbbell className="w-4 h-4 text-cyan-400" />
+      {/* 🏆 Hitos & Trayectoria Histórica (Career Lifetime Stats) */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between px-1">
+          <div>
+            <span className="text-[10px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-400 border border-cyan-500/30">
+              Récord Global de Carrera
+            </span>
+            <h3 className="text-base sm:text-lg font-black text-white tracking-tight mt-1 flex items-center gap-2">
+              <Trophy className="w-4 h-4 text-amber-400" />
+              Hitos &amp; Trayectoria Histórica
+            </h3>
           </div>
-          <p className="font-mono font-extrabold text-3xl text-white">{displayTotalWorkouts}</p>
-          <span className="text-[11px] text-cyan-400 font-mono font-medium">
-            {workoutsToday.length > 0
-              ? `🔥 +${workoutsToday.length} hoy (${workoutsThisWeek} esta sem.)`
-              : workoutsThisWeek > 0
-              ? `↑ +${workoutsThisWeek} esta semana`
-              : '0 esta semana'}
+          <span className="text-xs font-mono text-neutral-400">
+            {displayTotalWorkouts} entrenamientos totales
           </span>
         </div>
 
-        <div className="bg-[#121214] border border-white/5 hover:border-cyan-500/30 rounded-3xl p-5 shadow-xl transition-all">
-          <div className="flex items-center justify-between text-neutral-400 mb-2">
-            <span className="text-xs font-mono font-bold uppercase tracking-wider">{t.volumeLifted}</span>
-            <TrendingUp className="w-4 h-4 text-cyan-400" />
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          {/* 1. Sesiones Totales */}
+          <div className="bg-[#121214] border border-white/5 hover:border-cyan-500/30 rounded-3xl p-5 shadow-xl transition-all">
+            <div className="flex items-center justify-between text-neutral-400 mb-2">
+              <span className="text-xs font-mono font-bold uppercase tracking-wider">Sesiones Totales</span>
+              <Dumbbell className="w-4 h-4 text-cyan-400" />
+            </div>
+            <p className="font-mono font-extrabold text-3xl text-white">{displayTotalWorkouts}</p>
+            <span className="text-[11px] text-cyan-400 font-mono font-medium">
+              {workoutsThisWeek > 0 ? `+${workoutsThisWeek} en los últimos 7 días` : 'Historial acumulado'}
+            </span>
           </div>
-          <p className="font-mono font-extrabold text-3xl text-white">
-            {(displayTotalVolumeKg / 1000).toFixed(1)} <span className="text-sm font-sans font-normal text-neutral-400">ton</span>
-          </p>
-          <span className="text-[11px] text-neutral-400 font-mono">{displayTotalVolumeKg.toLocaleString()} kg total</span>
-        </div>
 
-        {/* Calories Burned Card (Entrenamientos & Deportes) */}
-        <div className="bg-[#121214] border border-white/5 hover:border-orange-500/30 rounded-3xl p-5 shadow-xl transition-all">
-          <div className="flex items-center justify-between text-neutral-400 mb-2">
-            <span className="text-xs font-mono font-bold uppercase tracking-wider">Calorías Quemadas (Entreno)</span>
-            <Flame className="w-4 h-4 text-orange-400" />
+          {/* 2. Tonelaje Total */}
+          <div className="bg-[#121214] border border-white/5 hover:border-cyan-500/30 rounded-3xl p-5 shadow-xl transition-all">
+            <div className="flex items-center justify-between text-neutral-400 mb-2">
+              <span className="text-xs font-mono font-bold uppercase tracking-wider">Tonelaje Histórico</span>
+              <TrendingUp className="w-4 h-4 text-cyan-400" />
+            </div>
+            <p className="font-mono font-extrabold text-3xl text-white">
+              {(displayTotalVolumeKg / 1000).toFixed(1)} <span className="text-sm font-sans font-normal text-neutral-400">ton</span>
+            </p>
+            <span className="text-[11px] text-neutral-400 font-mono">
+              {displayTotalVolumeKg.toLocaleString()} kg levantados
+            </span>
           </div>
-          <p className="font-mono font-extrabold text-2xl sm:text-3xl text-white">
-            {Math.round(displayCaloriesBurned).toLocaleString()}{' '}
-            <span className="text-sm font-sans font-normal text-neutral-400">kcal</span>
-          </p>
-          <span className="text-[11px] text-orange-400 font-mono font-medium">
-            {workoutsToday.length > 0
-              ? `🔥 Hoy: +${workoutsToday.reduce((s, w) => s + (w.calories || 0), 0).toLocaleString()} kcal`
-              : `~${displayTotalWorkouts > 0 ? Math.round(displayCaloriesBurned / displayTotalWorkouts) : 0} kcal / sesión`}
-          </span>
-        </div>
 
-        {/* Minutes Trained Card */}
-        <div className="bg-[#121214] border border-white/5 hover:border-cyan-500/30 rounded-3xl p-5 shadow-xl transition-all">
-          <div className="flex items-center justify-between text-neutral-400 mb-2">
-            <span className="text-xs font-mono font-bold uppercase tracking-wider">{t.minutesTrained}</span>
-            <Clock className="w-4 h-4 text-cyan-400" />
+          {/* 3. Calorías Totales */}
+          <div className="bg-[#121214] border border-white/5 hover:border-orange-500/30 rounded-3xl p-5 shadow-xl transition-all">
+            <div className="flex items-center justify-between text-neutral-400 mb-2">
+              <span className="text-xs font-mono font-bold uppercase tracking-wider">Calorías Totales</span>
+              <Flame className="w-4 h-4 text-orange-400" />
+            </div>
+            <p className="font-mono font-extrabold text-2xl sm:text-3xl text-white">
+              {Math.round(displayCaloriesBurned).toLocaleString()}{' '}
+              <span className="text-sm font-sans font-normal text-neutral-400">kcal</span>
+            </p>
+            <span className="text-[11px] text-orange-400 font-mono font-medium">
+              Gasto energético de carrera
+            </span>
           </div>
-          <p className="font-mono font-extrabold text-3xl text-white">
-            {displayTotalMinutes < 60 ? (
-              <>
-                {displayTotalMinutes}{' '}
-                <span className="text-sm font-sans font-normal text-neutral-400">min</span>
-              </>
-            ) : (
-              <>
-                {(displayTotalMinutes / 60).toFixed(1)}{' '}
-                <span className="text-sm font-sans font-normal text-neutral-400">horas</span>
-              </>
-            )}
-          </p>
-          <span className="text-[11px] text-neutral-400 font-mono">
-            {workoutsToday.length > 0
-              ? `⏱ Hoy: +${workoutsToday.reduce((s, w) => s + (w.durationMinutes || 0), 0)} min (${displayTotalMinutes}m total)`
-              : `${displayTotalMinutes} min acumulados`}
-          </span>
+
+          {/* 4. Tiempo / Distancia Total */}
+          <div className="bg-[#121214] border border-white/5 hover:border-cyan-500/30 rounded-3xl p-5 shadow-xl transition-all">
+            <div className="flex items-center justify-between text-neutral-400 mb-2">
+              <span className="text-xs font-mono font-bold uppercase tracking-wider">Tiempo Histórico</span>
+              <Clock className="w-4 h-4 text-cyan-400" />
+            </div>
+            <p className="font-mono font-extrabold text-3xl text-white">
+              {displayTotalMinutes < 60 ? (
+                <>
+                  {displayTotalMinutes}{' '}
+                  <span className="text-sm font-sans font-normal text-neutral-400">min</span>
+                </>
+              ) : (
+                <>
+                  {(displayTotalMinutes / 60).toFixed(1)}{' '}
+                  <span className="text-sm font-sans font-normal text-neutral-400">horas</span>
+                </>
+              )}
+            </p>
+            <span className="text-[11px] text-cyan-400 font-mono font-medium">
+              {displayDistanceKm > 0 ? `${displayDistanceKm.toFixed(1)} km recorridos` : `${displayTotalMinutes} min acumulados`}
+            </span>
+          </div>
         </div>
       </div>
 

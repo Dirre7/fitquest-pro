@@ -42,6 +42,8 @@ import {
   Edit2,
   Trash2,
   Check,
+  CheckCircle2,
+  Clock,
   X,
   Target,
   Percent,
@@ -93,6 +95,14 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   const totalDistance = history.reduce((acc, h) => acc + (h.totalDistanceKm || 0), 0);
+
+  // Real-time metrics for today's activity
+  const todayIsoPrefix = new Date().toISOString().split('T')[0];
+  const workoutsToday = (history || []).filter((h) => h.date && h.date.startsWith(todayIsoPrefix));
+  const todayVolumeKg = workoutsToday.reduce((s, h) => s + (Number(h.totalVolumeKg) || 0), 0);
+  const todayCalories = workoutsToday.reduce((s, h) => s + (Number(h.calories) || 0), 0);
+  const todayMinutes = workoutsToday.reduce((s, h) => s + (Number(h.durationMinutes) || 0), 0);
+  const todayDistanceKm = workoutsToday.reduce((s, h) => s + (Number(h.totalDistanceKm) || 0), 0);
 
   // Volume progression over time chart data (only real history)
   const volumeData = history.length > 0 
@@ -328,6 +338,115 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
             <Download className="w-3.5 h-3.5" />
             <span>Backup JSON</span>
           </button>
+        </div>
+      </div>
+
+      {/* ⚡ Resumen de Actividad de Hoy */}
+      <div className="bg-gradient-to-r from-neutral-900 via-neutral-900/90 to-cyan-950/30 border border-white/10 rounded-3xl p-5 sm:p-6 shadow-xl relative overflow-hidden">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+          <div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-[10px] font-mono font-black uppercase px-2.5 py-0.5 rounded-full bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 flex items-center gap-1">
+                <Activity className="w-3 h-3" /> JORNADA DE HOY
+              </span>
+              <span className="text-xs font-mono text-neutral-400">
+                {new Date().toLocaleDateString(lang === 'es' ? 'es-ES' : 'en-US', { weekday: 'long', day: 'numeric', month: 'long' })}
+              </span>
+            </div>
+            <h3 className="text-xl font-display font-black text-white mt-1">
+              {workoutsToday.length > 0 ? 'Rendimiento Registrado Hoy' : 'Actividad del Día'}
+            </h3>
+          </div>
+
+          {workoutsToday.length > 0 ? (
+            <span className="px-3 py-1.5 rounded-2xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 text-xs font-mono font-bold flex items-center gap-1.5 self-start sm:self-auto">
+              <CheckCircle2 className="w-4 h-4" />
+              <span>{workoutsToday.length} {workoutsToday.length === 1 ? 'entrenamiento completado' : 'entrenamientos completados'}</span>
+            </span>
+          ) : (
+            <div className="flex items-center gap-2 self-start sm:self-auto">
+              <span className="px-3 py-1.5 rounded-2xl bg-white/5 border border-white/10 text-neutral-400 text-xs font-mono">
+                Día de descanso o pendiente
+              </span>
+              {onNavigateTab && (
+                <button
+                  type="button"
+                  onClick={() => onNavigateTab('routines')}
+                  className="px-3 py-1.5 rounded-2xl bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/40 text-cyan-300 text-xs font-mono font-bold transition-all cursor-pointer"
+                >
+                  Entrenar hoy →
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          {/* Volumen Hoy */}
+          <div className="p-4 bg-white/5 border border-white/5 rounded-2xl hover:border-cyan-500/30 transition-colors">
+            <span className="text-[10px] font-mono font-bold uppercase text-neutral-400 flex items-center justify-between">
+              <span>VOLUMEN HOY</span>
+              <Dumbbell className="w-3.5 h-3.5 text-cyan-400" />
+            </span>
+            <p className="text-2xl font-mono font-black text-white mt-1">
+              {todayVolumeKg.toLocaleString()} <span className="text-xs font-normal text-cyan-400">kg</span>
+            </p>
+            <p className="text-[10px] font-mono text-neutral-400 mt-1">
+              {todayVolumeKg > 0 ? 'Tonelaje levantado hoy' : 'Sin tonelaje hoy'}
+            </p>
+          </div>
+
+          {/* Calorías Hoy */}
+          <div className="p-4 bg-white/5 border border-white/5 rounded-2xl hover:border-orange-500/30 transition-colors">
+            <span className="text-[10px] font-mono font-bold uppercase text-neutral-400 flex items-center justify-between">
+              <span>CALORÍAS HOY</span>
+              <Flame className="w-3.5 h-3.5 text-orange-400" />
+            </span>
+            <p className="text-2xl font-mono font-black text-white mt-1">
+              {todayCalories.toLocaleString()} <span className="text-xs font-normal text-orange-400">kcal</span>
+            </p>
+            <p className="text-[10px] font-mono text-neutral-400 mt-1">
+              {todayCalories > 0 ? 'Gasto en entrenamientos' : 'Sin quema activa aún'}
+            </p>
+          </div>
+
+          {/* Tiempo Hoy */}
+          <div className="p-4 bg-white/5 border border-white/5 rounded-2xl hover:border-cyan-500/30 transition-colors">
+            <span className="text-[10px] font-mono font-bold uppercase text-neutral-400 flex items-center justify-between">
+              <span>TIEMPO HOY</span>
+              <Clock className="w-3.5 h-3.5 text-cyan-400" />
+            </span>
+            <p className="text-2xl font-mono font-black text-white mt-1">
+              {todayMinutes} <span className="text-xs font-normal text-cyan-400">min</span>
+            </p>
+            <p className="text-[10px] font-mono text-neutral-400 mt-1">
+              {todayMinutes > 0 ? 'Minutos activos registrados' : 'Sesión pendiente'}
+            </p>
+          </div>
+
+          {/* Distancia / Rutinas Hoy */}
+          <div className="p-4 bg-white/5 border border-white/5 rounded-2xl hover:border-emerald-500/30 transition-colors">
+            <span className="text-[10px] font-mono font-bold uppercase text-neutral-400 flex items-center justify-between">
+              <span>CARDIO / RUTINAS</span>
+              <Activity className="w-3.5 h-3.5 text-emerald-400" />
+            </span>
+            <p className="text-2xl font-mono font-black text-white mt-1">
+              {todayDistanceKm > 0 ? (
+                <>
+                  {todayDistanceKm.toFixed(1)} <span className="text-xs font-normal text-emerald-400">km</span>
+                </>
+              ) : (
+                <>
+                  {workoutsToday.length} <span className="text-xs font-normal text-emerald-400">sesiones</span>
+                </>
+              )}
+            </p>
+            <p className="text-[10px] font-mono text-neutral-400 mt-1 truncate">
+              {workoutsToday.length > 0
+                ? workoutsToday.map((w) => w.routineTitle || 'Entrenamiento').join(', ')
+                : 'Ninguna rutina hoy'}
+            </p>
+          </div>
         </div>
       </div>
 
