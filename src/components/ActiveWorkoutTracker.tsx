@@ -417,13 +417,22 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
         return { ...exercise, sets: updatedSets };
       });
 
-      // If the user just completed the very last set of the entire workout, auto-open summary modal
+      // If the user just completed the very last set of the entire workout, auto-open summary modal directly
       if (willBeCompleted) {
         const isEntireWorkoutFinished = updatedAll.every((ex) => ex.sets.every((s) => s.completed));
         if (isEntireWorkoutFinished) {
           setTimeout(() => {
-            handleOpenFinish();
-          }, 600);
+            setIsPaused(true);
+            setShowSummaryModal(true);
+            sound.playLevelUp();
+            try {
+              confetti({
+                particleCount: 80,
+                spread: 70,
+                origin: { y: 0.6 },
+              });
+            } catch {}
+          }, 500);
         }
       }
 
@@ -645,8 +654,13 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
         ex.name.toLowerCase().includes('carrera') ||
         ex.name.toLowerCase().includes('cinta') ||
         ex.name.toLowerCase().includes('running') ||
+        ex.name.toLowerCase().includes('caminata') ||
+        ex.name.toLowerCase().includes('andar') ||
+        ex.name.toLowerCase().includes('walk') ||
+        ex.name.toLowerCase().includes('paseo') ||
         ex.name.toLowerCase().includes('ciclismo') ||
         ex.name.toLowerCase().includes('bicicleta') ||
+        ex.name.toLowerCase().includes('elíptica') ||
         ex.name.toLowerCase().includes('sprint');
       
       const isStrengthRow =
@@ -677,6 +691,12 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
       ex.name.toLowerCase().includes('carrera') ||
       ex.name.toLowerCase().includes('cinta') ||
       ex.name.toLowerCase().includes('running') ||
+      ex.name.toLowerCase().includes('caminata') ||
+      ex.name.toLowerCase().includes('andar') ||
+      ex.name.toLowerCase().includes('walk') ||
+      ex.name.toLowerCase().includes('paseo') ||
+      ex.name.toLowerCase().includes('ciclismo') ||
+      ex.name.toLowerCase().includes('bicicleta') ||
       ex.name.toLowerCase().includes('elíptica') ||
       ex.name.toLowerCase().includes('sprint');
     if (!isCardio) return acc;
@@ -723,11 +743,32 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
 
   // Complete workout trigger with validation check
   const handleOpenFinish = () => {
-    // If no sets completed and workout has barely started, do not allow claiming XP!
-    if (completedSetsCount === 0) {
-      sound.playBeep(440, 150);
-      setShowZeroSetsWarning(true);
-      return;
+    const currentlyCompleted = exercises.reduce((acc, ex) => acc + ex.sets.filter((s) => s.completed).length, 0);
+
+    // If no sets marked completed, check if the athlete entered numbers without clicking the checkmark
+    if (currentlyCompleted === 0) {
+      const hasEnteredData = exercises.some((ex) =>
+        ex.sets.some((s) => (s.actualWeightKg && s.actualWeightKg > 0) || (s.actualReps && s.actualReps > 0))
+      );
+
+      if (hasEnteredData) {
+        // Auto-complete the filled sets
+        setExercises((prev) =>
+          prev.map((ex) => ({
+            ...ex,
+            sets: ex.sets.map((s) => {
+              if ((s.actualWeightKg && s.actualWeightKg > 0) || (s.actualReps && s.actualReps > 0)) {
+                return { ...s, completed: true };
+              }
+              return s;
+            }),
+          }))
+        );
+      } else {
+        sound.playBeep(440, 150);
+        setShowZeroSetsWarning(true);
+        return;
+      }
     }
 
     setIsPaused(true);
@@ -745,25 +786,76 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
   };
 
   const handleConfirmFinish = () => {
+    // Ensure all sets with recorded data are preserved in final history entry
+    const finalExercises = exercises.map((ex) => ({
+      ...ex,
+      sets: ex.sets.map((s) => {
+        if (!s.completed && ((s.actualWeightKg && s.actualWeightKg > 0) || (s.actualReps && s.actualReps > 0))) {
+          return { ...s, completed: true };
+        }
+        return s;
+      }),
+    }));
+
+    const finalDistance = Math.round(
+      finalExercises.reduce((acc, ex) => {
+        const isCardio =
+          ex.muscleGroup === 'Cardio' ||
+          ex.type === 'cardio' ||
+          ex.name.toLowerCase().includes('carrera') ||
+          ex.name.toLowerCase().includes('cinta') ||
+          ex.name.toLowerCase().includes('running') ||
+          ex.name.toLowerCase().includes('caminata') ||
+          ex.name.toLowerCase().includes('andar') ||
+          ex.name.toLowerCase().includes('walk') ||
+          ex.name.toLowerCase().includes('paseo') ||
+          ex.name.toLowerCase().includes('ciclismo') ||
+          ex.name.toLowerCase().includes('bicicleta') ||
+          ex.name.toLowerCase().includes('elíptica') ||
+          ex.name.toLowerCase().includes('sprint');
+        const isStrengthRow =
+          ex.name.toLowerCase().includes('remo con') ||
+          ex.name.toLowerCase().includes('remo pendlay') ||
+          ex.name.toLowerCase().includes('remo en polea') ||
+          ex.name.toLowerCase().includes('remo con mancuerna') ||
+          ex.name.toLowerCase().includes('remo t');
+        if (!isCardio || isStrengthRow) return acc;
+        return (
+          acc +
+          ex.sets
+            .filter((s) => s.completed)
+            .reduce((sAcc, s) => {
+              const km = (s.actualDistanceKm && s.actualDistanceKm > 0) ? s.actualDistanceKm : (s.actualWeightKg || 0);
+              return sAcc + km;
+            }, 0)
+        );
+      }, 0) * 10
+    ) / 10;
+
+    const resolvedDistance = finalDistance > 0 ? finalDistance : totalDistanceKm;
+    const resolvedMinutes = calculatedMinutes;
+
     const historyEntry: WorkoutHistoryEntry = {
       id: `hist_${Date.now()}`,
       routineId: routine.id,
       routineTitle: routine.title,
       date: new Date().toISOString().split('T')[0],
-      durationMinutes: calculatedMinutes,
+      durationMinutes: resolvedMinutes,
       totalVolumeKg: totalVolume,
-      totalDistanceKm,
-      averagePace,
+      totalDistanceKm: resolvedDistance,
+      averagePace: resolvedDistance > 0
+        ? `${Math.floor(resolvedMinutes / resolvedDistance)}'${Math.round(((resolvedMinutes / resolvedDistance) % 1) * 60).toString().padStart(2, '0')}" /km`
+        : averagePace,
       cardioMode: cardioSubMode,
-      cardioMinutes: totalDistanceKm > 0 ? calculatedMinutes : 0,
+      cardioMinutes: resolvedDistance > 0 ? resolvedMinutes : 0,
       calories: estimatedBurn,
       avgHeartRate: smartwatch.liveHeartRate || 140,
       maxHeartRate: (smartwatch.liveHeartRate || 140) + 18,
-      xpEarned: xpGained,
-      completedExercises: exercises.length,
+      xpEarned: xpGained > 0 ? xpGained : Math.max(10, Math.round(routine.xpReward || 50)),
+      completedExercises: finalExercises.length,
       rating,
       notes,
-      exercises,
+      exercises: finalExercises,
     };
 
     isFinishedRef.current = true;
