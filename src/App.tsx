@@ -1349,6 +1349,11 @@ export default function App() {
               setActiveSession(null);
               setAchievements(createFreshAchievements());
               setChallenges(defaultChallenges.map((c) => ({ ...c, currentProgress: 0, completed: false })));
+              sound.playLevelUp();
+            }}
+            onDeleteAccount={async () => {
+              await FitStorage.deleteUserAccountAndData();
+              await handleSignOut();
             }}
           />
         )}

@@ -57,6 +57,7 @@ interface CloudAndSettingsViewProps {
   onUpdateReminders: (reminders: PushReminder[]) => void;
   onDataImported: () => void;
   onResetProgress?: () => Promise<void> | void;
+  onDeleteAccount?: () => Promise<void> | void;
 }
 
 export const CloudAndSettingsView: React.FC<CloudAndSettingsViewProps> = ({
@@ -77,6 +78,7 @@ export const CloudAndSettingsView: React.FC<CloudAndSettingsViewProps> = ({
   onUpdateReminders,
   onDataImported,
   onResetProgress,
+  onDeleteAccount,
 }) => {
   const t = translations[lang];
 
@@ -124,13 +126,12 @@ export const CloudAndSettingsView: React.FC<CloudAndSettingsViewProps> = ({
         await onResetProgress();
       } else {
         await FitStorage.resetUserProgress();
-        window.location.reload();
       }
-      setShowResetProgressModal(false);
       sound.playLevelUp();
     } catch (e) {
       console.error('Reset error:', e);
     } finally {
+      setShowResetProgressModal(false);
       setIsResettingProgress(false);
     }
   };
@@ -140,17 +141,16 @@ export const CloudAndSettingsView: React.FC<CloudAndSettingsViewProps> = ({
     setIsDeletingAccount(true);
     sound.playWarning();
     try {
-      await FitStorage.deleteUserAccountAndData();
-      if ('caches' in window) {
-        try {
-          const keys = await caches.keys();
-          await Promise.all(keys.map((k) => caches.delete(k)));
-        } catch {}
+      if (onDeleteAccount) {
+        await onDeleteAccount();
+      } else {
+        await FitStorage.deleteUserAccountAndData();
       }
+    } catch (e) {
+      console.error('Delete account error:', e);
     } finally {
       setShowDeleteAccountModal(false);
       setIsDeletingAccount(false);
-      window.location.reload();
     }
   };
 
