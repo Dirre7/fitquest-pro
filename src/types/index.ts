@@ -308,6 +308,7 @@ export interface LeaderboardUser {
   followersCount?: number;
   followingCount?: number;
   equippedFrame?: string;
+  isRealUser?: boolean;
 }
 
 export interface LiveParticipant {

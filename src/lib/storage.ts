@@ -151,6 +151,12 @@ export class FitStorage {
           targetWeightKg: user.targetWeightKg,
           name: user.name,
           avatar: user.avatar,
+          league: user.league || 'Bronze',
+          equippedFrame: user.equippedFrame || 'frame_default',
+          bio: user.bio || '',
+          following: user.following || [],
+          followers: user.followers || [],
+          lastActiveAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         }),
         { merge: true }
@@ -237,6 +243,11 @@ export class FitStorage {
           rankTitle: cloudData.rankTitle || (isCloudResetActive ? 'Recluta Inicial' : (existingLocalUser.rankTitle || initialProg.milestoneTitle || defaults.rankTitle)),
           weightKg: cloudData.weightKg ?? existingLocalUser.weightKg ?? defaults.weightKg,
           targetWeightKg: cloudData.targetWeightKg ?? existingLocalUser.targetWeightKg ?? defaults.targetWeightKg,
+          league: cloudData.league || existingLocalUser.league || defaults.league || 'Bronze',
+          equippedFrame: cloudData.equippedFrame || existingLocalUser.equippedFrame || defaults.equippedFrame || 'frame_default',
+          bio: cloudData.bio ?? existingLocalUser.bio ?? defaults.bio ?? '',
+          following: cloudData.following || existingLocalUser.following || defaults.following || [],
+          followers: cloudData.followers || existingLocalUser.followers || defaults.followers || [],
           claimedChallenges: mergedClaimed,
           claimedChallengesWeek: cloudData.claimedChallengesWeek || existingLocalUser.claimedChallengesWeek,
           unlockedBadges: mergedBadges,
@@ -765,6 +776,83 @@ export class FitStorage {
       localStorage.setItem(KEYS.LEADERBOARD, JSON.stringify(users));
     } catch (e) {
       console.error('Failed to save leaderboard', e);
+    }
+  }
+
+  /**
+   * Queries Firestore users collection to find real registered athletes across leagues.
+   * Excludes current local user to avoid duplication.
+   */
+  public static async fetchRealCommunityAthletes(targetLeague?: string): Promise<LeaderboardUser[]> {
+    try {
+      const currentUid = auth.currentUser?.uid;
+      const usersCol = collection(db, 'users');
+      const snap = await getDocs(usersCol);
+
+      const athletes: LeaderboardUser[] = [];
+      const now = new Date();
+      const oneWeekAgoMs = now.getTime() - 7 * 24 * 60 * 60 * 1000;
+
+      snap.forEach((docSnap) => {
+        // Exclude current authenticated athlete (handled with fresh local state)
+        if (currentUid && docSnap.id === currentUid) return;
+
+        const data = docSnap.data();
+        if (!data || typeof data !== 'object') return;
+
+        const athleteLeague = (data.league || 'Bronze') as any;
+        if (targetLeague && athleteLeague !== targetLeague) return;
+
+        const historyList: any[] = Array.isArray(data.workoutHistory) ? data.workoutHistory : [];
+        const thisWeekWorkouts = historyList.filter((h) => {
+          if (!h?.date) return false;
+          const d = new Date(h.date).getTime();
+          return !isNaN(d) && d >= oneWeekAgoMs;
+        });
+
+        const weeklyXpFromWorkouts = thisWeekWorkouts.reduce((sum, h) => sum + (Number(h.xpEarned) || 0), 0);
+        const weeklyXp = Math.max(
+          Number(data.leaguePoints) || 0,
+          weeklyXpFromWorkouts,
+          Math.min(Number(data.xp) || 0, Math.round((Number(data.xp) || 500) * 0.2))
+        );
+
+        const totalVol = data.stats?.totalVolumeKg ?? historyList.reduce((s, h) => s + (Number(h.totalVolumeKg) || 0), 0);
+        const totalDist = data.stats?.totalDistanceKm ?? historyList.reduce((s, h) => s + (Number(h.totalDistanceKm) || 0), 0);
+        const badges = Array.isArray(data.unlockedBadges) && data.unlockedBadges.length > 0
+          ? data.unlockedBadges.slice(0, 3)
+          : ['⚡ Atleta Real', '🏆 FitQuest'];
+
+        athletes.push({
+          rank: 0,
+          userId: docSnap.id,
+          name: data.name || 'Atleta de la Comunidad',
+          avatar: data.avatar || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(data.name || 'Atleta')}`,
+          level: Number(data.level) || 1,
+          xpEarned: weeklyXp,
+          streakDays: Number(data.stats?.currentStreak) || Number(data.streak) || 0,
+          league: athleteLeague,
+          workoutsThisWeek: thisWeekWorkouts.length,
+          isCurrentUser: false,
+          isRealUser: true,
+          rankTitle: data.rankTitle || 'Atleta Activo',
+          achievementsUnlockedCount: Array.isArray(data.unlockedBadges)
+            ? data.unlockedBadges.length
+            : (Array.isArray(data.achievementsState) ? data.achievementsState.filter((a: any) => a.unlocked).length : 2),
+          totalVolumeKg: totalVol,
+          totalDistanceKm: totalDist,
+          topBadges: badges,
+          bio: data.bio || 'Atleta activo en la comunidad FitQuest Pro.',
+          followingCount: Array.isArray(data.following) ? data.following.length : 0,
+          followersCount: Array.isArray(data.followers) ? data.followers.length : 0,
+          equippedFrame: data.equippedFrame || 'frame_default',
+        });
+      });
+
+      return athletes;
+    } catch (err) {
+      console.warn('Could not fetch real community athletes from Firestore:', err);
+      return [];
     }
   }
 

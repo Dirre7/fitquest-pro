@@ -72,12 +72,35 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
   const [isEditingBio, setIsEditingBio] = useState<boolean>(false);
   const [bioInput, setBioInput] = useState<string>(user.bio || 'Entrenando duro en FitQuest Pro para conquistar el podio.');
 
+  // Real community athletes fetched from Firestore
+  const [realAthletes, setRealAthletes] = useState<LeaderboardUser[]>([]);
+  const [isLoadingReal, setIsLoadingReal] = useState<boolean>(false);
+
   // Real-time live countdown timer to Sunday 23:59:59
   useEffect(() => {
     const timer = setInterval(() => {
       setCountdown(getCountdownToSunday());
     }, 1000);
     return () => clearInterval(timer);
+  }, []);
+
+  // Fetch real registered athletes from Firestore users collection
+  useEffect(() => {
+    let isMounted = true;
+    setIsLoadingReal(true);
+    FitStorage.fetchRealCommunityAthletes()
+      .then((athletes) => {
+        if (isMounted) {
+          setRealAthletes(athletes);
+          setIsLoadingReal(false);
+        }
+      })
+      .catch(() => {
+        if (isMounted) setIsLoadingReal(false);
+      });
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   // Update selected league if user league changes
@@ -102,15 +125,22 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
   ];
 
   const userWeeklyXp = calculateUserWeeklyXp(user, history);
-  const leagueLeaderboard = getLeagueLeaderboard(selectedLeague, user, userWeeklyXp, history);
+  const leagueLeaderboard = getLeagueLeaderboard(selectedLeague, user, userWeeklyXp, history, realAthletes);
 
   // Flatten all registered community users for connections list and global friends ranking
   const allCommunityUsers: LeaderboardUser[] = useMemo(() => {
-    return Object.values(LEAGUE_BOTS).flat().map((b, idx) => ({
+    const bots = Object.values(LEAGUE_BOTS).flat().map((b, idx) => ({
       ...b,
       rank: idx + 1,
     }));
-  }, []);
+    const combined = [...realAthletes];
+    for (const b of bots) {
+      if (!combined.some((c) => c.userId === b.userId)) {
+        combined.push(b);
+      }
+    }
+    return combined;
+  }, [realAthletes]);
 
   // When filterMode === 'friends', build a cross-league leaderboard with ALL athletes you follow + yourself
   const filteredUsers: LeaderboardUser[] = useMemo(() => {
@@ -119,13 +149,14 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
         rank: 1,
         userId: user.id,
         name: `${user.name} (Tú)`,
-        avatar: user.avatar || `https://api.dicebear.com/7.x/initials/svg?seed=${user.name}`,
+        avatar: user.avatar || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(user.name)}`,
         level: user.level,
         xpEarned: userWeeklyXp,
         streakDays: user.stats.currentStreak || 0,
         league: user.league,
         workoutsThisWeek: history.length,
         isCurrentUser: true,
+        isRealUser: true,
         rankTitle: user.rankTitle || 'Atleta en Forja',
         achievementsUnlockedCount: FitStorage.getAchievements().filter((a) => a.unlocked).length,
         totalVolumeKg: history.reduce((s, h) => s + (h.totalVolumeKg || 0), 0),
@@ -218,7 +249,7 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
       {/* Header & Weekly Reset Countdown */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <span className="text-xs font-black uppercase px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30">
               LIGA SEMANAL ACTIVA
             </span>
@@ -226,6 +257,17 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
               <Clock className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />
               <span>Cierre: <span className="text-emerald-400 font-extrabold">{countdown.formatted}</span></span>
             </span>
+            {realAthletes.length > 0 ? (
+              <span className="text-xs font-mono font-bold text-emerald-300 flex items-center gap-1.5 bg-emerald-500/10 border border-emerald-500/30 px-2.5 py-0.5 rounded-full">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                <span>{realAthletes.length} {realAthletes.length === 1 ? 'atleta real' : 'atletas reales'} en vivo</span>
+              </span>
+            ) : (
+              <span className="text-xs font-mono font-bold text-cyan-300/80 flex items-center gap-1.5 bg-cyan-500/10 border border-cyan-500/30 px-2.5 py-0.5 rounded-full">
+                <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
+                <span>Comunidad en vivo</span>
+              </span>
+            )}
           </div>
           <h2 className="font-display font-black text-2xl sm:text-3xl text-white mt-1.5">
             Clasificación & Ligas
@@ -373,10 +415,16 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
                 <p className="font-mono font-extrabold text-xs sm:text-sm text-neutral-300 mt-1">
                   {athlete.xpEarned} <span className="text-[10px] font-sans font-normal text-neutral-500">XP</span>
                 </p>
-                <div className="flex items-center justify-center gap-1 mt-1">
+                <div className="flex items-center justify-center gap-1 mt-1 flex-wrap">
                   <span className={`text-[9px] font-mono font-bold px-1.5 py-0.2 rounded border ${getLeagueTagStyle(athlete.league)}`}>
                     {athlete.league}
                   </span>
+                  {athlete.isRealUser && !athlete.isCurrentUser && (
+                    <span className="text-[8px] font-black px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 flex items-center gap-0.5">
+                      <span className="w-1 h-1 rounded-full bg-emerald-400 animate-pulse" />
+                      En Vivo
+                    </span>
+                  )}
                   <span className="text-[9px] text-neutral-500 font-mono">🏆 {athlete.achievementsUnlockedCount || 10}/100</span>
                 </div>
               </div>
@@ -412,10 +460,16 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
                 <p className="font-mono font-black text-sm sm:text-base text-amber-400 mt-1">
                   {athlete.xpEarned} <span className="text-xs font-sans font-normal text-amber-300/70">XP</span>
                 </p>
-                <div className="flex items-center justify-center gap-1.5 mt-1">
+                <div className="flex items-center justify-center gap-1.5 mt-1 flex-wrap">
                   <span className={`text-[9px] font-mono font-black uppercase px-1.5 py-0.2 rounded border ${getLeagueTagStyle(athlete.league)}`}>
                     {athlete.league}
                   </span>
+                  {athlete.isRealUser && !athlete.isCurrentUser && (
+                    <span className="text-[8px] font-black px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 flex items-center gap-0.5">
+                      <span className="w-1 h-1 rounded-full bg-emerald-400 animate-pulse" />
+                      En Vivo
+                    </span>
+                  )}
                   <span className="text-[9px] text-amber-300/80 font-mono font-bold">🏆 {athlete.achievementsUnlockedCount || 25}/100</span>
                 </div>
               </div>
@@ -451,10 +505,16 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
                 <p className="font-mono font-extrabold text-xs sm:text-sm text-amber-600 mt-1">
                   {athlete.xpEarned} <span className="text-[10px] font-sans font-normal text-neutral-500">XP</span>
                 </p>
-                <div className="flex items-center justify-center gap-1 mt-1">
+                <div className="flex items-center justify-center gap-1 mt-1 flex-wrap">
                   <span className={`text-[9px] font-mono font-bold px-1.5 py-0.2 rounded border ${getLeagueTagStyle(athlete.league)}`}>
                     {athlete.league}
                   </span>
+                  {athlete.isRealUser && !athlete.isCurrentUser && (
+                    <span className="text-[8px] font-black px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 flex items-center gap-0.5">
+                      <span className="w-1 h-1 rounded-full bg-emerald-400 animate-pulse" />
+                      En Vivo
+                    </span>
+                  )}
                   <span className="text-[9px] text-neutral-500 font-mono">🏆 {athlete.achievementsUnlockedCount || 8}/100</span>
                 </div>
               </div>
@@ -534,6 +594,12 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
                     {isUser && (
                       <span className="text-[9px] font-black px-1.5 py-0.2 rounded bg-cyan-500 text-neutral-950">
                         TÚ
+                      </span>
+                    )}
+                    {item.isRealUser && !isUser && (
+                      <span className="text-[9px] font-black px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 flex items-center gap-1 shrink-0">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                        En Vivo
                       </span>
                     )}
                     {item.rankTitle && (
@@ -656,13 +722,19 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
                   </div>
 
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <h3 className="text-xl font-display font-black text-white truncate">
                         {selectedAthlete.name}
                       </h3>
                       {selectedAthlete.isCurrentUser && (
                         <span className="text-[9px] font-black px-1.5 py-0.2 rounded bg-cyan-500 text-neutral-950 shrink-0">
                           TÚ
+                        </span>
+                      )}
+                      {selectedAthlete.isRealUser && !selectedAthlete.isCurrentUser && (
+                        <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 flex items-center gap-1.5 shrink-0">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                          Atleta en Vivo
                         </span>
                       )}
                     </div>

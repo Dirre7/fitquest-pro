@@ -118,13 +118,27 @@ export function getLeagueLeaderboard(
   league: League,
   user: UserProfile,
   weeklyXp: number,
-  history: WorkoutHistoryEntry[]
+  history: WorkoutHistoryEntry[],
+  realAthletes: LeaderboardUser[] = []
 ): LeaderboardUser[] {
   const bots = LEAGUE_BOTS[league] || LEAGUE_BOTS['Bronze'];
-  let list: LeaderboardUser[] = bots.map((b, i) => ({
-    ...b,
-    rank: i + 1,
-  }));
+
+  // Filter real athletes belonging to this league (excluding current user to avoid duplicates)
+  const realForLeague = realAthletes.filter(
+    (a) => a.league === league && a.userId !== user.id
+  );
+
+  // Combine real cloud athletes with bots
+  let competitors: LeaderboardUser[] = [...realForLeague];
+
+  // If there are fewer than 5 competitors, pad with bots
+  const neededBots = Math.max(0, 5 - competitors.length);
+  const botsToInclude = bots.slice(0, Math.max(neededBots, 2));
+  for (const bot of botsToInclude) {
+    if (!competitors.some((c) => c.userId === bot.userId)) {
+      competitors.push({ ...bot, rank: 0 });
+    }
+  }
 
   // If user belongs to this league, inject user into the list
   if (user.league === league) {
@@ -144,13 +158,14 @@ export function getLeagueLeaderboard(
       rank: 1,
       userId: user.id,
       name: `${user.name} (Tú)`,
-      avatar: user.avatar || `https://api.dicebear.com/7.x/initials/svg?seed=${user.name}`,
+      avatar: user.avatar || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(user.name)}`,
       level: user.level,
       xpEarned: weeklyXp,
       streakDays: user.stats.currentStreak || 0,
       league: user.league,
       workoutsThisWeek,
       isCurrentUser: true,
+      isRealUser: true,
       rankTitle: user.rankTitle || 'Atleta en Forja',
       achievementsUnlockedCount: unlockedAchievementsCount,
       totalVolumeKg: totalVolume,
@@ -162,14 +177,14 @@ export function getLeagueLeaderboard(
       equippedFrame: user.equippedFrame || 'frame_default',
     };
 
-    list = [...list.filter((u) => u.userId !== user.id), currentUserEntry];
+    competitors = [...competitors.filter((u) => u.userId !== user.id), currentUserEntry];
   }
 
   // Sort by weekly XP earned descending
-  list.sort((a, b) => b.xpEarned - a.xpEarned);
+  competitors.sort((a, b) => b.xpEarned - a.xpEarned);
 
   // Assign sequential 1-indexed ranks
-  return list.map((item, index) => ({
+  return competitors.map((item, index) => ({
     ...item,
     rank: index + 1,
   }));
