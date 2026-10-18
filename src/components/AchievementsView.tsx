@@ -225,7 +225,6 @@ export const AchievementsView: React.FC<AchievementsViewProps> = ({
         navigator.share({
           title: sharingAchievement.title,
           text: text,
-          url: window.location.href,
         });
       } catch {}
     }
