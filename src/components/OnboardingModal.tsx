@@ -71,6 +71,9 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
     sound.playLevelUp();
 
     const cleanName = name.trim() || user.name || 'Atleta';
+    const numWeight = Number(weightKg) || 70;
+    const numTarget = Number(targetWeightKg) || numWeight;
+    const todayStr = new Date().toISOString().split('T')[0];
     const updated: UserProfile = {
       ...user,
       name: cleanName,
@@ -78,8 +81,8 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
       gender,
       age: Number(age) || 25,
       heightCm: Number(heightCm) || 175,
-      weightKg: Number(weightKg) || 75,
-      targetWeightKg: Number(targetWeightKg) || 72,
+      weightKg: numWeight,
+      targetWeightKg: numTarget,
       fitnessGoal,
       trainingDaysPerWeek: Number(trainingDaysPerWeek) || 4,
       experienceLevel,
@@ -87,6 +90,12 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
       // Give initial completion XP boost
       xp: (user.xp || 0) + 150,
       currentLevelXp: (user.currentLevelXp || 0) + 150,
+      weightHistory: [
+        {
+          date: todayStr,
+          weightKg: numWeight,
+        },
+      ],
     };
 
     try {

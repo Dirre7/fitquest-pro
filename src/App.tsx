@@ -709,6 +709,8 @@ export default function App() {
     setIsAuthenticated(true);
     setIsGuestMode(false);
     if (!cloudData.user.onboardingCompleted) {
+      localStorage.removeItem('fitquest_nutrition_logs');
+      localStorage.removeItem('fitquest_saturday_weigh_ins');
       setOnboardingModalOpen(true);
     }
     sound.playLevelUp();
@@ -1430,6 +1432,18 @@ export default function App() {
             setActiveTab('dashboard');
             setUser(updatedUser);
             FitStorage.saveUser(updatedUser);
+
+            // Initialize baseline weigh-in with exact user weight from onboarding
+            const todayStr = new Date().toISOString().split('T')[0];
+            const initialWeighIn: SaturdayWeighIn = {
+              id: `baseline_${Date.now()}`,
+              date: todayStr,
+              weightKg: updatedUser.weightKg,
+              muscleMassKg: Number((updatedUser.weightKg * 0.65).toFixed(1)),
+              notes: `Inicio de seguimiento para ${updatedUser.name}. Meta: ${updatedUser.targetWeightKg} kg.`,
+            };
+            FitStorage.saveSaturdayWeighIn(initialWeighIn);
+
             try {
               await FitStorage.syncUserToCloud(updatedUser);
             } catch (err) {

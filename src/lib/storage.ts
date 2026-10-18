@@ -288,6 +288,30 @@ export class FitStorage {
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         });
+
+        // Brand-new user: clear all previous device data so user starts at absolute 0
+        try {
+          localStorage.removeItem(KEYS.HISTORY);
+          localStorage.removeItem(KEYS.NUTRITION_LOGS);
+          localStorage.removeItem(KEYS.SATURDAY_WEIGH_INS);
+          localStorage.removeItem(KEYS.ACTIVE_SESSION);
+          localStorage.removeItem('fitquest_active_routine');
+          localStorage.setItem('fitquest_claimed_challenges', JSON.stringify([]));
+          localStorage.setItem('fitquest_program_progress', JSON.stringify({}));
+          localStorage.setItem(KEYS.ACHIEVEMENTS, JSON.stringify(createFreshAchievements()));
+          localStorage.setItem(KEYS.CHALLENGES, JSON.stringify(defaultChallenges));
+          localStorage.setItem(KEYS.ROUTINES, JSON.stringify(defaultRoutines));
+        } catch {}
+
+        this.saveUser(userProfile);
+
+        return {
+          user: userProfile,
+          history: [],
+          achievements: createFreshAchievements(),
+          challenges: defaultChallenges,
+          routines: defaultRoutines,
+        };
       }
 
       const combinedHistoryMap = new Map<string, WorkoutHistoryEntry>();
@@ -1785,19 +1809,20 @@ export class FitStorage {
         }
       }
       const user = this.getUser();
-      const currentWeight = user.weightKg || 80.0;
-      const targetWeight = user.targetWeightKg || Math.max(50, currentWeight - 5);
+      // If user has not completed onboarding or has no weight, return empty array (no fake 80kg)
+      if (!user.weightKg || !user.onboardingCompleted) {
+        return [];
+      }
+      const currentWeight = Number(user.weightKg);
+      const targetWeight = Number(user.targetWeightKg) || currentWeight;
       const userName = user.name || 'Atleta';
       const defaultInitial: SaturdayWeighIn[] = [
         {
           id: 'initial_user_baseline',
-          date: new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0],
+          date: new Date().toISOString().split('T')[0],
           weightKg: currentWeight,
-          fatPercent: 25.0,
           muscleMassKg: Number((currentWeight * 0.65).toFixed(1)),
-          visceralFat: 9,
-          waistCm: 95,
-          notes: `Inicio de seguimiento para ${userName}. Meta: ${targetWeight.toFixed(1)} kg.`,
+          notes: `Inicio de seguimiento para ${userName}. Meta: ${targetWeight} kg.`,
         },
       ];
       localStorage.setItem(KEYS.SATURDAY_WEIGH_INS, JSON.stringify(defaultInitial));

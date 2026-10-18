@@ -79,9 +79,9 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
 
   const saturdayWeighIns = FitStorage.getSaturdayWeighIns();
   const unifiedCurrentWeight =
-    saturdayWeighIns[0]?.weightKg ||
     user.weightKg ||
-    75.0;
+    saturdayWeighIns[0]?.weightKg ||
+    70.0;
   const unifiedTargetWeight =
     user.targetWeightKg ||
     (unifiedCurrentWeight > 70 ? unifiedCurrentWeight - 5 : 70.0);
