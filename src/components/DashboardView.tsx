@@ -236,25 +236,25 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             {/* Left: Avatar + Athlete Name & Ranks */}
             <div 
               onClick={onOpenProfileModal}
-              className="flex items-center gap-3 sm:gap-3.5 cursor-pointer group min-w-0 flex-1"
+              className="flex items-center gap-3 sm:gap-4 cursor-pointer group min-w-0 flex-1"
               title="Personalizar avatar y perfil"
             >
               <div className="relative shrink-0">
                 <img
                   src={user.avatar}
                   alt={user.name}
-                  className={`w-14 h-14 sm:w-16 sm:h-16 rounded-2xl object-cover border-2 shadow-lg group-hover:scale-105 transition-all ${equippedFrameClasses.borderClass} ${equippedFrameClasses.glowClass}`}
+                  className={`w-16 h-16 sm:w-20 sm:h-20 rounded-2xl sm:rounded-3xl object-cover border-2 sm:border-[2.5px] shadow-xl group-hover:scale-105 transition-all ${equippedFrameClasses.borderClass} ${equippedFrameClasses.glowClass}`}
                 />
-                <span className="absolute -top-1.5 -right-1 text-sm bg-neutral-950/80 rounded-full px-1 border border-white/10">
+                <span className="absolute -top-1.5 -right-1 text-sm sm:text-base bg-neutral-950/90 rounded-full px-1.5 py-0.5 border border-white/15 shadow-md">
                   {equippedFrameMeta.badgeEmoji}
                 </span>
               </div>
               <div className="min-w-0">
                 <div className="flex items-center gap-1.5 flex-wrap">
-                  <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-md bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+                  <span className="text-[10px] sm:text-[11px] font-mono font-bold px-2 py-0.5 rounded-md bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
                     LIGA {user.league}
                   </span>
-                  <span className="text-[10px] font-mono text-neutral-400 bg-white/5 px-2 py-0.5 rounded-md border border-white/5 truncate max-w-[140px] sm:max-w-none">
+                  <span className="text-[10px] sm:text-[11px] font-mono text-neutral-400 bg-white/5 px-2 py-0.5 rounded-md border border-white/5 truncate max-w-[140px] sm:max-w-none">
                     {user.rankTitle || 'Recluta Inicial'}
                   </span>
                 </div>
@@ -264,36 +264,36 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </div>
             </div>
 
-            {/* Middle/Center: Prominent Gamer Level Badge (Big Number, Compact Space) */}
+            {/* Middle/Center: Prominent Gamer Level Badge (Super Big Number, Heroic Presence) */}
             <button
               type="button"
               onClick={onOpenLevelRoadmap}
-              className="px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-2xl border flex items-center gap-2.5 transition-all hover:scale-105 active:scale-95 cursor-pointer shadow-lg group shrink-0"
+              className="px-3.5 py-1.5 sm:px-4 sm:py-2.5 rounded-2xl sm:rounded-3xl border-2 flex items-center gap-2.5 sm:gap-3 transition-all hover:scale-105 active:scale-95 cursor-pointer shadow-xl group shrink-0"
               style={{
-                borderColor: `${currentTier.accentColor}60`,
-                backgroundColor: `${currentTier.accentColor}12`,
-                boxShadow: `0 0 16px ${currentTier.accentColor}20`,
+                borderColor: `${currentTier.accentColor}70`,
+                backgroundColor: `${currentTier.accentColor}15`,
+                boxShadow: `0 0 22px ${currentTier.accentColor}25`,
               }}
               title="Toca para ver el Árbol de Niveles y Recompensas"
             >
               <div className="flex flex-col items-center justify-center leading-none">
-                <span className="text-[8px] sm:text-[9px] font-mono font-black uppercase tracking-wider text-neutral-400">
+                <span className="text-[9px] sm:text-[10px] font-mono font-black uppercase tracking-widest text-neutral-400">
                   NIVEL
                 </span>
                 <span 
-                  className="text-2xl sm:text-3xl font-display font-black tracking-tighter"
+                  className="text-3xl sm:text-4xl font-display font-black tracking-tighter mt-0.5"
                   style={{ color: currentTier.accentColor }}
                 >
                   {user.level || 1}
                 </span>
               </div>
-              <div className="hidden sm:flex flex-col text-left leading-tight border-l pl-2.5 border-white/10">
-                <span className="text-[11px] font-bold text-white uppercase tracking-wider">
+              <div className="hidden sm:flex flex-col text-left leading-tight border-l pl-3 border-white/10">
+                <span className="text-xs font-display font-black text-white uppercase tracking-wider">
                   {currentTier.name}
                 </span>
-                <span className="text-[9px] font-mono text-cyan-400 flex items-center gap-0.5 group-hover:translate-x-0.5 transition-transform">
+                <span className="text-[10px] font-mono text-cyan-400 font-bold flex items-center gap-0.5 group-hover:translate-x-0.5 transition-transform mt-0.5">
                   <span>Recompensas</span>
-                  <ChevronRight className="w-2.5 h-2.5" />
+                  <ChevronRight className="w-3 h-3" />
                 </span>
               </div>
             </button>
