@@ -287,14 +287,15 @@ export const ProfileEditModal: React.FC<ProfileEditModalProps> = ({
             <div className="flex items-center justify-between">
               <label className="text-[11px] font-mono font-bold text-neutral-300 block uppercase tracking-wider flex items-center gap-1.5">
                 <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                <span>Marcos & Auras Cosméticas</span>
+                <span>Marcos & Auras ({AVATAR_FRAMES.filter(f => isFrameUnlocked(f.id, user)).length}/{AVATAR_FRAMES.length})</span>
               </label>
-              <span className="text-[10px] font-mono text-cyan-400">
-                {activeFrame.name}
+              <span className="text-[10px] font-mono text-cyan-400 font-bold flex items-center gap-1">
+                <span>{activeFrame.badgeEmoji}</span>
+                <span className="truncate max-w-[130px]">{activeFrame.name}</span>
               </span>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 max-h-72 overflow-y-auto pr-1 no-scrollbar">
               {AVATAR_FRAMES.map((f) => {
                 const unlocked = isFrameUnlocked(f.id, user);
                 const isSelected = equippedFrame === f.id;
@@ -310,18 +311,27 @@ export const ProfileEditModal: React.FC<ProfileEditModalProps> = ({
                         sound.playSuccess();
                       }
                     }}
-                    className={`p-2.5 rounded-2xl border text-left transition-all relative flex flex-col justify-between ${
+                    className={`p-2.5 rounded-2xl border text-left transition-all relative flex flex-col justify-between group ${
                       isSelected
-                        ? 'border-cyan-400 bg-cyan-500/15 ring-2 ring-cyan-400/40'
+                        ? 'border-cyan-400 bg-cyan-500/15 ring-2 ring-cyan-400/40 shadow-lg'
                         : unlocked
-                        ? 'border-white/10 hover:border-white/20 bg-white/[0.03]'
-                        : 'border-white/5 bg-black/40 opacity-50 cursor-not-allowed'
+                        ? 'border-white/10 hover:border-white/30 bg-white/[0.03] hover:bg-white/[0.06] cursor-pointer'
+                        : 'border-white/5 bg-black/40 opacity-45 cursor-not-allowed'
                     }`}
                   >
-                    <div className="flex items-center justify-between mb-1.5">
-                      <span className="text-lg">{f.badgeEmoji}</span>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="relative">
+                        <img
+                          src={avatar || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(name || 'FitQuest')}`}
+                          alt="preview"
+                          className={`w-9 h-9 rounded-xl object-cover border-2 transition-all ${f.borderClass} ${f.glowClass}`}
+                        />
+                        <span className="absolute -bottom-1 -right-1 text-[10px] bg-neutral-950/90 rounded-full px-0.5 border border-white/10">
+                          {f.badgeEmoji}
+                        </span>
+                      </div>
                       {isSelected ? (
-                        <div className="w-4 h-4 rounded-full bg-cyan-400 text-neutral-950 flex items-center justify-center">
+                        <div className="w-4 h-4 rounded-full bg-cyan-400 text-neutral-950 flex items-center justify-center shadow">
                           <Check className="w-2.5 h-2.5 stroke-[3]" />
                         </div>
                       ) : !unlocked ? (
@@ -333,7 +343,7 @@ export const ProfileEditModal: React.FC<ProfileEditModalProps> = ({
                       <p className={`text-xs font-bold truncate ${isSelected ? 'text-cyan-300' : 'text-white'}`}>
                         {f.name}
                       </p>
-                      <p className="text-[10px] text-neutral-400 line-clamp-1 mt-0.5">
+                      <p className="text-[10px] text-neutral-400 line-clamp-2 mt-0.5 leading-tight">
                         {unlocked ? f.description : f.unlockRequirement}
                       </p>
                     </div>

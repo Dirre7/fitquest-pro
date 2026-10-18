@@ -19,7 +19,7 @@ import {
   LEAGUE_BOTS,
 } from '../lib/leagueEngine';
 import { translations } from '../lib/i18n';
-import { getEquippedFrameClasses } from '../lib/cosmeticFrames';
+import { getEquippedFrameClasses, getFrameById } from '../lib/cosmeticFrames';
 
 interface RivalCardProfile {
   id: string;
@@ -32,6 +32,7 @@ interface RivalCardProfile {
   totalVolumeKg: number;
   totalDistanceKm: number;
   streakDays: number;
+  equippedFrame?: string;
   attributes: {
     strength: number;
     endurance: number;
@@ -64,6 +65,7 @@ export const SocialLiveDuelView: React.FC<SocialLiveDuelViewProps> = ({
   const effectiveStreak = Math.max(user.stats?.currentStreak || 0, realStreakObj.currentStreak);
   const userBreakdown = getAthleteAttributesBreakdown(history, effectiveStreak, user.level, user);
   const userFrame = getEquippedFrameClasses(user);
+  const userFrameMeta = getFrameById(user.equippedFrame);
 
   // 2. Build Realistic Rivals from the Current User League
   const leagueBots = LEAGUE_BOTS[user.league] || LEAGUE_BOTS['Bronze'];
@@ -108,6 +110,7 @@ export const SocialLiveDuelView: React.FC<SocialLiveDuelViewProps> = ({
       totalVolumeKg: bot.totalVolumeKg || 12000,
       totalDistanceKm: bot.totalDistanceKm || 10,
       streakDays: bot.streakDays || 2,
+      equippedFrame: bot.equippedFrame,
       attributes: { strength: str, endurance: end, agility: agi, discipline: dis },
       overall: ovr,
       archetype: { name: archetypeName, icon: archetypeIcon, description: archetypeDesc },
@@ -116,6 +119,8 @@ export const SocialLiveDuelView: React.FC<SocialLiveDuelViewProps> = ({
 
   const [selectedRivalId, setSelectedRivalId] = useState<string>(rivals[0]?.id || '');
   const activeRival = rivals.find((r) => r.id === selectedRivalId) || rivals[0];
+  const rivalFrame = getEquippedFrameClasses(activeRival.equippedFrame);
+  const rivalFrameMeta = getFrameById(activeRival.equippedFrame);
 
   // Compare 4 attributes
   const attrKeys: Array<{
@@ -214,6 +219,9 @@ export const SocialLiveDuelView: React.FC<SocialLiveDuelViewProps> = ({
                     alt={user.name}
                     className={`w-16 h-16 rounded-2xl object-cover border-2 shadow-xl ${userFrame.borderClass} ${userFrame.glowClass}`}
                   />
+                  <span className="absolute -top-1.5 -right-1 text-xs drop-shadow bg-neutral-950/80 rounded-full px-1 border border-white/10" title={userFrameMeta.name}>
+                    {userFrameMeta.badgeEmoji}
+                  </span>
                   <span className="absolute -bottom-1 -right-1 px-1.5 py-0.5 rounded-md bg-cyan-500 text-neutral-950 font-mono font-black text-[9px]">
                     TÚ
                   </span>
@@ -272,8 +280,11 @@ export const SocialLiveDuelView: React.FC<SocialLiveDuelViewProps> = ({
                   <img
                     src={activeRival.avatar}
                     alt={activeRival.name}
-                    className="w-16 h-16 rounded-2xl object-cover border-2 border-white/20 shadow-xl"
+                    className={`w-16 h-16 rounded-2xl object-cover border-2 shadow-xl ${rivalFrame.borderClass} ${rivalFrame.glowClass}`}
                   />
+                  <span className="absolute -top-1.5 -right-1 text-xs drop-shadow bg-neutral-950/80 rounded-full px-1 border border-white/10" title={rivalFrameMeta.name}>
+                    {rivalFrameMeta.badgeEmoji}
+                  </span>
                   <span className="absolute -bottom-1 -right-1 px-1.5 py-0.5 rounded-md bg-neutral-800 text-neutral-300 font-mono font-black text-[9px] border border-white/10">
                     RIVAL
                   </span>

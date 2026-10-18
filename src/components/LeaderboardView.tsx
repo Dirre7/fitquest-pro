@@ -37,6 +37,7 @@ import {
   LEAGUE_BOTS,
   WeeklyCountdown 
 } from '../lib/leagueEngine';
+import { getEquippedFrameClasses, getFrameById } from '../lib/cosmeticFrames';
 
 interface LeaderboardViewProps {
   users?: LeaderboardUser[];
@@ -131,6 +132,7 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
         bio: user.bio || 'Entrenando duro en FitQuest Pro para conquistar el podio.',
         followingCount: followingSet.size,
         followersCount: (user.followers || []).length || 4,
+        equippedFrame: user.equippedFrame || 'frame_default',
       };
 
       const followedBots = allCommunityUsers.filter((b) => followingSet.has(b.userId));
@@ -342,85 +344,121 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
         <div className="grid grid-cols-3 gap-2.5 sm:gap-4 items-end pt-4 pb-2">
           
           {/* #2 Silver Podium */}
-          <div
-            onClick={() => setSelectedAthlete(top3[1])}
-            className={`border rounded-3xl p-4 text-center relative shadow-xl transform hover:-translate-y-1.5 transition-all cursor-pointer group ${
-              top3[1].isCurrentUser ? 'bg-cyan-500/10 border-cyan-500/40 shadow-[0_0_20px_rgba(6,182,212,0.2)]' : 'bg-[#121214] border-white/10 hover:border-neutral-300/40'
-            }`}
-          >
-            <div className="w-6 h-6 rounded-full bg-neutral-300 text-black font-extrabold text-xs mx-auto -mt-7 mb-2 flex items-center justify-center shadow">
-              2
-            </div>
-            <img
-              src={top3[1].avatar}
-              alt={top3[1].name}
-              className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl object-cover mx-auto border-2 border-neutral-300 shadow-md mb-2 group-hover:scale-105 transition-transform"
-            />
-            <h4 className="font-bold text-white text-xs truncate group-hover:text-cyan-300 transition-colors">{top3[1].name}</h4>
-            <p className="font-mono font-extrabold text-xs sm:text-sm text-neutral-300 mt-1">
-              {top3[1].xpEarned} <span className="text-[10px] font-sans font-normal text-neutral-500">XP</span>
-            </p>
-            <div className="flex items-center justify-center gap-1 mt-1">
-              <span className={`text-[9px] font-mono font-bold px-1.5 py-0.2 rounded border ${getLeagueTagStyle(top3[1].league)}`}>
-                {top3[1].league}
-              </span>
-              <span className="text-[9px] text-neutral-500 font-mono">🏆 {top3[1].achievementsUnlockedCount || 10}/100</span>
-            </div>
-          </div>
+          {(() => {
+            const athlete = top3[1];
+            const frame = getEquippedFrameClasses(athlete.equippedFrame);
+            const frameMeta = getFrameById(athlete.equippedFrame);
+            return (
+              <div
+                onClick={() => setSelectedAthlete(athlete)}
+                className={`border rounded-3xl p-4 text-center relative shadow-xl transform hover:-translate-y-1.5 transition-all cursor-pointer group ${
+                  athlete.isCurrentUser ? 'bg-cyan-500/10 border-cyan-500/40 shadow-[0_0_20px_rgba(6,182,212,0.2)]' : 'bg-[#121214] border-white/10 hover:border-neutral-300/40'
+                }`}
+              >
+                <div className="w-6 h-6 rounded-full bg-neutral-300 text-black font-extrabold text-xs mx-auto -mt-7 mb-2 flex items-center justify-center shadow">
+                  2
+                </div>
+                <div className="relative mx-auto w-fit mb-2">
+                  <img
+                    src={athlete.avatar}
+                    alt={athlete.name}
+                    className={`w-12 h-12 sm:w-14 sm:h-14 rounded-2xl object-cover border-2 shadow-md group-hover:scale-105 transition-all ${frame.borderClass} ${frame.glowClass}`}
+                  />
+                  <span className="absolute -bottom-1 -right-1 text-xs drop-shadow bg-neutral-950/80 rounded-full px-1 border border-white/10" title={frameMeta.name}>
+                    {frameMeta.badgeEmoji}
+                  </span>
+                </div>
+                <h4 className="font-bold text-white text-xs truncate group-hover:text-cyan-300 transition-colors">{athlete.name}</h4>
+                <p className="font-mono font-extrabold text-xs sm:text-sm text-neutral-300 mt-1">
+                  {athlete.xpEarned} <span className="text-[10px] font-sans font-normal text-neutral-500">XP</span>
+                </p>
+                <div className="flex items-center justify-center gap-1 mt-1">
+                  <span className={`text-[9px] font-mono font-bold px-1.5 py-0.2 rounded border ${getLeagueTagStyle(athlete.league)}`}>
+                    {athlete.league}
+                  </span>
+                  <span className="text-[9px] text-neutral-500 font-mono">🏆 {athlete.achievementsUnlockedCount || 10}/100</span>
+                </div>
+              </div>
+            );
+          })()}
 
           {/* #1 Gold Center Podium */}
-          <div
-            onClick={() => setSelectedAthlete(top3[0])}
-            className={`border-2 rounded-3xl p-4 sm:p-5 text-center relative shadow-2xl transform hover:-translate-y-2 transition-all cursor-pointer group ${
-              top3[0].isCurrentUser ? 'bg-cyan-500/15 border-cyan-400 shadow-[0_0_30px_rgba(6,182,212,0.3)]' : 'bg-gradient-to-b from-amber-950/40 via-[#121214] to-[#121214] border-amber-400/60 hover:border-amber-400'
-            }`}
-          >
-            <div className="w-8 h-8 rounded-full bg-amber-400 text-black font-black text-sm mx-auto -mt-8 sm:-mt-9 mb-2 flex items-center justify-center shadow-lg shadow-amber-400/30 animate-pulse">
-              <Crown className="w-4 h-4 sm:w-5 sm:h-5 fill-current" />
-            </div>
-            <img
-              src={top3[0].avatar}
-              alt={top3[0].name}
-              className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl object-cover mx-auto border-2 border-amber-400 shadow-xl mb-2 group-hover:scale-105 transition-transform"
-            />
-            <h4 className="font-extrabold text-white text-xs sm:text-sm truncate group-hover:text-amber-300 transition-colors">{top3[0].name}</h4>
-            <p className="font-mono font-black text-sm sm:text-base text-amber-400 mt-1">
-              {top3[0].xpEarned} <span className="text-xs font-sans font-normal text-amber-300/70">XP</span>
-            </p>
-            <div className="flex items-center justify-center gap-1.5 mt-1">
-              <span className={`text-[9px] font-mono font-black uppercase px-1.5 py-0.2 rounded border ${getLeagueTagStyle(top3[0].league)}`}>
-                {top3[0].league}
-              </span>
-              <span className="text-[9px] text-amber-300/80 font-mono font-bold">🏆 {top3[0].achievementsUnlockedCount || 25}/100</span>
-            </div>
-          </div>
+          {(() => {
+            const athlete = top3[0];
+            const frame = getEquippedFrameClasses(athlete.equippedFrame);
+            const frameMeta = getFrameById(athlete.equippedFrame);
+            return (
+              <div
+                onClick={() => setSelectedAthlete(athlete)}
+                className={`border-2 rounded-3xl p-4 sm:p-5 text-center relative shadow-2xl transform hover:-translate-y-2 transition-all cursor-pointer group ${
+                  athlete.isCurrentUser ? 'bg-cyan-500/15 border-cyan-400 shadow-[0_0_30px_rgba(6,182,212,0.3)]' : 'bg-gradient-to-b from-amber-950/40 via-[#121214] to-[#121214] border-amber-400/60 hover:border-amber-400'
+                }`}
+              >
+                <div className="w-8 h-8 rounded-full bg-amber-400 text-black font-black text-sm mx-auto -mt-8 sm:-mt-9 mb-2 flex items-center justify-center shadow-lg shadow-amber-400/30 animate-pulse">
+                  <Crown className="w-4 h-4 sm:w-5 sm:h-5 fill-current" />
+                </div>
+                <div className="relative mx-auto w-fit mb-2">
+                  <img
+                    src={athlete.avatar}
+                    alt={athlete.name}
+                    className={`w-14 h-14 sm:w-16 sm:h-16 rounded-2xl object-cover border-2 shadow-xl group-hover:scale-105 transition-all ${frame.borderClass} ${frame.glowClass}`}
+                  />
+                  <span className="absolute -bottom-1 -right-1 text-sm drop-shadow bg-neutral-950/80 rounded-full px-1 border border-white/10" title={frameMeta.name}>
+                    {frameMeta.badgeEmoji}
+                  </span>
+                </div>
+                <h4 className="font-extrabold text-white text-xs sm:text-sm truncate group-hover:text-amber-300 transition-colors">{athlete.name}</h4>
+                <p className="font-mono font-black text-sm sm:text-base text-amber-400 mt-1">
+                  {athlete.xpEarned} <span className="text-xs font-sans font-normal text-amber-300/70">XP</span>
+                </p>
+                <div className="flex items-center justify-center gap-1.5 mt-1">
+                  <span className={`text-[9px] font-mono font-black uppercase px-1.5 py-0.2 rounded border ${getLeagueTagStyle(athlete.league)}`}>
+                    {athlete.league}
+                  </span>
+                  <span className="text-[9px] text-amber-300/80 font-mono font-bold">🏆 {athlete.achievementsUnlockedCount || 25}/100</span>
+                </div>
+              </div>
+            );
+          })()}
 
           {/* #3 Bronze Podium */}
-          <div
-            onClick={() => setSelectedAthlete(top3[2])}
-            className={`border rounded-3xl p-4 text-center relative shadow-xl transform hover:-translate-y-1.5 transition-all cursor-pointer group ${
-              top3[2].isCurrentUser ? 'bg-cyan-500/10 border-cyan-500/40 shadow-[0_0_20px_rgba(6,182,212,0.2)]' : 'bg-[#121214] border-white/10 hover:border-amber-700/40'
-            }`}
-          >
-            <div className="w-6 h-6 rounded-full bg-amber-700 text-white font-extrabold text-xs mx-auto -mt-7 mb-2 flex items-center justify-center shadow">
-              3
-            </div>
-            <img
-              src={top3[2].avatar}
-              alt={top3[2].name}
-              className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl object-cover mx-auto border-2 border-amber-700 shadow-md mb-2 group-hover:scale-105 transition-transform"
-            />
-            <h4 className="font-bold text-white text-xs truncate group-hover:text-cyan-300 transition-colors">{top3[2].name}</h4>
-            <p className="font-mono font-extrabold text-xs sm:text-sm text-amber-600 mt-1">
-              {top3[2].xpEarned} <span className="text-[10px] font-sans font-normal text-neutral-500">XP</span>
-            </p>
-            <div className="flex items-center justify-center gap-1 mt-1">
-              <span className={`text-[9px] font-mono font-bold px-1.5 py-0.2 rounded border ${getLeagueTagStyle(top3[2].league)}`}>
-                {top3[2].league}
-              </span>
-              <span className="text-[9px] text-neutral-500 font-mono">🏆 {top3[2].achievementsUnlockedCount || 8}/100</span>
-            </div>
-          </div>
+          {(() => {
+            const athlete = top3[2];
+            const frame = getEquippedFrameClasses(athlete.equippedFrame);
+            const frameMeta = getFrameById(athlete.equippedFrame);
+            return (
+              <div
+                onClick={() => setSelectedAthlete(athlete)}
+                className={`border rounded-3xl p-4 text-center relative shadow-xl transform hover:-translate-y-1.5 transition-all cursor-pointer group ${
+                  athlete.isCurrentUser ? 'bg-cyan-500/10 border-cyan-500/40 shadow-[0_0_20px_rgba(6,182,212,0.2)]' : 'bg-[#121214] border-white/10 hover:border-amber-700/40'
+                }`}
+              >
+                <div className="w-6 h-6 rounded-full bg-amber-700 text-white font-extrabold text-xs mx-auto -mt-7 mb-2 flex items-center justify-center shadow">
+                  3
+                </div>
+                <div className="relative mx-auto w-fit mb-2">
+                  <img
+                    src={athlete.avatar}
+                    alt={athlete.name}
+                    className={`w-12 h-12 sm:w-14 sm:h-14 rounded-2xl object-cover border-2 shadow-md group-hover:scale-105 transition-all ${frame.borderClass} ${frame.glowClass}`}
+                  />
+                  <span className="absolute -bottom-1 -right-1 text-xs drop-shadow bg-neutral-950/80 rounded-full px-1 border border-white/10" title={frameMeta.name}>
+                    {frameMeta.badgeEmoji}
+                  </span>
+                </div>
+                <h4 className="font-bold text-white text-xs truncate group-hover:text-cyan-300 transition-colors">{athlete.name}</h4>
+                <p className="font-mono font-extrabold text-xs sm:text-sm text-amber-600 mt-1">
+                  {athlete.xpEarned} <span className="text-[10px] font-sans font-normal text-neutral-500">XP</span>
+                </p>
+                <div className="flex items-center justify-center gap-1 mt-1">
+                  <span className={`text-[9px] font-mono font-bold px-1.5 py-0.2 rounded border ${getLeagueTagStyle(athlete.league)}`}>
+                    {athlete.league}
+                  </span>
+                  <span className="text-[9px] text-neutral-500 font-mono">🏆 {athlete.achievementsUnlockedCount || 8}/100</span>
+                </div>
+              </div>
+            );
+          })()}
 
         </div>
       )}
@@ -465,20 +503,27 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
                   {item.rank > 3 && <span className="text-neutral-500">{item.rank.toString().padStart(2, '0')}</span>}
                 </div>
 
-                <div className="relative shrink-0">
-                  <img
-                    src={item.avatar}
-                    alt={item.name}
-                    className={`w-10 h-10 sm:w-11 sm:h-11 rounded-2xl object-cover border transition-transform group-hover:scale-105 ${
-                      isUser ? 'border-cyan-400 shadow-[0_0_8px_#06b6d4]' : 'border-white/10 group-hover:border-white/30'
-                    }`}
-                  />
-                  {followingSet.has(item.userId) && (
-                    <span className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-cyan-500 border border-neutral-950 flex items-center justify-center text-[9px] text-neutral-950 font-bold">
-                      ★
-                    </span>
-                  )}
-                </div>
+                {(() => {
+                  const athleteFrame = getEquippedFrameClasses(item.equippedFrame || (isUser ? user.equippedFrame : undefined));
+                  const athleteFrameMeta = getFrameById(item.equippedFrame || (isUser ? user.equippedFrame : undefined));
+                  return (
+                    <div className="relative shrink-0">
+                      <img
+                        src={item.avatar}
+                        alt={item.name}
+                        className={`w-10 h-10 sm:w-11 sm:h-11 rounded-2xl object-cover border-2 transition-transform group-hover:scale-105 ${athleteFrame.borderClass} ${athleteFrame.glowClass}`}
+                      />
+                      <span className="absolute -top-1.5 -right-1 text-[10px] drop-shadow" title={athleteFrameMeta.name}>
+                        {athleteFrameMeta.badgeEmoji}
+                      </span>
+                      {followingSet.has(item.userId) && (
+                        <span className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-cyan-500 border border-neutral-950 flex items-center justify-center text-[9px] text-neutral-950 font-bold">
+                          ★
+                        </span>
+                      )}
+                    </div>
+                  );
+                })()}
 
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
@@ -573,44 +618,59 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
             </div>
 
             {/* Main Avatar & Profile Info */}
-            <div className="flex items-center gap-4 relative z-10">
-              <div className="relative">
-                <img
-                  src={selectedAthlete.avatar}
-                  alt={selectedAthlete.name}
-                  className="w-18 h-18 sm:w-20 sm:h-20 rounded-3xl object-cover border-2 border-cyan-400 shadow-[0_0_20px_rgba(6,182,212,0.3)]"
-                />
-                <span className="absolute -bottom-2 -right-2 px-2 py-0.5 rounded-full bg-amber-500 text-neutral-950 text-[10px] font-mono font-black shadow-lg">
-                  #{selectedAthlete.rank}
-                </span>
-              </div>
-
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
-                  <h3 className="text-xl font-display font-black text-white truncate">
-                    {selectedAthlete.name}
-                  </h3>
-                  {selectedAthlete.isCurrentUser && (
-                    <span className="text-[9px] font-black px-1.5 py-0.2 rounded bg-cyan-500 text-neutral-950 shrink-0">
-                      TÚ
+            {(() => {
+              const modalFrame = getEquippedFrameClasses(selectedAthlete.equippedFrame || (selectedAthlete.isCurrentUser ? user.equippedFrame : undefined));
+              const modalFrameMeta = getFrameById(selectedAthlete.equippedFrame || (selectedAthlete.isCurrentUser ? user.equippedFrame : undefined));
+              return (
+                <div className="flex items-center gap-4 relative z-10">
+                  <div className="relative">
+                    <img
+                      src={selectedAthlete.avatar}
+                      alt={selectedAthlete.name}
+                      className={`w-18 h-18 sm:w-20 sm:h-20 rounded-3xl object-cover border-2 transition-transform ${modalFrame.borderClass} ${modalFrame.glowClass}`}
+                    />
+                    <span className="absolute -top-2 -right-1 text-base drop-shadow bg-neutral-950/80 rounded-full px-1.5 border border-white/10" title={modalFrameMeta.name}>
+                      {modalFrameMeta.badgeEmoji}
                     </span>
-                  )}
-                </div>
+                    <span className="absolute -bottom-2 -right-2 px-2 py-0.5 rounded-full bg-amber-500 text-neutral-950 text-[10px] font-mono font-black shadow-lg">
+                      #{selectedAthlete.rank}
+                    </span>
+                  </div>
 
-                <p className="text-xs font-mono font-bold text-cyan-300 mt-0.5">
-                  "{selectedAthlete.rankTitle || 'Guerrero de Hierro'}"
-                </p>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-xl font-display font-black text-white truncate">
+                        {selectedAthlete.name}
+                      </h3>
+                      {selectedAthlete.isCurrentUser && (
+                        <span className="text-[9px] font-black px-1.5 py-0.2 rounded bg-cyan-500 text-neutral-950 shrink-0">
+                          TÚ
+                        </span>
+                      )}
+                    </div>
 
-                <div className="flex items-center gap-2 mt-2">
-                  <span className="text-xs font-mono font-extrabold px-2 py-0.5 rounded-lg bg-white/5 border border-white/10 text-neutral-200">
-                    Nivel {selectedAthlete.level}
-                  </span>
-                  <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-lg border ${getLeagueTagStyle(selectedAthlete.league)}`}>
-                    Liga {selectedAthlete.league}
-                  </span>
+                    <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                      <p className="text-xs font-mono font-bold text-cyan-300">
+                        "{selectedAthlete.rankTitle || 'Guerrero de Hierro'}"
+                      </p>
+                      <span className="text-[10px] font-mono font-bold text-neutral-300 bg-white/5 border border-white/10 px-2 py-0.5 rounded-lg flex items-center gap-1">
+                        <span>{modalFrameMeta.badgeEmoji}</span>
+                        <span>{modalFrameMeta.name}</span>
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2 mt-2">
+                      <span className="text-xs font-mono font-extrabold px-2 py-0.5 rounded-lg bg-white/5 border border-white/10 text-neutral-200">
+                        Nivel {selectedAthlete.level}
+                      </span>
+                      <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-lg border ${getLeagueTagStyle(selectedAthlete.league)}`}>
+                        Liga {selectedAthlete.league}
+                      </span>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
+              );
+            })()}
 
             {/* Social Followers / Following Bar */}
             <div className="bg-neutral-950/80 border border-white/5 rounded-2xl p-3 flex items-center justify-around gap-2 relative z-10 shadow-inner">
@@ -862,11 +922,16 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
                         }}
                         className="flex items-center gap-3 cursor-pointer min-w-0 flex-1 group"
                       >
-                        <img
-                          src={athlete.avatar}
-                          alt={athlete.name}
-                          className="w-10 h-10 rounded-xl object-cover border border-white/10 group-hover:border-cyan-400 transition-colors shrink-0"
-                        />
+                        {(() => {
+                          const athleteFrame = getEquippedFrameClasses(athlete.equippedFrame);
+                          return (
+                            <img
+                              src={athlete.avatar}
+                              alt={athlete.name}
+                              className={`w-10 h-10 rounded-xl object-cover border-2 shrink-0 ${athleteFrame.borderClass} ${athleteFrame.glowClass}`}
+                            />
+                          );
+                        })()}
                         <div className="min-w-0">
                           <p className="text-xs font-bold text-white group-hover:text-cyan-300 truncate">
                             {athlete.name}

@@ -307,6 +307,7 @@ export interface LeaderboardUser {
   bio?: string;
   followersCount?: number;
   followingCount?: number;
+  equippedFrame?: string;
 }
 
 export interface LiveParticipant {
@@ -318,6 +319,7 @@ export interface LiveParticipant {
   heartRate: number;
   status: 'active' | 'resting' | 'finished';
   reaction?: string;
+  equippedFrame?: string;
 }
 
 export interface LiveDuelRoom {

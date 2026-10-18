@@ -49,7 +49,7 @@ import {
   getAthleteAttributesBreakdown,
 } from '../lib/leagueEngine';
 import { getWeeklyChallengesForRotation } from '../lib/weeklyChallengesEngine';
-import { getEquippedFrameClasses } from '../lib/cosmeticFrames';
+import { getEquippedFrameClasses, getFrameById } from '../lib/cosmeticFrames';
 
 interface DashboardViewProps {
   user: UserProfile;
@@ -109,6 +109,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const effectiveStreak = Math.max(user.stats?.currentStreak || 0, realStreakObj.currentStreak);
   const attrBreakdown = getAthleteAttributesBreakdown(history, effectiveStreak, user.level, user);
   const equippedFrameClasses = getEquippedFrameClasses(user);
+  const equippedFrameMeta = getFrameById(user.equippedFrame);
 
   const currentRoutine = routines.find((r) => r.id === selectedRoutineId) || routines[0];
   const weeklyRotationData = getWeeklyChallengesForRotation(history);
@@ -212,6 +213,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   alt={user.name}
                   className={`w-20 h-20 sm:w-24 sm:h-24 rounded-3xl object-cover border-2 shadow-2xl group-hover:scale-105 transition-all ${equippedFrameClasses.borderClass} ${equippedFrameClasses.glowClass}`}
                 />
+                <span 
+                  className="absolute -top-1.5 -right-1 text-base drop-shadow bg-neutral-950/80 rounded-full px-1 border border-white/10" 
+                  title={equippedFrameMeta.name}
+                >
+                  {equippedFrameMeta.badgeEmoji}
+                </span>
                 <div
                   onClick={(e) => {
                     e.stopPropagation();
