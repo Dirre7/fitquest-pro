@@ -708,7 +708,8 @@ export default function App() {
     setRoutines(cloudData.routines);
     setIsAuthenticated(true);
     setIsGuestMode(false);
-    if (!cloudData.user.onboardingCompleted) {
+    const isNewAthlete = !cloudData.user.onboardingCompleted && (cloudData.user.level === 1 && (cloudData.user.xp || 0) === 0);
+    if (isNewAthlete) {
       localStorage.removeItem('fitquest_nutrition_logs');
       localStorage.removeItem('fitquest_saturday_weigh_ins');
       setOnboardingModalOpen(true);

@@ -278,6 +278,16 @@ export class FitStorage {
 
         const initialProg = calculateLevelFromTotalXp(maxTotalXp);
 
+        const hasPriorProgress = Boolean(
+          (cloudData.level && cloudData.level > 1) ||
+          (cloudData.xp && cloudData.xp > 0) ||
+          (cloudData.stats?.totalWorkouts && cloudData.stats.totalWorkouts > 0)
+        );
+
+        const resolvedOnboardingCompleted = cloudData.onboardingCompleted !== undefined
+          ? Boolean(cloudData.onboardingCompleted)
+          : (hasPriorProgress ? true : (isDifferentUser ? false : Boolean(existingLocalUser.onboardingCompleted)));
+
         userProfile = {
           ...defaults,
           ...effectiveExisting,
@@ -298,7 +308,7 @@ export class FitStorage {
           fitnessGoal: cloudData.fitnessGoal ?? (isDifferentUser ? defaults.fitnessGoal : existingLocalUser.fitnessGoal),
           trainingDaysPerWeek: cloudData.trainingDaysPerWeek ?? (isDifferentUser ? defaults.trainingDaysPerWeek : existingLocalUser.trainingDaysPerWeek),
           experienceLevel: cloudData.experienceLevel ?? (isDifferentUser ? undefined : existingLocalUser.experienceLevel),
-          onboardingCompleted: cloudData.onboardingCompleted ?? (isDifferentUser ? false : existingLocalUser.onboardingCompleted),
+          onboardingCompleted: resolvedOnboardingCompleted,
           league: cloudData.league || defaults.league || 'Bronze',
           equippedFrame: cloudData.equippedFrame || defaults.equippedFrame || 'frame_default',
           bio: cloudData.bio ?? (isDifferentUser ? '' : (existingLocalUser.bio ?? defaults.bio ?? '')),
@@ -315,7 +325,11 @@ export class FitStorage {
         } catch {}
 
         // If local had a custom title or badges or higher XP without active reset, sync them to cloud
-        if (!isDifferentUser && !isCloudResetActive && (userProfile.rankTitle !== cloudData.rankTitle || userProfile.xp !== cloudData.xp || (userProfile.unlockedBadges?.length || 0) > (cloudData.unlockedBadges?.length || 0))) {
+        // Also ensure onboardingCompleted is persisted to Firestore for existing athletes
+        if (
+          (!isDifferentUser && !isCloudResetActive && (userProfile.rankTitle !== cloudData.rankTitle || userProfile.xp !== cloudData.xp || (userProfile.unlockedBadges?.length || 0) > (cloudData.unlockedBadges?.length || 0))) ||
+          (hasPriorProgress && cloudData.onboardingCompleted !== true)
+        ) {
           this.syncUserToCloud(userProfile);
         }
       } else {
