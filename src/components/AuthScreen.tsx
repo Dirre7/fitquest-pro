@@ -49,6 +49,13 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ lang, onSuccess, onConti
     setError(null);
     setLoading(true);
 
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(
+        () => reject({ code: 'auth/timeout', message: 'Tiempo de espera agotado al conectar con el servidor de autenticación.' }),
+        15000
+      )
+    );
+
     try {
       if (isSignUp) {
         if (!name.trim()) {
@@ -62,15 +69,21 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ lang, onSuccess, onConti
           return;
         }
 
-        const cred = await createUserWithEmailAndPassword(auth, email.trim(), password);
+        const cred = await Promise.race([
+          createUserWithEmailAndPassword(auth, email.trim(), password),
+          timeoutPromise
+        ]);
         if (cred.user) {
           await updateProfile(cred.user, { displayName: name.trim() });
-          onSuccess(cred.user.uid, name.trim(), cred.user.email || undefined);
+          await onSuccess(cred.user.uid, name.trim(), cred.user.email || undefined);
         }
       } else {
-        const cred = await signInWithEmailAndPassword(auth, email.trim(), password);
+        const cred = await Promise.race([
+          signInWithEmailAndPassword(auth, email.trim(), password),
+          timeoutPromise
+        ]);
         if (cred.user) {
-          onSuccess(
+          await onSuccess(
             cred.user.uid, 
             cred.user.displayName || cred.user.email?.split('@')[0] || 'Atleta', 
             cred.user.email || undefined
@@ -91,9 +104,13 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ lang, onSuccess, onConti
       } else if (err.code === 'auth/weak-password') {
         msg = 'La contraseña es demasiado débil. Usa al menos 6 caracteres.';
       } else if (err.code === 'auth/unauthorized-domain') {
-        msg = 'Dominio de Vercel no autorizado en Firebase Auth. Añade tu dominio de Vercel en la consola de Firebase (Authentication > Settings > Authorized domains) o entra como Invitado Local.';
+        msg = 'Dominio de la app no autorizado en Firebase Auth. Añade el dominio en la consola de Firebase o entra como Invitado Local.';
       } else if (err.code === 'auth/operation-not-allowed') {
         msg = 'El proveedor de autenticación no está habilitado en la consola de Firebase.';
+      } else if (err.code === 'auth/network-request-failed') {
+        msg = 'Error de conexión de red con Firebase. Comprueba tu conexión a Internet o entra como Invitado Local.';
+      } else if (err.code === 'auth/timeout') {
+        msg = 'La conexión con la nube tardó más de lo esperado. Puedes reintentar o entrar como Invitado Local.';
       }
       setError(msg);
     } finally {

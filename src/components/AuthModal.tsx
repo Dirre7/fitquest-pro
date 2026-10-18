@@ -45,6 +45,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, lang, onS
     setError(null);
     setLoading(true);
 
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(
+        () => reject({ code: 'auth/timeout', message: 'Tiempo de espera agotado al conectar con el servidor.' }),
+        15000
+      )
+    );
+
     try {
       if (isSignUp) {
         if (!name.trim()) {
@@ -58,16 +65,22 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, lang, onS
           return;
         }
 
-        const cred = await createUserWithEmailAndPassword(auth, email.trim(), password);
+        const cred = await Promise.race([
+          createUserWithEmailAndPassword(auth, email.trim(), password),
+          timeoutPromise
+        ]);
         if (cred.user) {
           await updateProfile(cred.user, { displayName: name.trim() });
-          onSuccess(cred.user.uid, name.trim(), cred.user.email || undefined);
+          await onSuccess(cred.user.uid, name.trim(), cred.user.email || undefined);
           onClose();
         }
       } else {
-        const cred = await signInWithEmailAndPassword(auth, email.trim(), password);
+        const cred = await Promise.race([
+          signInWithEmailAndPassword(auth, email.trim(), password),
+          timeoutPromise
+        ]);
         if (cred.user) {
-          onSuccess(
+          await onSuccess(
             cred.user.uid, 
             cred.user.displayName || cred.user.email?.split('@')[0] || 'Atleta', 
             cred.user.email || undefined
@@ -84,6 +97,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, lang, onS
         msg = 'Correo o contraseña incorrectos.';
       } else if (err.code === 'auth/invalid-email') {
         msg = 'El formato del correo electrónico no es válido.';
+      } else if (err.code === 'auth/network-request-failed') {
+        msg = 'Error de conexión de red con Firebase. Comprueba tu conexión a Internet.';
+      } else if (err.code === 'auth/timeout') {
+        msg = 'La conexión con la nube tardó demasiado. Vuelve a intentarlo o entra como Invitado.';
       }
       setError(msg);
     } finally {

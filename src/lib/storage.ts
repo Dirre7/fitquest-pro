@@ -340,11 +340,14 @@ export class FitStorage {
         userProfile = createFreshUser(uid, cleanName, email);
         userProfile.name = cleanName;
         userProfile.onboardingCompleted = false;
-        await setDoc(userRef, {
-          ...userProfile,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        });
+        await setDoc(
+          userRef,
+          sanitizeForFirestore({
+            ...userProfile,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          })
+        );
 
         // Brand-new user: clear all previous device data so user starts at absolute 0
         try {

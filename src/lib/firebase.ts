@@ -43,6 +43,7 @@ const firebaseConfig = {
 };
 
 import { initializeAppCheck, ReCaptchaV3Provider } from 'firebase/app-check';
+import { Capacitor } from '@capacitor/core';
 
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 
@@ -62,7 +63,24 @@ if (typeof window !== 'undefined' && config.recaptchaSiteKey && config.recaptcha
   }
 }
 
-export const auth = getAuth(app);
+// In Capacitor native environments (Android/iOS), explicitly initialize Auth with indexedDB + browserLocalPersistence
+// so that Firebase does not try to load cross-origin auth iframes (/__/auth/iframe) which deadlock inside native WebViews.
+import { initializeAuth, indexedDBLocalPersistence, browserLocalPersistence, Auth } from 'firebase/auth';
+
+let authInstance: Auth;
+try {
+  if (Capacitor.isNativePlatform()) {
+    authInstance = initializeAuth(app, {
+      persistence: [indexedDBLocalPersistence, browserLocalPersistence],
+    });
+  } else {
+    authInstance = getAuth(app);
+  }
+} catch (e) {
+  authInstance = getAuth(app);
+}
+
+export const auth = authInstance;
 export const db = config.firestoreDatabaseId 
   ? getFirestore(app, config.firestoreDatabaseId)
   : getFirestore(app);
