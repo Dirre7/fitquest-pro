@@ -36,7 +36,7 @@ interface AuthScreenProps {
 }
 
 export const AuthScreen: React.FC<AuthScreenProps> = ({ lang, onSuccess, onContinueGuest }) => {
-  const [isSignUp, setIsSignUp] = useState(true); // Default to register so new users register first!
+  const [isSignUp, setIsSignUp] = useState(false); // Default to login so returning athletes can sign in directly!
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
@@ -249,21 +249,6 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ lang, onSuccess, onConti
             <div className="flex bg-neutral-900/90 p-1 rounded-full border border-white/10 mb-6">
               <button
                 type="button"
-                id="tab-auth-signup"
-                onClick={() => {
-                  setIsSignUp(true);
-                  setError(null);
-                }}
-                className={`flex-1 py-2 rounded-full text-xs font-mono font-bold transition-all ${
-                  isSignUp
-                    ? 'bg-cyan-400 text-neutral-950 shadow-md font-black'
-                    : 'text-neutral-400 hover:text-white'
-                }`}
-              >
-                Crear Cuenta (Registro)
-              </button>
-              <button
-                type="button"
                 id="tab-auth-signin"
                 onClick={() => {
                   setIsSignUp(false);
@@ -276,6 +261,21 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ lang, onSuccess, onConti
                 }`}
               >
                 Iniciar Sesión
+              </button>
+              <button
+                type="button"
+                id="tab-auth-signup"
+                onClick={() => {
+                  setIsSignUp(true);
+                  setError(null);
+                }}
+                className={`flex-1 py-2 rounded-full text-xs font-mono font-bold transition-all ${
+                  isSignUp
+                    ? 'bg-cyan-400 text-neutral-950 shadow-md font-black'
+                    : 'text-neutral-400 hover:text-white'
+                }`}
+              >
+                Crear Cuenta (Registro)
               </button>
             </div>
 

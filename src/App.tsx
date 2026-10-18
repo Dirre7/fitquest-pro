@@ -718,6 +718,7 @@ export default function App() {
 
   // Sign out handler
   const handleSignOut = async () => {
+    FitStorage.clearUserSession();
     await fbSignOut(auth);
     setIsAuthenticated(false);
     setIsGuestMode(false);

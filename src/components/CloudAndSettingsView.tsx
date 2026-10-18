@@ -104,6 +104,7 @@ export const CloudAndSettingsView: React.FC<CloudAndSettingsViewProps> = ({
   // Sign out handler
   const handleSignOut = async () => {
     sound.playBeep(400, 100);
+    FitStorage.clearUserSession();
     await signOut(auth);
     window.location.reload();
   };
@@ -315,6 +316,34 @@ export const CloudAndSettingsView: React.FC<CloudAndSettingsViewProps> = ({
             <span>{syncSuccessMsg}</span>
           </div>
         )}
+
+        {/* Active Account Identity Banner */}
+        <div className="p-4 rounded-2xl bg-neutral-950/70 border border-neutral-800 flex items-center justify-between gap-3 flex-wrap">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-cyan-500/15 border border-cyan-500/30 text-cyan-400 flex items-center justify-center font-bold text-sm shrink-0">
+              {auth.currentUser?.email ? auth.currentUser.email[0].toUpperCase() : '👤'}
+            </div>
+            <div>
+              <span className="text-[10px] font-mono uppercase text-neutral-400 font-bold block">
+                Cuenta Conectada en Firebase
+              </span>
+              <span className="text-xs sm:text-sm font-mono font-bold text-white block">
+                {auth.currentUser?.email || (auth.currentUser ? 'Usuario Cloud Autenticado' : 'Modo Invitado')}
+              </span>
+            </div>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="text-[10px] font-mono px-3 py-1 rounded-full bg-white/5 border border-white/10 text-neutral-300 font-bold">
+              {auth.currentUser?.providerData.some((p) => p.providerId === 'google.com')
+                ? '🌐 Cuenta Google'
+                : auth.currentUser?.providerData.some((p) => p.providerId === 'apple.com')
+                ? ' Cuenta Apple'
+                : auth.currentUser?.email
+                ? '✉️ Correo & Contraseña'
+                : '💾 Invitado Local'}
+            </span>
+          </div>
+        </div>
 
         {/* Single Active Session Control (Exclusión Mutua Móvil / Tablet) */}
         <div className="p-4 sm:p-5 rounded-2xl bg-neutral-950/70 border border-neutral-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">

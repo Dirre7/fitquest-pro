@@ -78,6 +78,24 @@ export class FitStorage {
     } catch {}
   }
 
+  public static clearUserSession(): void {
+    try {
+      localStorage.removeItem(KEYS.USER);
+      localStorage.removeItem(KEYS.HISTORY);
+      localStorage.removeItem(KEYS.DELETED_HISTORY_IDS);
+      localStorage.removeItem(KEYS.NUTRITION_LOGS);
+      localStorage.removeItem(KEYS.SATURDAY_WEIGH_INS);
+      localStorage.removeItem(KEYS.ACTIVE_SESSION);
+      localStorage.removeItem('fitquest_active_routine');
+      localStorage.removeItem('fitquest_claimed_challenges');
+      localStorage.removeItem('fitquest_program_progress');
+      localStorage.removeItem(KEYS.LAST_RESET_AT);
+      localStorage.removeItem('fitquest_active_nutrition_plan');
+    } catch (e) {
+      console.warn('Error clearing user session from localStorage', e);
+    }
+  }
+
   public static getUser(): UserProfile {
     try {
       const data = localStorage.getItem(KEYS.USER);
@@ -199,13 +217,36 @@ export class FitStorage {
         const defaults = createFreshUser(uid, displayName || (email ? email.split('@')[0] : 'Atleta FitQuest'), email);
         const existingLocalUser = this.getUser();
 
+        // Check if existingLocalUser belongs to a completely different user account
+        const isDifferentUser = Boolean(
+          existingLocalUser.id &&
+          existingLocalUser.id !== uid &&
+          existingLocalUser.id !== 'guest' &&
+          existingLocalUser.id !== 'default_user' &&
+          existingLocalUser.id !== 'guest_user'
+        );
+
+        if (isDifferentUser) {
+          try {
+            localStorage.removeItem(KEYS.HISTORY);
+            localStorage.removeItem(KEYS.NUTRITION_LOGS);
+            localStorage.removeItem(KEYS.SATURDAY_WEIGH_INS);
+            localStorage.removeItem(KEYS.ACTIVE_SESSION);
+            localStorage.removeItem('fitquest_active_routine');
+            localStorage.removeItem('fitquest_claimed_challenges');
+            localStorage.removeItem('fitquest_program_progress');
+          } catch {}
+        }
+
+        const effectiveExisting = isDifferentUser ? defaults : existingLocalUser;
+
         // Check if cloud has an active reset (A real reset must be Level 1 and 0 XP)
         const localResetAt = localStorage.getItem(KEYS.LAST_RESET_AT);
         const cloudResetAt = cloudData.lastResetAt;
         isCloudResetActive = Boolean(
           (cloudData.level === 1 && (cloudData.xp === 0 || !cloudData.xp)) &&
           ((cloudResetAt && (!localResetAt || new Date(cloudResetAt).getTime() >= new Date(localResetAt).getTime())) ||
-           (existingLocalUser.level > 1 && existingLocalUser.xp > 0))
+           (!isDifferentUser && existingLocalUser.level > 1 && existingLocalUser.xp > 0))
         );
 
         if (isCloudResetActive) {
@@ -216,14 +257,14 @@ export class FitStorage {
           this.saveAchievements(createFreshAchievements());
         }
 
-        const mergedClaimed = isCloudResetActive
+        const mergedClaimed = (isCloudResetActive || isDifferentUser)
           ? (cloudData.claimedChallenges || [])
           : Array.from(new Set([
               ...(cloudData.claimedChallenges || []),
               ...(existingLocalUser.claimedChallenges || []),
             ]));
 
-        const mergedBadges = isCloudResetActive
+        const mergedBadges = (isCloudResetActive || isDifferentUser)
           ? (cloudData.unlockedBadges || [])
           : Array.from(new Set([
               ...(cloudData.unlockedBadges || []),
@@ -231,7 +272,7 @@ export class FitStorage {
               ...(defaults.unlockedBadges || []),
             ]));
 
-        const maxTotalXp = isCloudResetActive
+        const maxTotalXp = (isCloudResetActive || isDifferentUser)
           ? (cloudData.xp || 0)
           : Math.max(cloudData.xp || 0, existingLocalUser.xp || 0);
 
@@ -239,42 +280,42 @@ export class FitStorage {
 
         userProfile = {
           ...defaults,
-          ...(isCloudResetActive ? {} : existingLocalUser),
+          ...effectiveExisting,
           ...cloudData,
           id: uid,
           level: initialProg.level,
           xp: initialProg.xp,
           currentLevelXp: initialProg.currentLevelXp,
           nextLevelXp: initialProg.nextLevelXp,
-          name: cloudData.name || displayName || existingLocalUser.name || defaults.name,
-          avatar: cloudData.avatar || existingLocalUser.avatar || defaults.avatar,
-          rankTitle: cloudData.rankTitle || (isCloudResetActive ? 'Recluta Inicial' : (existingLocalUser.rankTitle || initialProg.milestoneTitle || defaults.rankTitle)),
-          weightKg: cloudData.weightKg ?? existingLocalUser.weightKg ?? defaults.weightKg,
-          targetWeightKg: cloudData.targetWeightKg ?? existingLocalUser.targetWeightKg ?? defaults.targetWeightKg,
-          heightCm: cloudData.heightCm ?? existingLocalUser.heightCm ?? defaults.heightCm,
-          age: cloudData.age ?? existingLocalUser.age,
-          gender: cloudData.gender ?? existingLocalUser.gender,
-          fitnessGoal: cloudData.fitnessGoal ?? existingLocalUser.fitnessGoal,
-          trainingDaysPerWeek: cloudData.trainingDaysPerWeek ?? existingLocalUser.trainingDaysPerWeek,
-          experienceLevel: cloudData.experienceLevel ?? existingLocalUser.experienceLevel,
-          onboardingCompleted: cloudData.onboardingCompleted ?? existingLocalUser.onboardingCompleted,
-          league: cloudData.league || existingLocalUser.league || defaults.league || 'Bronze',
-          equippedFrame: cloudData.equippedFrame || existingLocalUser.equippedFrame || defaults.equippedFrame || 'frame_default',
-          bio: cloudData.bio ?? existingLocalUser.bio ?? defaults.bio ?? '',
-          following: cloudData.following || existingLocalUser.following || defaults.following || [],
-          followers: cloudData.followers || existingLocalUser.followers || defaults.followers || [],
+          name: cloudData.name || displayName || (isDifferentUser ? defaults.name : (existingLocalUser.name || defaults.name)),
+          avatar: cloudData.avatar || (isDifferentUser ? defaults.avatar : (existingLocalUser.avatar || defaults.avatar)),
+          rankTitle: cloudData.rankTitle || (isCloudResetActive ? 'Recluta Inicial' : (isDifferentUser ? (initialProg.milestoneTitle || defaults.rankTitle) : (existingLocalUser.rankTitle || initialProg.milestoneTitle || defaults.rankTitle))),
+          weightKg: cloudData.weightKg ?? (isDifferentUser ? defaults.weightKg : (existingLocalUser.weightKg ?? defaults.weightKg)),
+          targetWeightKg: cloudData.targetWeightKg ?? (isDifferentUser ? defaults.targetWeightKg : (existingLocalUser.targetWeightKg ?? defaults.targetWeightKg)),
+          heightCm: cloudData.heightCm ?? (isDifferentUser ? defaults.heightCm : (existingLocalUser.heightCm ?? defaults.heightCm)),
+          age: cloudData.age ?? (isDifferentUser ? undefined : existingLocalUser.age),
+          gender: cloudData.gender ?? (isDifferentUser ? undefined : existingLocalUser.gender),
+          fitnessGoal: cloudData.fitnessGoal ?? (isDifferentUser ? defaults.fitnessGoal : existingLocalUser.fitnessGoal),
+          trainingDaysPerWeek: cloudData.trainingDaysPerWeek ?? (isDifferentUser ? defaults.trainingDaysPerWeek : existingLocalUser.trainingDaysPerWeek),
+          experienceLevel: cloudData.experienceLevel ?? (isDifferentUser ? undefined : existingLocalUser.experienceLevel),
+          onboardingCompleted: cloudData.onboardingCompleted ?? (isDifferentUser ? false : existingLocalUser.onboardingCompleted),
+          league: cloudData.league || defaults.league || 'Bronze',
+          equippedFrame: cloudData.equippedFrame || defaults.equippedFrame || 'frame_default',
+          bio: cloudData.bio ?? (isDifferentUser ? '' : (existingLocalUser.bio ?? defaults.bio ?? '')),
+          following: cloudData.following || [],
+          followers: cloudData.followers || [],
           claimedChallenges: mergedClaimed,
-          claimedChallengesWeek: cloudData.claimedChallengesWeek || existingLocalUser.claimedChallengesWeek,
+          claimedChallengesWeek: cloudData.claimedChallengesWeek || (isDifferentUser ? undefined : existingLocalUser.claimedChallengesWeek),
           unlockedBadges: mergedBadges,
-          activeNutritionPlanId: cloudData.activeNutritionPlanId !== undefined ? cloudData.activeNutritionPlanId : (existingLocalUser.activeNutritionPlanId || 'none'),
-          lastResetAt: cloudResetAt || (isCloudResetActive ? new Date().toISOString() : existingLocalUser.lastResetAt),
+          activeNutritionPlanId: cloudData.activeNutritionPlanId !== undefined ? cloudData.activeNutritionPlanId : (isDifferentUser ? 'none' : (existingLocalUser.activeNutritionPlanId || 'none')),
+          lastResetAt: cloudResetAt || (isCloudResetActive ? new Date().toISOString() : (isDifferentUser ? undefined : existingLocalUser.lastResetAt)),
         };
         try {
           localStorage.setItem('fitquest_claimed_challenges', JSON.stringify(mergedClaimed));
         } catch {}
 
         // If local had a custom title or badges or higher XP without active reset, sync them to cloud
-        if (!isCloudResetActive && (userProfile.rankTitle !== cloudData.rankTitle || userProfile.xp !== cloudData.xp || (userProfile.unlockedBadges?.length || 0) > (cloudData.unlockedBadges?.length || 0))) {
+        if (!isDifferentUser && !isCloudResetActive && (userProfile.rankTitle !== cloudData.rankTitle || userProfile.xp !== cloudData.xp || (userProfile.unlockedBadges?.length || 0) > (cloudData.unlockedBadges?.length || 0))) {
           this.syncUserToCloud(userProfile);
         }
       } else {
