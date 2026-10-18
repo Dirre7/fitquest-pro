@@ -156,6 +156,7 @@ export class FitStorage {
           bio: user.bio || '',
           following: user.following || [],
           followers: user.followers || [],
+          activeNutritionPlanId: user.activeNutritionPlanId || 'none',
           lastActiveAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         }),
@@ -251,6 +252,7 @@ export class FitStorage {
           claimedChallenges: mergedClaimed,
           claimedChallengesWeek: cloudData.claimedChallengesWeek || existingLocalUser.claimedChallengesWeek,
           unlockedBadges: mergedBadges,
+          activeNutritionPlanId: cloudData.activeNutritionPlanId !== undefined ? cloudData.activeNutritionPlanId : (existingLocalUser.activeNutritionPlanId || 'none'),
           lastResetAt: cloudResetAt || (isCloudResetActive ? new Date().toISOString() : existingLocalUser.lastResetAt),
         };
         try {
@@ -1490,13 +1492,14 @@ export class FitStorage {
 
   public static setActiveNutritionPlan(planId: string | null, currentUser?: UserProfile): UserProfile {
     const user = currentUser || this.getUser();
+    const normalizedPlanId = planId && planId !== 'none' ? planId : 'none';
     const updatedUser: UserProfile = {
       ...user,
-      activeNutritionPlanId: planId || undefined,
+      activeNutritionPlanId: normalizedPlanId,
     };
     this.saveUser(updatedUser);
 
-    const activePlan = getActiveNutritionPlan(planId || undefined);
+    const activePlan = getActiveNutritionPlan(normalizedPlanId);
     // Align today's log targets with the newly activated plan or default baseline
     const todayStr = new Date().toISOString().split('T')[0];
     const currentTodayLog = this.getNutritionLog(todayStr);

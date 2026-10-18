@@ -455,6 +455,7 @@ export default function App() {
                 attributes: isSnapshotReset ? { strength: 10, endurance: 10, agility: 10, discipline: 10 } : dynamicAttributes,
                 programProgress: data.programProgress || prev.programProgress,
                 activeSession: data.activeSession !== undefined ? data.activeSession : prev.activeSession,
+                activeNutritionPlanId: data.activeNutritionPlanId !== undefined ? data.activeNutritionPlanId : prev.activeNutritionPlanId,
                 stats: {
                   ...prev.stats,
                   ...(data.stats || {}),

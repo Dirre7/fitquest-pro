@@ -756,8 +756,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 <div>
                   <div className="flex items-center gap-2">
                     <span className="text-[10px] font-mono font-bold uppercase text-cyan-400">Nutrición & Macros</span>
-                    <span className="text-[10px] font-mono text-neutral-500">•</span>
-                    <span className="text-[10px] font-mono text-neutral-400">{activeNutritionPlan.name}</span>
+                    <span className="text-[10px] font-mono text-neutral-400">
+                      {activeNutritionPlan ? activeNutritionPlan.name : 'Modo Libre'}
+                    </span>
                   </div>
                   <p className="text-xs font-bold text-white font-mono mt-0.5">
                     {totalCalories} <span className="text-neutral-400 font-normal">/ {todayLog.targetCalories} kcal</span>
@@ -770,7 +771,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </div>
 
               <div className="flex items-center gap-1 text-[11px] font-mono font-bold text-cyan-400 group-hover:translate-x-1 transition-transform">
-                <span>Ver Plan</span>
+                <span>{activeNutritionPlan ? 'Ver Plan' : 'Nutrición'}</span>
                 <ChevronRight className="w-3.5 h-3.5" />
               </div>
             </div>

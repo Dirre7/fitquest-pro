@@ -329,7 +329,7 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
   // Deactivate Nutrition Plan (Flexible / Free Logging Mode)
   const handleDeactivatePlan = () => {
     safePlayClick();
-    const updatedUser = FitStorage.setActiveNutritionPlan(null, user);
+    const updatedUser = FitStorage.setActiveNutritionPlan('none', user);
     if (onUpdateUser) {
       onUpdateUser(updatedUser);
     }
@@ -2046,10 +2046,15 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
             <div className="space-y-3.5">
               {/* Option: MODO LIBRE / SIN PLAN */}
               <div
+                onClick={() => {
+                  if (activePlan) {
+                    handleDeactivatePlan();
+                  }
+                }}
                 className={`relative rounded-2xl p-4 sm:p-5 border transition-all ${
                   !activePlan
                     ? 'bg-cyan-500/10 border-cyan-500/50 shadow-lg shadow-cyan-500/10'
-                    : 'bg-black/40 border-white/10 hover:border-white/20 hover:bg-white/[0.02]'
+                    : 'bg-black/40 border-white/10 hover:border-white/20 hover:bg-white/[0.02] cursor-pointer'
                 }`}
               >
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -2080,7 +2085,10 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
 
                   <button
                     type="button"
-                    onClick={handleDeactivatePlan}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeactivatePlan();
+                    }}
                     disabled={!activePlan}
                     className={`px-4 py-2 rounded-xl text-xs font-black transition-all shrink-0 self-start sm:self-auto ${
                       !activePlan

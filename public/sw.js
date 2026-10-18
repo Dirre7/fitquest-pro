@@ -1,4 +1,4 @@
-const CACHE_NAME = 'fitquest-pro-v4.23';
+const CACHE_NAME = 'fitquest-pro-v4.24';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
