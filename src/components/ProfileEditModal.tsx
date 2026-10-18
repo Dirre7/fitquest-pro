@@ -41,6 +41,11 @@ export const ProfileEditModal: React.FC<ProfileEditModalProps> = ({
   const [equippedFrame, setEquippedFrame] = useState(user.equippedFrame || 'frame_default');
   const [weightKg, setWeightKg] = useState(user.weightKg || 70);
   const [targetWeightKg, setTargetWeightKg] = useState(user.targetWeightKg || 70);
+  const [heightCm, setHeightCm] = useState(user.heightCm || 175);
+  const [age, setAge] = useState(user.age || 25);
+  const [gender, setGender] = useState<'male' | 'female' | 'other'>(user.gender || 'male');
+  const [fitnessGoal, setFitnessGoal] = useState<'Hypertrophy' | 'Strength' | 'FatLoss' | 'General'>(user.fitnessGoal || 'Hypertrophy');
+  const [trainingDaysPerWeek, setTrainingDaysPerWeek] = useState(user.trainingDaysPerWeek || 4);
   const [isSaving, setIsSaving] = useState(false);
 
   // Avatar Presets
@@ -136,6 +141,11 @@ export const ProfileEditModal: React.FC<ProfileEditModalProps> = ({
       rankTitle,
       weightKg: Number(weightKg) || 70,
       targetWeightKg: Number(targetWeightKg) || 70,
+      heightCm: Number(heightCm) || 175,
+      age: Number(age) || 25,
+      gender,
+      fitnessGoal,
+      trainingDaysPerWeek: Number(trainingDaysPerWeek) || 4,
       equippedFrame,
     };
 
@@ -455,34 +465,100 @@ export const ProfileEditModal: React.FC<ProfileEditModalProps> = ({
             </div>
           </div>
 
-          {/* Weights Calibration Grid */}
-          <div className="grid grid-cols-2 gap-2.5 pt-0.5">
-            <div className="space-y-1">
-              <label className="text-[10px] font-mono font-bold text-neutral-300 flex items-center gap-1">
-                <Scale className="w-3 h-3 text-cyan-400" />
-                <span>Peso Actual (kg)</span>
-              </label>
-              <input
-                type="number"
-                step="0.1"
-                value={weightKg}
-                onChange={(e) => setWeightKg(parseFloat(e.target.value) || 0)}
-                className="w-full px-3 py-1.5 bg-white/5 border border-white/10 rounded-xl text-xs font-mono font-bold text-white focus:border-cyan-500 focus:outline-none"
-              />
+          {/* Biometrics & Calibration Grid */}
+          <div className="space-y-2.5 pt-1 border-t border-white/5">
+            <label className="text-[11px] font-mono font-bold text-neutral-300 block uppercase tracking-wider">
+              Datos Biométricos & Objetivos
+            </label>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <div className="space-y-1">
+                <label className="text-[10px] font-mono font-bold text-neutral-400 flex items-center gap-1">
+                  <Scale className="w-3 h-3 text-cyan-400" />
+                  <span>Peso (kg)</span>
+                </label>
+                <input
+                  type="number"
+                  step="0.1"
+                  value={weightKg}
+                  onChange={(e) => setWeightKg(parseFloat(e.target.value) || 0)}
+                  className="w-full px-2.5 py-1.5 bg-white/5 border border-white/10 rounded-xl text-xs font-mono font-bold text-white focus:border-cyan-500 focus:outline-none"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-mono font-bold text-neutral-400 flex items-center gap-1">
+                  <Zap className="w-3 h-3 text-emerald-400" />
+                  <span>Meta (kg)</span>
+                </label>
+                <input
+                  type="number"
+                  step="0.1"
+                  value={targetWeightKg}
+                  onChange={(e) => setTargetWeightKg(parseFloat(e.target.value) || 0)}
+                  className="w-full px-2.5 py-1.5 bg-white/5 border border-white/10 rounded-xl text-xs font-mono font-bold text-white focus:border-cyan-500 focus:outline-none"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-mono font-bold text-neutral-400 flex items-center gap-1">
+                  <span>📏 Altura (cm)</span>
+                </label>
+                <input
+                  type="number"
+                  value={heightCm}
+                  onChange={(e) => setHeightCm(parseInt(e.target.value) || 0)}
+                  className="w-full px-2.5 py-1.5 bg-white/5 border border-white/10 rounded-xl text-xs font-mono font-bold text-white focus:border-cyan-500 focus:outline-none"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-mono font-bold text-neutral-400 flex items-center gap-1">
+                  <span>🎂 Edad</span>
+                </label>
+                <input
+                  type="number"
+                  value={age}
+                  onChange={(e) => setAge(parseInt(e.target.value) || 0)}
+                  className="w-full px-2.5 py-1.5 bg-white/5 border border-white/10 rounded-xl text-xs font-mono font-bold text-white focus:border-cyan-500 focus:outline-none"
+                />
+              </div>
             </div>
 
-            <div className="space-y-1">
-              <label className="text-[10px] font-mono font-bold text-neutral-300 flex items-center gap-1">
-                <Zap className="w-3 h-3 text-emerald-400" />
-                <span>Peso Objetivo (kg)</span>
-              </label>
-              <input
-                type="number"
-                step="0.1"
-                value={targetWeightKg}
-                onChange={(e) => setTargetWeightKg(parseFloat(e.target.value) || 0)}
-                className="w-full px-3 py-1.5 bg-white/5 border border-white/10 rounded-xl text-xs font-mono font-bold text-white focus:border-cyan-500 focus:outline-none"
-              />
+            {/* Goal and Frequency Row */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+              <div>
+                <label className="text-[10px] font-mono font-bold text-neutral-400 block mb-1">
+                  Objetivo Principal
+                </label>
+                <select
+                  value={fitnessGoal}
+                  onChange={(e) => setFitnessGoal(e.target.value as any)}
+                  className="w-full px-2.5 py-1.5 bg-[#18181b] border border-white/10 rounded-xl text-xs font-mono text-white focus:border-cyan-500 focus:outline-none cursor-pointer"
+                >
+                  <option value="Hypertrophy">💪 Hipertrofia Muscular</option>
+                  <option value="FatLoss">🔥 Pérdida de Grasa / Corte</option>
+                  <option value="Strength">⚡ Fuerza Máxima & PRs</option>
+                  <option value="General">❤️ Salud & Rendimiento</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="text-[10px] font-mono font-bold text-neutral-400 block mb-1">
+                  Frecuencia de Entrenamiento
+                </label>
+                <select
+                  value={trainingDaysPerWeek}
+                  onChange={(e) => setTrainingDaysPerWeek(parseInt(e.target.value) || 4)}
+                  className="w-full px-2.5 py-1.5 bg-[#18181b] border border-white/10 rounded-xl text-xs font-mono text-white focus:border-cyan-500 focus:outline-none cursor-pointer"
+                >
+                  <option value={2}>2 días por semana</option>
+                  <option value={3}>3 días por semana</option>
+                  <option value={4}>4 días por semana</option>
+                  <option value={5}>5 días por semana</option>
+                  <option value={6}>6 días por semana</option>
+                </select>
+              </div>
             </div>
           </div>
         </div>

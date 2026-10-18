@@ -282,13 +282,57 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 id="btn-profile-settings"
                 type="button"
                 onClick={() => onNavigateTab('settings')}
-                className="p-2 sm:p-2.5 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 hover:border-cyan-500/40 text-neutral-400 hover:text-white transition-all shadow-sm group"
+                className="p-2 sm:p-2.5 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 hover:border-cyan-500/40 text-neutral-400 hover:text-white transition-all shadow-sm group cursor-pointer"
                 title="Ajustes y Cuenta"
                 aria-label="Ajustes"
               >
                 <Settings className="w-4 h-4 sm:w-4 sm:h-4 group-hover:rotate-45 transition-transform duration-300 text-neutral-300 group-hover:text-cyan-400" />
               </button>
             </div>
+          </div>
+
+          {/* Quick Biometrics & Goal Badges Row */}
+          <div 
+            onClick={onOpenProfileModal}
+            className="mt-3 pt-2.5 border-t border-white/5 flex items-center gap-2 overflow-x-auto no-scrollbar cursor-pointer group/biometrics"
+            title="Toca para ver o editar tu biometría y metas"
+          >
+            {/* Weight vs Target */}
+            <div className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-white/5 border border-white/5 text-[11px] font-mono text-neutral-300 whitespace-nowrap group-hover/biometrics:border-cyan-500/40 transition-colors">
+              <span className="text-cyan-400 font-bold">⚖️ {user.weightKg || 70} kg</span>
+              {user.targetWeightKg && user.targetWeightKg !== user.weightKg && (
+                <span className="text-neutral-400 text-[10px]">→ {user.targetWeightKg} kg</span>
+              )}
+            </div>
+
+            {/* Height & BMI */}
+            {user.heightCm && (
+              <div className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-white/5 border border-white/5 text-[11px] font-mono text-neutral-300 whitespace-nowrap">
+                <span>📏 {user.heightCm} cm</span>
+                {user.weightKg && (
+                  <span className="text-neutral-500 text-[10px]">
+                    (IMC {((user.weightKg) / ((user.heightCm / 100) ** 2)).toFixed(1)})
+                  </span>
+                )}
+              </div>
+            )}
+
+            {/* Fitness Goal */}
+            {user.fitnessGoal && (
+              <div className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-[11px] font-mono text-cyan-300 font-bold whitespace-nowrap">
+                {user.fitnessGoal === 'Hypertrophy' && '💪 Hipertrofia'}
+                {user.fitnessGoal === 'FatLoss' && '🔥 Definición'}
+                {user.fitnessGoal === 'Strength' && '⚡ Fuerza'}
+                {user.fitnessGoal === 'General' && '❤️ Rendimiento'}
+              </div>
+            )}
+
+            {/* Weekly Days Target */}
+            {user.trainingDaysPerWeek && (
+              <div className="flex items-center gap-1 px-2 py-1 rounded-xl bg-white/5 border border-white/5 text-[10px] font-mono text-neutral-400 whitespace-nowrap">
+                <span>📅 {user.trainingDaysPerWeek}d/sem</span>
+              </div>
+            )}
           </div>
 
           {/* Level Progress Track in Card */}

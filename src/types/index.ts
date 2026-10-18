@@ -61,6 +61,10 @@ export interface UserProfile {
   saturdayWeighIns?: SaturdayWeighIn[];
   streakShields?: number; // 0 to 2 shields
   shieldUsedDates?: string[]; // ISO date strings where a streak shield protected the streak
+  gender?: 'male' | 'female' | 'other';
+  age?: number;
+  experienceLevel?: 'Beginner' | 'Intermediate' | 'Advanced';
+  onboardingCompleted?: boolean;
   equippedFrame?: string; // ID of the equipped cosmetic avatar frame
   activeNutritionPlanId?: string; // ID of active nutrition plan (e.g. 'plan_recomp', 'plan_fat_loss')
 }

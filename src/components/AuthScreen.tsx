@@ -146,7 +146,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ lang, onSuccess, onConti
   };
 
   return (
-    <div className="min-h-screen bg-[#09090b] text-neutral-100 flex flex-col justify-center items-center px-4 py-12 relative overflow-hidden selection:bg-cyan-500 selection:text-black">
+    <div className="min-h-screen lg:h-screen bg-[#09090b] text-neutral-100 flex flex-col justify-center items-center px-4 py-4 sm:py-6 lg:py-8 relative overflow-x-hidden selection:bg-cyan-500 selection:text-black">
       {/* Dark Athletic Photography Backdrop (EvoMare Style) */}
       <div className="absolute inset-0 z-0 pointer-events-none opacity-20">
         <img
@@ -161,10 +161,10 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ lang, onSuccess, onConti
       <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-to-tr from-cyan-500/10 via-blue-600/10 to-transparent blur-3xl pointer-events-none rounded-full z-0" />
       <div className="absolute bottom-10 right-10 w-96 h-96 bg-purple-600/10 blur-3xl pointer-events-none rounded-full z-0" />
 
-      <div className="max-w-5xl w-full mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 items-center relative z-10">
+      <div className="max-w-5xl w-full mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-center relative z-10 my-auto">
         
-        {/* Left Side: Gamified Value Pitch & Features */}
-        <div className="lg:col-span-6 space-y-6 text-left">
+        {/* Left Side: Gamified Value Pitch & Features (Shown on desktop, hidden on mobile so screen doesn't require scroll) */}
+        <div className="hidden lg:block lg:col-span-6 space-y-6 text-left">
           
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-cyan-500/15 border border-cyan-500/30 text-cyan-400 text-xs font-mono font-black tracking-wide shadow-[0_0_15px_rgba(6,182,212,0.2)]">
             <Sparkles className="w-3.5 h-3.5 animate-pulse text-cyan-400" />
@@ -181,7 +181,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ lang, onSuccess, onConti
           </div>
 
           {/* Key Value Badges */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+          <div className="grid grid-cols-2 gap-3 pt-2">
             <div className="p-3.5 rounded-2xl bg-white/[0.03] border border-white/10 flex items-start gap-3">
               <div className="p-2 rounded-xl bg-cyan-500/10 text-cyan-400 shrink-0">
                 <Trophy className="w-4 h-4" />
@@ -208,7 +208,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ lang, onSuccess, onConti
               </div>
               <div>
                 <h4 className="text-xs font-bold text-white">Telemetría Smartwatch</h4>
-                <p className="text-[11px] text-neutral-400 mt-0.5">Frecuencia cardíaca en vivo, zonas de esfuerzo y cálculo de tonelaje.</p>
+                <p className="text-[11px] text-neutral-400 mt-0.5">Frecuencia cardíaca en vivo, zonas de esfuerzo y tonelaje.</p>
               </div>
             </div>
 
@@ -225,8 +225,8 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ lang, onSuccess, onConti
         </div>
 
         {/* Right Side: Auth Card Form */}
-        <div className="lg:col-span-6">
-          <div className="bg-[#141417]/95 backdrop-blur-2xl border border-white/10 rounded-3xl p-6 sm:p-8 shadow-2xl relative overflow-hidden">
+        <div className="w-full max-w-md mx-auto lg:max-w-none lg:col-span-6">
+          <div className="bg-[#141417]/95 backdrop-blur-2xl border border-white/10 rounded-3xl p-5 sm:p-7 shadow-2xl relative overflow-hidden">
             
             {/* Top Header inside Card */}
             <div className="flex items-center justify-between border-b border-white/10 pb-4 mb-6">

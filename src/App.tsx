@@ -53,6 +53,7 @@ import { QuickStartModal } from './components/QuickStartModal';
 import { SportActivityModal } from './components/SportActivityModal';
 import { LevelRoadmapModal } from './components/LevelRoadmapModal';
 import { LevelUpCelebrationModal } from './components/LevelUpCelebrationModal';
+import { OnboardingModal } from './components/OnboardingModal';
 
 // Helper para identificar este dispositivo y forzar la exclusión mutua (Móvil vs Tablet)
 function getDeviceSessionId(): string {
@@ -108,6 +109,7 @@ export default function App() {
   // Level Progression Roadmap & Epic Level Up Celebration
   const [levelRoadmapModalOpen, setLevelRoadmapModalOpen] = useState<boolean>(false);
   const [levelUpModalOpen, setLevelUpModalOpen] = useState<boolean>(false);
+  const [onboardingModalOpen, setOnboardingModalOpen] = useState<boolean>(false);
   const [celebrationLevel, setCelebrationLevel] = useState<number>(user.level || 1);
   const prevLevelRef = useRef<number>(user.level || 1);
 
@@ -699,6 +701,9 @@ export default function App() {
     setRoutines(cloudData.routines);
     setIsAuthenticated(true);
     setIsGuestMode(false);
+    if (!cloudData.user.onboardingCompleted) {
+      setOnboardingModalOpen(true);
+    }
     sound.playLevelUp();
   };
 
@@ -1385,6 +1390,20 @@ export default function App() {
             setUser(updatedUser);
             FitStorage.saveUser(updatedUser);
             await FitStorage.syncUserToCloud(updatedUser);
+          }}
+        />
+      )}
+
+      {/* New Athlete Onboarding Wizard Modal */}
+      {onboardingModalOpen && (
+        <OnboardingModal
+          user={user}
+          lang={lang}
+          onComplete={async (updatedUser) => {
+            setUser(updatedUser);
+            FitStorage.saveUser(updatedUser);
+            await FitStorage.syncUserToCloud(updatedUser);
+            setOnboardingModalOpen(false);
           }}
         />
       )}
