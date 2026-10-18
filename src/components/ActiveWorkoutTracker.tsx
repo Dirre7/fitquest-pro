@@ -119,6 +119,7 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
   // Summary and confirmation modals
   const [showSummaryModal, setShowSummaryModal] = useState<boolean>(false);
   const [showDiscardConfirm, setShowDiscardConfirm] = useState<boolean>(false);
+  const [showZeroSetsWarning, setShowZeroSetsWarning] = useState<boolean>(false);
   const [showSkipWarningModal, setShowSkipWarningModal] = useState<number | null>(null);
   const [activeWarningToast, setActiveWarningToast] = useState<string | null>(null);
   const [rating, setRating] = useState<number>(5);
@@ -702,21 +703,33 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
 
   const completionPercent = totalSetsCount > 0 ? Math.round((completedSetsCount / totalSetsCount) * 100) : 0;
 
-  const xpGained = Math.round(routine.xpReward * Math.max(0.6, completionPercent / 100));
+  // Strict anti-cheat XP calculation: 0 sets = 0 XP, otherwise strictly proportional to completed sets
+  const xpGained = completedSetsCount === 0
+    ? 0
+    : Math.max(10, Math.round(routine.xpReward * (completionPercent / 100)));
 
   // Accurate biomechanical calorie expenditure: active duration + volume lifted + real cardio distance
   const baseCal = Math.round(calculatedMinutes * 7.5);
   const volumeCal = Math.round((totalVolume / 1000) * 8);
   const distanceCal = Math.round(totalDistanceKm * 65);
-  const rawEstimated = Math.max(liveCalories, baseCal + volumeCal + distanceCal, 35);
+  const rawEstimated = completedSetsCount === 0 && calculatedMinutes < 1
+    ? 0
+    : Math.max(liveCalories, baseCal + volumeCal + distanceCal, 35);
   const estimatedBurn = Math.min(1500, rawEstimated);
 
   const averagePace = totalDistanceKm > 0
     ? `${Math.floor(calculatedMinutes / totalDistanceKm)}'${Math.round(((calculatedMinutes / totalDistanceKm) % 1) * 60).toString().padStart(2, '0')}" /km`
     : undefined;
 
-  // Complete workout trigger
+  // Complete workout trigger with validation check
   const handleOpenFinish = () => {
+    // If no sets completed and workout has barely started, do not allow claiming XP!
+    if (completedSetsCount === 0) {
+      sound.playBeep(440, 150);
+      setShowZeroSetsWarning(true);
+      return;
+    }
+
     setIsPaused(true);
     setShowSummaryModal(true);
     sound.playLevelUp();
@@ -1926,6 +1939,44 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
                 className="flex-1 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-neutral-300 font-mono font-bold text-xs border border-white/10 transition-all"
               >
                 Saltar Ejercicio
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Zero Sets Completed Warning Modal (Anti-Cheat / Empty Workout) */}
+      {showZeroSetsWarning && (
+        <div 
+          style={{ 
+            paddingTop: 'max(1rem, env(safe-area-inset-top, 0px))', 
+            paddingBottom: 'max(1rem, env(safe-area-inset-bottom, 0px))' 
+          }}
+          className="fixed inset-0 z-50 bg-black/85 backdrop-blur-xl flex items-center justify-center p-3 sm:p-4 overflow-y-auto animate-in fade-in"
+        >
+          <div className="bg-[#121214] border border-amber-500/40 rounded-3xl p-5 sm:p-6 max-w-sm w-full shadow-2xl text-center animate-in zoom-in-95 max-h-[90vh] overflow-y-auto">
+            <div className="w-14 h-14 rounded-2xl bg-amber-500/20 text-amber-400 flex items-center justify-center mx-auto mb-3 shadow-[0_0_20px_rgba(245,158,11,0.3)]">
+              <AlertTriangle className="w-7 h-7" />
+            </div>
+            <h3 className="font-display font-black text-white text-lg tracking-tight">Sin series completadas</h3>
+            <p className="text-xs text-neutral-300 mt-2 mb-5 leading-relaxed">
+              No has marcado ninguna serie completada en este entreno. Debes completar al menos una serie para poder finalizar y registrar progreso.
+            </p>
+            <div className="flex flex-col gap-2">
+              <button
+                onClick={() => setShowZeroSetsWarning(false)}
+                className="w-full py-3 rounded-xl bg-cyan-400 hover:bg-cyan-300 text-neutral-950 font-display font-black text-xs uppercase tracking-wider shadow-lg shadow-cyan-500/25 transition-transform hover:scale-105 active:scale-95 cursor-pointer"
+              >
+                Continuar y Entrenar
+              </button>
+              <button
+                onClick={() => {
+                  setShowZeroSetsWarning(false);
+                  setShowDiscardConfirm(true);
+                }}
+                className="w-full py-2.5 rounded-xl bg-white/5 hover:bg-red-500/15 text-neutral-400 hover:text-red-400 font-mono text-xs border border-white/10 transition-colors cursor-pointer"
+              >
+                Descartar Sesión (Sin XP)
               </button>
             </div>
           </div>
