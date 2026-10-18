@@ -227,10 +227,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         
         {/* BENTO 1: FICHA ATLETA & NIVEL XP (lg:col-span-8) */}
         <div className="lg:col-span-8 bg-[#141417] border border-white/10 rounded-3xl p-5 sm:p-6 shadow-xl relative overflow-hidden flex flex-col justify-between">
-          <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center justify-between gap-3 sm:gap-4 flex-wrap sm:flex-nowrap">
+            {/* Left: Avatar + Athlete Name & Ranks */}
             <div 
               onClick={onOpenProfileModal}
-              className="flex items-center gap-3.5 cursor-pointer group min-w-0"
+              className="flex items-center gap-3 sm:gap-3.5 cursor-pointer group min-w-0 flex-1"
               title="Personalizar avatar y perfil"
             >
               <div className="relative shrink-0">
@@ -245,30 +246,54 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </div>
               <div className="min-w-0">
                 <div className="flex items-center gap-1.5 flex-wrap">
-                  <span
-                    className="text-[10px] font-mono font-black px-2 py-0.5 rounded-md border uppercase tracking-wider"
-                    style={{
-                      color: currentTier.accentColor,
-                      borderColor: `${currentTier.accentColor}50`,
-                      backgroundColor: `${currentTier.accentColor}15`,
-                    }}
-                  >
-                    NVL {user.level} · {currentTier.name}
-                  </span>
                   <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-md bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
                     LIGA {user.league}
+                  </span>
+                  <span className="text-[10px] font-mono text-neutral-400 bg-white/5 px-2 py-0.5 rounded-md border border-white/5 truncate max-w-[140px] sm:max-w-none">
+                    {user.rankTitle || 'Recluta Inicial'}
                   </span>
                 </div>
                 <h1 className="font-display font-black text-xl sm:text-2xl text-white tracking-tight mt-0.5 truncate">
                   {user.name}
                 </h1>
-                <p className="text-xs text-neutral-400 font-mono">
-                  {user.rankTitle || 'Recluta Inicial'}
-                </p>
               </div>
             </div>
 
-            {/* Streak, Shields & Settings Icon Button */}
+            {/* Middle/Center: Prominent Gamer Level Badge (Big Number, Compact Space) */}
+            <button
+              type="button"
+              onClick={onOpenLevelRoadmap}
+              className="px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-2xl border flex items-center gap-2.5 transition-all hover:scale-105 active:scale-95 cursor-pointer shadow-lg group shrink-0"
+              style={{
+                borderColor: `${currentTier.accentColor}60`,
+                backgroundColor: `${currentTier.accentColor}12`,
+                boxShadow: `0 0 16px ${currentTier.accentColor}20`,
+              }}
+              title="Toca para ver el Árbol de Niveles y Recompensas"
+            >
+              <div className="flex flex-col items-center justify-center leading-none">
+                <span className="text-[8px] sm:text-[9px] font-mono font-black uppercase tracking-wider text-neutral-400">
+                  NIVEL
+                </span>
+                <span 
+                  className="text-2xl sm:text-3xl font-display font-black tracking-tighter"
+                  style={{ color: currentTier.accentColor }}
+                >
+                  {user.level || 1}
+                </span>
+              </div>
+              <div className="hidden sm:flex flex-col text-left leading-tight border-l pl-2.5 border-white/10">
+                <span className="text-[11px] font-bold text-white uppercase tracking-wider">
+                  {currentTier.name}
+                </span>
+                <span className="text-[9px] font-mono text-cyan-400 flex items-center gap-0.5 group-hover:translate-x-0.5 transition-transform">
+                  <span>Recompensas</span>
+                  <ChevronRight className="w-2.5 h-2.5" />
+                </span>
+              </div>
+            </button>
+
+            {/* Right: Streak, Shields & Settings Icon Button */}
             <div className="flex items-center gap-1.5 shrink-0">
               <div className="hidden sm:flex items-center gap-1 px-2.5 py-1 rounded-xl bg-orange-500/10 border border-orange-500/30 text-orange-400 text-xs font-mono font-bold shadow-sm">
                 <Flame className="w-3.5 h-3.5 fill-orange-400/20 animate-pulse" />
