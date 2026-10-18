@@ -527,42 +527,66 @@ export const WorkoutCatalogView: React.FC<WorkoutCatalogViewProps> = ({
             </div>
           </div>
 
-          {/* Routine Cards Grid */}
+          {/* Routine Cards Grid (EvoMare Style) */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             {filteredRoutines.map((routine) => {
               const isExpanded = expandedRoutineId === routine.id;
+              
+              // Routine thumbnail image
+              const routineImage = (routine as any).imageUrl || 
+                (routine.category === 'Strength' || routine.category === 'Hypertrophy'
+                  ? 'https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?w=600&q=80&auto=format&fit=crop'
+                  : routine.category === 'Cardio'
+                  ? 'https://images.unsplash.com/photo-1538805060514-97d9cc17730c?w=600&q=80&auto=format&fit=crop'
+                  : routine.category === 'HIIT'
+                  ? 'https://images.unsplash.com/photo-1517838277536-f5f99be501cd?w=600&q=80&auto=format&fit=crop'
+                  : routine.category === 'Calisthenics'
+                  ? 'https://images.unsplash.com/photo-1599058945522-28d584b6f0ff?w=600&q=80&auto=format&fit=crop'
+                  : 'https://images.unsplash.com/photo-1574680096145-d05b474e2155?w=600&q=80&auto=format&fit=crop');
+
+              // Intensity percentage ring
+              const intensityPct = routine.difficulty === 'Advanced' ? 85 : routine.difficulty === 'Intermediate' ? 65 : 45;
+              const intensityLabel = routine.difficulty === 'Advanced' ? 'Alta' : routine.difficulty === 'Intermediate' ? 'Media' : 'Básica';
 
               return (
                 <div
                   key={routine.id}
-                  className="bg-[#121214] border border-white/5 hover:border-cyan-500/40 rounded-3xl p-5 sm:p-6 transition-all flex flex-col justify-between shadow-2xl group relative overflow-hidden"
+                  className="bg-[#141417] border border-white/10 hover:border-cyan-500/40 rounded-3xl overflow-hidden transition-all duration-300 flex flex-col justify-between shadow-2xl group relative"
                 >
-                  <div className="absolute top-0 right-0 w-36 h-36 bg-cyan-500/5 blur-3xl group-hover:bg-cyan-500/10 transition-colors pointer-events-none" />
+                  {/* Photographic Header Banner */}
+                  <div className="relative h-44 sm:h-48 w-full overflow-hidden">
+                    <img
+                      src={routineImage}
+                      alt={routine.title}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                      loading="lazy"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#141417] via-[#141417]/40 to-black/60" />
 
-                  <div className="relative z-10">
-                    {/* Badges row */}
-                    <div className="flex items-center justify-between gap-2 mb-3">
+                    {/* Top Overlays: Category & Custom Badges + Actions */}
+                    <div className="absolute top-3 left-3 right-3 flex items-center justify-between gap-2 z-10">
                       <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className="text-[9px] font-mono font-black px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 uppercase tracking-wider">
+                        <span className="text-[10px] font-mono font-black uppercase px-2.5 py-0.5 rounded-full bg-cyan-500/90 text-neutral-950 backdrop-blur-md">
                           {routine.category}
                         </span>
-                        <span className="text-[9px] font-mono font-bold px-2 py-0.5 rounded-full bg-white/5 text-neutral-300 border border-white/10">
+                        <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-black/60 text-white backdrop-blur-md border border-white/15">
                           {routine.difficulty}
                         </span>
                         {routine.isCustom && (
-                          <span className="text-[9px] font-mono font-bold px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-400 border border-purple-500/30">
+                          <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-purple-500/80 text-white backdrop-blur-md">
                             CUSTOM
                           </span>
                         )}
                       </div>
+
                       <div className="flex items-center gap-1.5">
                         {routine.isCustom && (
                           <>
                             <button
                               type="button"
                               onClick={() => handleOpenEditRoutine(routine)}
-                              className="p-1.5 rounded-xl bg-white/5 hover:bg-cyan-500/20 text-neutral-400 hover:text-cyan-400 border border-white/5 hover:border-cyan-500/30 transition-all cursor-pointer"
-                              title="Editar rutina personalizada"
+                              className="p-1.5 rounded-xl bg-black/60 backdrop-blur-md hover:bg-cyan-500/20 text-neutral-300 hover:text-cyan-400 border border-white/15 transition-all cursor-pointer"
+                              title="Editar rutina"
                             >
                               <Edit2 className="w-3.5 h-3.5" />
                             </button>
@@ -582,7 +606,7 @@ export const WorkoutCatalogView: React.FC<WorkoutCatalogViewProps> = ({
                                   <button
                                     type="button"
                                     onClick={() => setConfirmDeleteRoutineId(null)}
-                                    className="p-1 rounded-xl bg-white/10 text-neutral-300 hover:text-white cursor-pointer"
+                                    className="p-1 rounded-xl bg-black/60 text-neutral-300 hover:text-white cursor-pointer"
                                   >
                                     <X className="w-3 h-3" />
                                   </button>
@@ -591,8 +615,8 @@ export const WorkoutCatalogView: React.FC<WorkoutCatalogViewProps> = ({
                                 <button
                                   type="button"
                                   onClick={() => setConfirmDeleteRoutineId(routine.id)}
-                                  className="p-1.5 rounded-xl bg-white/5 hover:bg-red-500/20 text-neutral-400 hover:text-red-400 border border-white/5 hover:border-red-500/30 transition-all cursor-pointer"
-                                  title="Eliminar rutina personalizada"
+                                  className="p-1.5 rounded-xl bg-black/60 backdrop-blur-md hover:bg-red-500/20 text-neutral-300 hover:text-red-400 border border-white/15 transition-all cursor-pointer"
+                                  title="Eliminar rutina"
                                 >
                                   <Trash2 className="w-3.5 h-3.5" />
                                 </button>
@@ -600,89 +624,137 @@ export const WorkoutCatalogView: React.FC<WorkoutCatalogViewProps> = ({
                             )}
                           </>
                         )}
-                        <span className="text-xs font-mono font-black text-cyan-400 bg-cyan-500/10 px-2.5 py-0.5 rounded-xl border border-cyan-500/20">
+                        <span className="text-xs font-mono font-black text-cyan-300 bg-black/70 backdrop-blur-md px-2.5 py-0.5 rounded-xl border border-cyan-500/30">
                           +{routine.xpReward} XP
                         </span>
                       </div>
                     </div>
 
-                    {/* Title and description */}
-                    <h3 className="font-display font-black text-lg sm:text-xl text-white group-hover:text-cyan-400 transition-colors">
-                      {routine.title}
-                    </h3>
-                    <p className="text-xs text-neutral-400 mt-1 leading-relaxed line-clamp-2">
-                      {routine.description}
-                    </p>
-
-                    {/* Target muscle chips */}
-                    <div className="flex flex-wrap gap-1 mt-3">
-                      {routine.targetMuscles.map((muscle) => (
-                        <span
-                          key={muscle}
-                          className="text-[9px] font-mono font-semibold px-2 py-0.5 rounded-md bg-white/5 text-neutral-300 border border-white/5"
-                        >
-                          {muscle}
+                    {/* Bottom overlay pills on banner: Time & Calories */}
+                    <div className="absolute bottom-2.5 left-3 right-3 flex items-center justify-between text-xs font-mono text-white z-10">
+                      <div className="flex items-center gap-2">
+                        <span className="px-2.5 py-1 rounded-full bg-black/70 backdrop-blur-md border border-white/10 flex items-center gap-1 text-[11px]">
+                          <Clock className="w-3 h-3 text-cyan-400" />
+                          {routine.durationMinutes} Min
                         </span>
-                      ))}
-                    </div>
-
-                    {/* Exercises preview dropdown */}
-                    <div className="mt-4 pt-3 border-t border-white/5">
-                      <button
-                        onClick={() => setExpandedRoutineId(isExpanded ? null : routine.id)}
-                        className="w-full flex items-center justify-between text-xs font-mono font-bold text-neutral-300 hover:text-cyan-400 transition-colors"
-                      >
-                        <span>{routine.exercises.length} Ejercicios incluidos</span>
-                        {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-                      </button>
-
-                      {isExpanded && (
-                        <div className="mt-3 space-y-2 animate-in fade-in">
-                          {routine.exercises.map((ex, exIdx) => (
-                            <div
-                              key={ex.id}
-                              className="p-2.5 bg-white/5 rounded-xl border border-white/5 text-xs flex items-center justify-between"
-                            >
-                              <div className="flex items-center gap-2">
-                                <span className="w-5 h-5 rounded bg-cyan-500/20 text-cyan-400 font-mono font-bold text-[10px] flex items-center justify-center">
-                                  {exIdx + 1}
-                                </span>
-                                <span className="font-medium text-white">{ex.name}</span>
-                              </div>
-                              <span className="text-neutral-400 font-mono text-[10px]">
-                                {ex.sets.length} series • {ex.restSeconds}s rest
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
+                        <span className="px-2.5 py-1 rounded-full bg-black/70 backdrop-blur-md border border-white/10 flex items-center gap-1 text-[11px] text-orange-300">
+                          <Flame className="w-3 h-3 text-orange-400" />
+                          ~{routine.estimatedCalories} Kcal
+                        </span>
+                      </div>
+                      <span className="text-[11px] font-mono text-neutral-300">
+                        {routine.exercises.length} Ejercicios
+                      </span>
                     </div>
                   </div>
 
-                  {/* Card bottom: Duration, cals & Start button */}
-                  <div className="mt-5 pt-4 border-t border-white/5 flex items-center justify-between gap-3 relative z-10">
-                    <div className="flex items-center gap-3 text-xs font-mono text-neutral-400">
-                      <span className="flex items-center gap-1">
-                        <Clock className="w-3.5 h-3.5 text-cyan-400" />
-                        {routine.durationMinutes}m
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Flame className="w-3.5 h-3.5 text-orange-400" />
-                        ~{routine.estimatedCalories}kcal
-                      </span>
+                  {/* Body Content */}
+                  <div className="p-4 sm:p-5 flex-1 flex flex-col justify-between">
+                    <div>
+                      {/* Title and description */}
+                      <h3 className="font-display font-black text-lg sm:text-xl text-white group-hover:text-cyan-400 transition-colors uppercase tracking-tight">
+                        {routine.title}
+                      </h3>
+                      <p className="text-xs text-neutral-400 mt-1 leading-relaxed line-clamp-2">
+                        {routine.description}
+                      </p>
+
+                      {/* Target muscle chips */}
+                      <div className="flex flex-wrap gap-1.5 mt-3">
+                        {routine.targetMuscles.map((muscle) => (
+                          <span
+                            key={muscle}
+                            className="text-[10px] font-mono font-medium px-2.5 py-0.5 rounded-full bg-white/5 text-neutral-300 border border-white/10"
+                          >
+                            {muscle}
+                          </span>
+                        ))}
+                      </div>
+
+                      {/* Exercises preview dropdown */}
+                      <div className="mt-4 pt-3 border-t border-white/5">
+                        <button
+                          onClick={() => setExpandedRoutineId(isExpanded ? null : routine.id)}
+                          className="w-full flex items-center justify-between text-xs font-mono font-bold text-neutral-300 hover:text-cyan-400 transition-colors"
+                        >
+                          <span>{routine.exercises.length} Ejercicios detallados</span>
+                          {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                        </button>
+
+                        {isExpanded && (
+                          <div className="mt-3 space-y-2 animate-in fade-in">
+                            {routine.exercises.map((ex, exIdx) => (
+                              <div
+                                key={ex.id}
+                                className="p-2.5 bg-white/5 rounded-xl border border-white/5 text-xs flex items-center justify-between"
+                              >
+                                <div className="flex items-center gap-2">
+                                  <span className="w-5 h-5 rounded bg-cyan-500/20 text-cyan-400 font-mono font-bold text-[10px] flex items-center justify-center">
+                                    {exIdx + 1}
+                                  </span>
+                                  <span className="font-medium text-white">{ex.name}</span>
+                                </div>
+                                <span className="text-neutral-400 font-mono text-[10px]">
+                                  {ex.sets.length} series • {ex.restSeconds}s rest
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     </div>
 
-                    <button
-                      id={`btn-start-routine-${routine.id}`}
-                      onClick={() => {
-                        sound.playAchievement();
-                        onStartRoutine(routine);
-                      }}
-                      className="px-4 py-2 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-neutral-950 font-mono font-black text-xs shadow-lg shadow-cyan-500/25 flex items-center gap-1.5 transition-all hover:scale-105 active:scale-95"
-                    >
-                      <Play className="w-3.5 h-3.5 fill-current" />
-                      <span>{t.startWorkout}</span>
-                    </button>
+                    {/* Bottom Action Footer with EvoMare Intensity Ring and Start Button */}
+                    <div className="mt-4 pt-3.5 border-t border-white/10 flex items-center justify-between gap-3">
+                      {/* EvoMare Style Circular Intensity Ring */}
+                      <div className="flex items-center gap-2.5">
+                        <div className="relative w-9 h-9 flex items-center justify-center shrink-0">
+                          <svg className="w-9 h-9 -rotate-90">
+                            <circle
+                              cx="18"
+                              cy="18"
+                              r="13"
+                              stroke="currentColor"
+                              strokeWidth="3"
+                              className="text-white/10"
+                              fill="transparent"
+                            />
+                            <circle
+                              cx="18"
+                              cy="18"
+                              r="13"
+                              stroke="currentColor"
+                              strokeWidth="3"
+                              strokeDasharray={2 * Math.PI * 13}
+                              strokeDashoffset={2 * Math.PI * 13 * (1 - intensityPct / 100)}
+                              strokeLinecap="round"
+                              className="text-cyan-400"
+                              fill="transparent"
+                            />
+                          </svg>
+                          <span className="absolute text-[9px] font-mono font-black text-white">
+                            {intensityPct}%
+                          </span>
+                        </div>
+                        <div className="text-[10px] font-mono leading-tight">
+                          <p className="text-neutral-400 uppercase font-semibold">Intensidad</p>
+                          <p className="text-cyan-400 font-bold">{intensityLabel}</p>
+                        </div>
+                      </div>
+
+                      {/* Cyan Pill Start Button */}
+                      <button
+                        id={`btn-start-routine-${routine.id}`}
+                        onClick={() => {
+                          sound.playAchievement();
+                          onStartRoutine(routine);
+                        }}
+                        className="py-2.5 px-4 rounded-full bg-cyan-400 hover:bg-cyan-300 active:bg-cyan-500 text-neutral-950 font-display font-black text-xs uppercase tracking-wider shadow-[0_0_15px_rgba(6,182,212,0.35)] flex items-center gap-1.5 transition-all hover:scale-105 active:scale-95 cursor-pointer"
+                      >
+                        <Play className="w-3.5 h-3.5 fill-current" />
+                        <span>{t.startWorkout}</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
               );

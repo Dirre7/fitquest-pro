@@ -390,75 +390,130 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </div>
             </div>
 
-            {/* ⚡ Today's Real-Time Activity & Performance Cards */}
-            <div className="md:col-span-7 space-y-3">
-              <div className="flex items-center justify-between px-1">
+            {/* ⚡ Today's Real-Time Activity & Performance (EvoMare Arc & Telemetry Card) */}
+            <div className="md:col-span-7 bg-black/40 border border-white/5 rounded-3xl p-4 sm:p-5 flex flex-col justify-between shadow-inner">
+              <div className="flex items-center justify-between pb-3 border-b border-white/5">
                 <span className="text-[11px] font-mono font-black uppercase tracking-wider text-cyan-400 flex items-center gap-1.5">
                   <Activity className="w-3.5 h-3.5" />
                   <span>Tu Actividad de Hoy</span>
                 </span>
                 {trainedToday ? (
-                  <span className="text-[10px] font-mono font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center gap-1">
+                  <span className="text-[10px] font-mono font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center gap-1 shadow-sm">
                     <CheckCircle2 className="w-3 h-3" />
                     <span>{workoutsToday.length} {workoutsToday.length === 1 ? 'entreno' : 'entrenos'} hoy</span>
                   </span>
                 ) : (
-                  <span className="text-[10px] font-mono text-neutral-400">
-                    Pendiente / Día de Descanso
+                  <span className="text-[10px] font-mono font-bold px-2.5 py-0.5 rounded-full bg-white/5 text-neutral-400 border border-white/10">
+                    Pendiente de entrenar
                   </span>
                 )}
               </div>
 
-              {/* Card 1: Volumen Hoy */}
-              <div className="bg-white/5 border border-white/5 p-4 rounded-2xl flex justify-between items-center hover:border-cyan-500/30 transition-colors">
-                <div>
-                  <p className="text-xs text-neutral-400 font-medium">Volumen Levantado Hoy (Hierro)</p>
-                  <p className="text-2xl font-mono font-bold text-white mt-0.5">
-                    {todayVolumeKg.toLocaleString()} <span className="text-xs text-cyan-400 font-semibold">KG</span>
-                  </p>
-                  <span className="text-[10px] font-mono text-neutral-400">
-                    {todayVolumeKg > 0 ? 'Fuerza e hipertrofia registradas hoy' : 'Sin tonelaje registrado hoy'}
-                  </span>
-                </div>
-                <div className="w-11 h-11 rounded-2xl border border-cyan-500/30 bg-cyan-500/10 flex items-center justify-center shadow-[0_0_12px_rgba(6,182,212,0.2)] shrink-0">
-                  <Dumbbell className="w-5 h-5 text-cyan-400" />
-                </div>
-              </div>
-
-              {/* Card 2: Calorías Quemadas Hoy */}
-              <div className="bg-white/5 border border-white/5 p-4 rounded-2xl flex justify-between items-center hover:border-orange-500/30 transition-colors">
-                <div>
-                  <p className="text-xs text-neutral-400 font-medium">Gasto Calórico en Entrenamientos Hoy</p>
-                  <p className="text-2xl font-mono font-bold text-white mt-0.5">
-                    {todayCalories.toLocaleString()} <span className="text-xs text-orange-400 font-semibold">KCAL</span>
-                  </p>
-                  <span className="text-[10px] font-mono text-neutral-400">
-                    {todayCalories > 0 ? 'Energía consumida en tus sesiones de hoy' : 'Quema activa pendiente hoy'}
-                  </span>
-                </div>
-                <div className="w-11 h-11 rounded-2xl border border-orange-500/30 bg-orange-500/10 flex items-center justify-center shadow-[0_0_12px_rgba(249,115,22,0.2)] shrink-0">
-                  <Flame className="w-5 h-5 text-orange-400" />
-                </div>
-              </div>
-
-              {/* Card 3: Tiempo & Distancia Hoy */}
-              <div className="bg-white/5 border border-white/5 p-4 rounded-2xl flex justify-between items-center hover:border-cyan-500/30 transition-colors">
-                <div>
-                  <p className="text-xs text-neutral-400 font-medium">Tiempo &amp; Movimiento Hoy</p>
-                  <p className="text-2xl font-mono font-bold text-white mt-0.5">
-                    {todayMinutes} <span className="text-xs text-cyan-400 font-semibold">MIN</span>
-                    {todayDistanceKm > 0 && (
-                      <span className="text-base text-neutral-300 font-mono ml-2">
-                        • {todayDistanceKm.toFixed(1)} <span className="text-xs text-cyan-400">KM</span>
+              {/* Main Gauge + Side Metrics matching EvoMare Target Walking card */}
+              <div className="grid grid-cols-1 sm:grid-cols-12 gap-4 items-center my-3.5">
+                {/* Arc Gauge for Today */}
+                <div className="sm:col-span-6 flex flex-col items-center justify-center relative">
+                  <div className="relative w-36 h-28 sm:w-40 sm:h-32 flex items-center justify-center">
+                    <svg viewBox="0 0 160 120" className="w-full h-full overflow-visible">
+                      <defs>
+                        <linearGradient id="todayArcGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                          <stop offset="0%" stopColor="#06b6d4" />
+                          <stop offset="100%" stopColor="#3b82f6" />
+                        </linearGradient>
+                      </defs>
+                      <path
+                        d="M 25 105 A 55 55 0 1 1 135 105"
+                        fill="none"
+                        stroke="#1f242d"
+                        strokeWidth="12"
+                        strokeLinecap="round"
+                      />
+                      <path
+                        d="M 25 105 A 55 55 0 1 1 135 105"
+                        fill="none"
+                        stroke={trainedToday ? 'url(#todayArcGrad)' : '#334155'}
+                        strokeWidth="12"
+                        strokeLinecap="round"
+                        strokeDasharray={240}
+                        strokeDashoffset={trainedToday ? 0 : 240}
+                        className="transition-all duration-700 ease-out"
+                      />
+                    </svg>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center pt-3 text-center pointer-events-none">
+                      <span className="font-mono font-black text-2xl sm:text-3xl text-white tracking-tight leading-none">
+                        {trainedToday ? (todayCalories || todayVolumeKg || 'OK') : '0'}
                       </span>
-                    )}
-                  </p>
-                  <span className="text-[10px] font-mono text-neutral-400">
-                    {todayMinutes > 0 ? 'Minutos totales en movimiento registrados hoy' : 'Listo para iniciar tu sesión'}
+                      <span className="text-[9px] font-mono text-cyan-400 uppercase tracking-widest font-bold mt-1">
+                        {trainedToday ? (todayCalories > 0 ? 'Kcal Quemadas' : 'Objetivo Cumplido') : 'Sin Sesión'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Right Side Stats (Calories & Volume / Distance) */}
+                <div className="sm:col-span-6 space-y-2.5">
+                  <div className="bg-white/5 border border-white/5 rounded-2xl p-2.5 sm:p-3 flex items-center justify-between hover:border-orange-500/30 transition-colors">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-xl bg-orange-500/10 border border-orange-500/25 flex items-center justify-center text-orange-400 shrink-0">
+                        <Flame className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-mono text-neutral-400 uppercase">Calorías Hoy</p>
+                        <p className="text-sm font-mono font-black text-white">
+                          {todayCalories.toLocaleString()} <span className="text-[10px] text-orange-400 font-normal">Kcal</span>
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-white/5 border border-white/5 rounded-2xl p-2.5 sm:p-3 flex items-center justify-between hover:border-cyan-500/30 transition-colors">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-xl bg-cyan-500/10 border border-cyan-500/25 flex items-center justify-center text-cyan-400 shrink-0">
+                        {todayDistanceKm > 0 ? <Activity className="w-4 h-4" /> : <Dumbbell className="w-4 h-4" />}
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-mono text-neutral-400 uppercase">
+                          {todayDistanceKm > 0 ? 'Distancia Carrera' : 'Hierro Levantado'}
+                        </p>
+                        <p className="text-sm font-mono font-black text-white">
+                          {todayDistanceKm > 0 ? `${todayDistanceKm.toFixed(1)} Km` : `${todayVolumeKg.toLocaleString()} Kg`}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* 3 Symmetric Pills matching EvoMare footer (Workouts, Time, Points) */}
+              <div className="grid grid-cols-3 gap-2 pt-3 border-t border-white/5">
+                <div className="bg-white/[0.03] border border-white/5 rounded-2xl p-2 text-center">
+                  <div className="flex items-center justify-center gap-1 text-[10px] font-mono text-neutral-400 mb-0.5">
+                    <Dumbbell className="w-3 h-3 text-cyan-400" />
+                    <span>Sesiones</span>
+                  </div>
+                  <span className="text-base sm:text-lg font-mono font-black text-white">
+                    {workoutsToday.length}
                   </span>
                 </div>
-                <div className="w-11 h-11 rounded-2xl border border-cyan-500/30 bg-cyan-500/10 flex items-center justify-center shadow-[0_0_12px_rgba(6,182,212,0.2)] shrink-0">
-                  <Clock className="w-5 h-5 text-cyan-400" />
+
+                <div className="bg-white/[0.03] border border-white/5 rounded-2xl p-2 text-center">
+                  <div className="flex items-center justify-center gap-1 text-[10px] font-mono text-neutral-400 mb-0.5">
+                    <Clock className="w-3 h-3 text-blue-400" />
+                    <span>Minutos</span>
+                  </div>
+                  <span className="text-base sm:text-lg font-mono font-black text-white">
+                    {todayMinutes}
+                  </span>
+                </div>
+
+                <div className="bg-white/[0.03] border border-white/5 rounded-2xl p-2 text-center">
+                  <div className="flex items-center justify-center gap-1 text-[10px] font-mono text-neutral-400 mb-0.5">
+                    <Zap className="w-3 h-3 text-amber-400" />
+                    <span>XP Hoy</span>
+                  </div>
+                  <span className="text-base sm:text-lg font-mono font-black text-amber-400">
+                    +{workoutsToday.reduce((s, w) => s + (Number(w.xpEarned) || 0), 0)}
+                  </span>
                 </div>
               </div>
             </div>
@@ -801,132 +856,166 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
       </div>
 
-      {/* 🎯 3. MISIÓN DEL DÍA / ENTRENAR HOY */}
-      {currentRoutine && (
-        <div className="bg-gradient-to-r from-neutral-900 via-[#151518] to-cyan-950/40 border-2 border-cyan-500/40 rounded-3xl p-6 sm:p-7 shadow-[0_0_35px_rgba(6,182,212,0.15)] relative overflow-hidden">
-          {/* Ambient light glow */}
-          <div className="absolute top-0 right-0 w-80 h-80 bg-cyan-500/10 blur-[90px] pointer-events-none" />
-          <div className="absolute -bottom-10 -left-10 w-64 h-64 bg-blue-600/10 blur-[80px] pointer-events-none" />
+      {/* 🎯 3. MISIÓN DEL DÍA / BEST WORKOUT (EVOMARE STYLE) */}
+      {currentRoutine && (() => {
+        const workoutThumbnail = (currentRoutine as any).imageUrl || 
+          (currentRoutine.difficulty === 'Advanced'
+            ? 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=600&q=80&auto=format&fit=crop'
+            : currentRoutine.difficulty === 'Intermediate'
+            ? 'https://images.unsplash.com/photo-1517838277536-f5f99be501cd?w=600&q=80&auto=format&fit=crop'
+            : 'https://images.unsplash.com/photo-1574680096145-d05b474e2155?w=600&q=80&auto=format&fit=crop');
 
-          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 relative z-10">
-            <div className="space-y-2.5 max-w-2xl">
-              <div className="flex items-center gap-2.5 flex-wrap">
+        return (
+          <div className="bg-[#141417] border border-white/10 rounded-3xl p-5 sm:p-7 shadow-[0_10px_35px_rgba(0,0,0,0.5)] relative overflow-hidden group">
+            {/* Ambient Cyan glow */}
+            <div className="absolute top-0 right-0 w-80 h-80 bg-cyan-500/10 blur-[100px] pointer-events-none" />
+            <div className="absolute -bottom-10 -left-10 w-64 h-64 bg-blue-600/10 blur-[90px] pointer-events-none" />
+
+            {/* Header tag */}
+            <div className="flex items-center justify-between gap-3 mb-5 relative z-10">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-[11px] font-mono font-black uppercase tracking-wider px-3 py-1 rounded-full bg-cyan-500/15 border border-cyan-500/30 text-cyan-400 flex items-center gap-1.5">
+                  <Sparkles className="w-3 h-3 text-cyan-400 fill-current" />
+                  ENTRENAMIENTO DESTACADO
+                </span>
                 {trainedToday ? (
-                  <span className="text-xs font-mono font-black uppercase px-3 py-1 rounded-full bg-emerald-500 text-neutral-950 flex items-center gap-1.5 shadow-md shadow-emerald-500/30">
-                    <CheckCircle2 className="w-3.5 h-3.5" /> MISIÓN DE HOY COMPLETADA ({workoutsToday.length})
+                  <span className="text-[11px] font-mono font-black uppercase px-2.5 py-1 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 flex items-center gap-1">
+                    <CheckCircle2 className="w-3 h-3" /> COMPLETADO HOY
                   </span>
                 ) : (
-                  <span className="text-xs font-mono font-black uppercase px-3 py-1 rounded-full bg-cyan-500 text-neutral-950 flex items-center gap-1.5 shadow-md shadow-cyan-500/30">
-                    <Zap className="w-3.5 h-3.5 fill-current animate-bounce" /> MISIÓN DEL DÍA
+                  <span className="text-[11px] font-mono font-black uppercase px-2.5 py-1 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-400 flex items-center gap-1">
+                    <Zap className="w-3 h-3 fill-current" /> MISIÓN DEL DÍA
                   </span>
                 )}
-                <span className="text-xs font-mono font-bold text-cyan-300 bg-cyan-500/10 border border-cyan-500/20 px-2.5 py-0.5 rounded-full">
-                  +{currentRoutine.xpReward} XP Recompensa
-                </span>
-                <span className="text-xs font-mono text-neutral-400">
-                  {currentRoutine.difficulty === 'Advanced' ? '🔥 Avanzado' : currentRoutine.difficulty === 'Intermediate' ? '⚡ Intermedio' : '🌱 Principiante'}
-                </span>
+              </div>
+              <span className="text-xs font-mono font-bold text-cyan-300 bg-cyan-950/60 border border-cyan-500/30 px-3 py-1 rounded-full">
+                +{currentRoutine.xpReward} XP
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center relative z-10">
+              {/* Left Column: Athletic Photo Thumbnail with Overlays */}
+              <div className="lg:col-span-5 relative rounded-2xl overflow-hidden aspect-[16/10] sm:aspect-[16/9] lg:aspect-[4/3] max-h-56 lg:max-h-none border border-white/10 group-hover:border-cyan-500/30 transition-all shadow-xl">
+                <img
+                  src={workoutThumbnail}
+                  alt={currentRoutine.title}
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                  loading="lazy"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent" />
+                
+                {/* Floating pill badges on image */}
+                <div className="absolute top-3 left-3 flex items-center gap-1.5">
+                  <span className="text-[10px] font-mono font-bold px-2.5 py-1 rounded-full bg-black/70 backdrop-blur-md text-white border border-white/15 flex items-center gap-1">
+                    <Clock className="w-3 h-3 text-cyan-400" />
+                    {currentRoutine.durationMinutes} Min
+                  </span>
+                  <span className="text-[10px] font-mono font-bold px-2.5 py-1 rounded-full bg-black/70 backdrop-blur-md text-orange-300 border border-white/15 flex items-center gap-1">
+                    <Flame className="w-3 h-3 text-orange-400" />
+                    ~{currentRoutine.estimatedCalories} Kcal
+                  </span>
+                </div>
+
+                <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between">
+                  <span className="text-[10px] font-mono uppercase font-bold px-2.5 py-0.5 rounded-md bg-cyan-500/90 text-neutral-950">
+                    {currentRoutine.difficulty === 'Advanced' ? 'Avanzado' : currentRoutine.difficulty === 'Intermediate' ? 'Intermedio' : 'Principiante'}
+                  </span>
+                  <span className="text-[11px] font-mono font-bold text-neutral-300 flex items-center gap-1">
+                    <Dumbbell className="w-3.5 h-3.5 text-cyan-400" />
+                    {currentRoutine.exercises?.length || 5} ejercicios
+                  </span>
+                </div>
               </div>
 
-              <div>
-                <h2 className="text-2xl sm:text-3xl font-display font-black text-white tracking-tight">
-                  {currentRoutine.title}
-                </h2>
-                <p className="text-xs sm:text-sm text-neutral-300 mt-1 leading-relaxed line-clamp-2">
-                  {currentRoutine.description}
-                </p>
-              </div>
+              {/* Right Column: Workout Info & Action Buttons */}
+              <div className="lg:col-span-7 flex flex-col justify-between h-full space-y-4">
+                <div>
+                  <h2 className="text-xl sm:text-2xl font-display font-black text-white tracking-tight uppercase">
+                    {currentRoutine.title}
+                  </h2>
+                  <p className="text-xs sm:text-sm text-neutral-400 mt-1.5 leading-relaxed line-clamp-2 font-sans">
+                    {currentRoutine.description}
+                  </p>
 
-              {/* Workout Specs & Muscle Tags */}
-              <div className="flex items-center gap-4 flex-wrap pt-1 text-xs font-mono">
-                <span className="text-neutral-300 flex items-center gap-1 bg-white/5 border border-white/5 px-2.5 py-1 rounded-xl">
-                  <Clock className="w-3.5 h-3.5 text-cyan-400" />
-                  <span>{currentRoutine.durationMinutes} min aprox.</span>
-                </span>
+                  {/* Muscle Tags */}
+                  <div className="flex items-center gap-1.5 flex-wrap mt-3">
+                    {targetMuscles.map((muscle, idx) => (
+                      <span
+                        key={idx}
+                        className="text-[11px] font-mono font-medium px-2.5 py-0.5 rounded-full bg-white/5 text-neutral-300 border border-white/10"
+                      >
+                        {muscle}
+                      </span>
+                    ))}
+                  </div>
+                </div>
 
-                <span className="text-neutral-300 flex items-center gap-1 bg-white/5 border border-white/5 px-2.5 py-1 rounded-xl">
-                  <Dumbbell className="w-3.5 h-3.5 text-cyan-400" />
-                  <span>{currentRoutine.exercises?.length || 5} Ejercicios</span>
-                </span>
-
-                <span className="text-orange-400 flex items-center gap-1 bg-orange-500/10 border border-orange-500/20 px-2.5 py-1 rounded-xl">
-                  <Flame className="w-3.5 h-3.5" />
-                  <span>~{currentRoutine.estimatedCalories} kcal</span>
-                </span>
-
-                <div className="flex items-center gap-1.5">
-                  {targetMuscles.map((muscle, idx) => (
-                    <span
-                      key={idx}
-                      className="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-cyan-500/10 text-cyan-300 border border-cyan-500/30"
+                {/* Primary CTA and Selector Controls */}
+                <div className="pt-2 space-y-3">
+                  <div className="flex flex-col sm:flex-row gap-2.5">
+                    {/* Big Cyan Pill Start Button */}
+                    <button
+                      onClick={() => onStartRoutine(currentRoutine)}
+                      className="flex-1 py-3.5 px-6 rounded-2xl bg-cyan-400 hover:bg-cyan-300 active:bg-cyan-500 text-neutral-950 font-display font-black text-sm uppercase tracking-wider shadow-[0_0_25px_rgba(6,182,212,0.4)] flex items-center justify-center gap-2.5 transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
                     >
-                      {muscle}
-                    </span>
-                  ))}
+                      <Play className="w-4 h-4 fill-current" />
+                      <span>{trainedToday ? 'ENTRENAR OTRA SESIÓN' : 'COMENZAR SESIÓN'}</span>
+                    </button>
+
+                    {/* Routine Selector Dropdown */}
+                    <div className="relative sm:w-56 shrink-0">
+                      <select
+                        value={currentRoutine.id}
+                        onChange={(e) => setSelectedRoutineId(e.target.value)}
+                        className="w-full h-full py-3 pl-3 pr-8 rounded-2xl bg-[#1c1c21] border border-white/15 hover:border-cyan-500/40 text-xs font-mono font-bold text-neutral-200 focus:outline-none focus:border-cyan-400 appearance-none cursor-pointer transition-colors"
+                      >
+                        {routines.map((r) => (
+                          <option key={r.id} value={r.id} className="bg-neutral-900 text-white">
+                            🎯 {r.title} ({r.durationMinutes}m)
+                          </option>
+                        ))}
+                      </select>
+                      <ChevronDown className="w-4 h-4 text-cyan-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    </div>
+                  </div>
+
+                  {/* Secondary Quick Action Pills */}
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => onNavigateTab('routines')}
+                      className="flex-1 py-2 px-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-mono font-bold text-neutral-300 hover:text-white flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                    >
+                      <Layers className="w-3.5 h-3.5 text-cyan-400" />
+                      <span>Catálogo Completo</span>
+                    </button>
+
+                    {onOpenQuickStart && (
+                      <button
+                        onClick={onOpenQuickStart}
+                        className="flex-1 py-2 px-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-mono font-bold text-neutral-300 hover:text-white flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                      >
+                        <Zap className="w-3.5 h-3.5 text-amber-400" />
+                        <span>Entreno Libre</span>
+                      </button>
+                    )}
+
+                    {onOpenSportModal && (
+                      <button
+                        id="btn-dashboard-log-sport"
+                        onClick={onOpenSportModal}
+                        className="flex-1 py-2 px-3 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-xs font-mono font-bold text-emerald-300 hover:text-emerald-200 flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                      >
+                        <Watch className="w-3.5 h-3.5 text-emerald-400" />
+                        <span>Deporte / Reloj</span>
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
-
-            {/* Action Buttons: Big Start Button & Routine Switcher */}
-            <div className="flex flex-col sm:flex-row lg:flex-col gap-3 w-full lg:w-auto shrink-0">
-              <button
-                onClick={() => onStartRoutine(currentRoutine)}
-                className="w-full lg:w-64 py-4 px-6 rounded-2xl bg-gradient-to-r from-cyan-400 via-cyan-500 to-blue-600 hover:from-cyan-300 hover:to-blue-500 text-neutral-950 font-display font-black text-sm uppercase tracking-wider shadow-[0_0_30px_rgba(6,182,212,0.45)] flex items-center justify-center gap-2.5 transition-all hover:scale-105 active:scale-95 cursor-pointer"
-              >
-                <Play className="w-5 h-5 fill-current" />
-                <span>{trainedToday ? 'ENTRENAR OTRA SESIÓN' : 'COMENZAR SESIÓN'}</span>
-              </button>
-
-              {/* Quick routine selector dropdown right inside the hero card */}
-              <div className="relative w-full lg:w-64">
-                <select
-                  value={currentRoutine.id}
-                  onChange={(e) => setSelectedRoutineId(e.target.value)}
-                  className="w-full py-2 pl-3 pr-8 rounded-xl bg-neutral-950/80 border border-white/15 text-xs font-mono font-bold text-cyan-300 focus:outline-none focus:border-cyan-400 appearance-none cursor-pointer"
-                >
-                  {routines.map((r) => (
-                    <option key={r.id} value={r.id}>
-                      🎯 {r.title} ({r.durationMinutes}m)
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown className="w-3.5 h-3.5 text-cyan-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-              </div>
-
-              <div className="flex gap-2">
-                <button
-                  onClick={() => onNavigateTab('routines')}
-                  className="flex-1 py-2 px-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-mono font-bold text-neutral-300 hover:text-white flex items-center justify-center gap-1.5 transition-all cursor-pointer"
-                >
-                  <Layers className="w-3.5 h-3.5 text-cyan-400" />
-                  <span>Catálogo</span>
-                </button>
-
-                {onOpenQuickStart && (
-                  <button
-                    onClick={onOpenQuickStart}
-                    className="flex-1 py-2 px-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-mono font-bold text-neutral-300 hover:text-white flex items-center justify-center gap-1.5 transition-all cursor-pointer"
-                  >
-                    <Zap className="w-3.5 h-3.5 text-amber-400" />
-                    <span>Entreno Libre</span>
-                  </button>
-                )}
-              </div>
-
-              {onOpenSportModal && (
-                <button
-                  id="btn-dashboard-log-sport"
-                  onClick={onOpenSportModal}
-                  className="w-full lg:w-64 py-2.5 px-4 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/40 text-xs font-mono font-black text-emerald-300 hover:text-emerald-200 flex items-center justify-center gap-2 transition-all shadow-[0_0_15px_rgba(16,185,129,0.2)] cursor-pointer"
-                >
-                  <Watch className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>🎾 Registrar Deporte / Reloj</span>
-                </button>
-              )}
-            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* 🥗 NUTRITION & HYDRATION SUMMARY BANNER */}
       {(() => {

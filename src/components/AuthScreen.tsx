@@ -147,23 +147,33 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ lang, onSuccess, onConti
 
   return (
     <div className="min-h-screen bg-[#09090b] text-neutral-100 flex flex-col justify-center items-center px-4 py-12 relative overflow-hidden selection:bg-cyan-500 selection:text-black">
-      {/* Background Cyber Ambient Glows */}
-      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-to-tr from-cyan-500/10 via-blue-600/10 to-transparent blur-3xl pointer-events-none rounded-full" />
-      <div className="absolute bottom-10 right-10 w-96 h-96 bg-purple-600/10 blur-3xl pointer-events-none rounded-full" />
+      {/* Dark Athletic Photography Backdrop (EvoMare Style) */}
+      <div className="absolute inset-0 z-0 pointer-events-none opacity-20">
+        <img
+          src="https://images.unsplash.com/photo-1517838277536-f5f99be501cd?w=1600&q=80&auto=format&fit=crop"
+          alt="Athlete background"
+          className="w-full h-full object-cover"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#09090b] via-[#09090b]/85 to-[#09090b]/70" />
+      </div>
+
+      {/* Cyber Ambient Glows */}
+      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-to-tr from-cyan-500/10 via-blue-600/10 to-transparent blur-3xl pointer-events-none rounded-full z-0" />
+      <div className="absolute bottom-10 right-10 w-96 h-96 bg-purple-600/10 blur-3xl pointer-events-none rounded-full z-0" />
 
       <div className="max-w-5xl w-full mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 items-center relative z-10">
         
         {/* Left Side: Gamified Value Pitch & Features */}
         <div className="lg:col-span-6 space-y-6 text-left">
           
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 text-xs font-mono font-bold tracking-wide shadow-[0_0_15px_rgba(6,182,212,0.2)]">
-            <Sparkles className="w-3.5 h-3.5 animate-pulse" />
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-cyan-500/15 border border-cyan-500/30 text-cyan-400 text-xs font-mono font-black tracking-wide shadow-[0_0_15px_rgba(6,182,212,0.2)]">
+            <Sparkles className="w-3.5 h-3.5 animate-pulse text-cyan-400" />
             <span>PLATAFORMA FITNESS GAMIFICADA PRO</span>
           </div>
 
           <div className="space-y-3">
-            <h1 className="text-3xl sm:text-5xl font-black font-display tracking-tight text-white leading-tight">
-              Sube de nivel tu físico en el <span className="bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 via-blue-400 to-indigo-400">Cyber Matrix</span>
+            <h1 className="text-3xl sm:text-5xl font-black font-display tracking-tight text-white leading-tight uppercase">
+              DESATA TU POTENCIAL EN EL <span className="text-cyan-400">CYBER MATRIX</span>
             </h1>
             <p className="text-sm sm:text-base text-neutral-400 font-sans leading-relaxed">
               Crea tu perfil de atleta, registra entrenamientos en tiempo real, acumula XP, sube de rango y sincroniza tus marcas en la nube.
@@ -216,7 +226,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ lang, onSuccess, onConti
 
         {/* Right Side: Auth Card Form */}
         <div className="lg:col-span-6">
-          <div className="bg-[#121214]/90 backdrop-blur-2xl border border-white/10 rounded-3xl p-6 sm:p-8 shadow-2xl relative overflow-hidden">
+          <div className="bg-[#141417]/95 backdrop-blur-2xl border border-white/10 rounded-3xl p-6 sm:p-8 shadow-2xl relative overflow-hidden">
             
             {/* Top Header inside Card */}
             <div className="flex items-center justify-between border-b border-white/10 pb-4 mb-6">
@@ -235,8 +245,8 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ lang, onSuccess, onConti
               </div>
             </div>
 
-            {/* Mode Switcher Tabs */}
-            <div className="flex bg-neutral-900/80 p-1 rounded-2xl border border-white/5 mb-6">
+            {/* Mode Switcher Capsule Tabs */}
+            <div className="flex bg-neutral-900/90 p-1 rounded-full border border-white/10 mb-6">
               <button
                 type="button"
                 id="tab-auth-signup"
@@ -244,9 +254,9 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ lang, onSuccess, onConti
                   setIsSignUp(true);
                   setError(null);
                 }}
-                className={`flex-1 py-2.5 rounded-xl text-xs font-mono font-bold transition-all ${
+                className={`flex-1 py-2 rounded-full text-xs font-mono font-bold transition-all ${
                   isSignUp
-                    ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-neutral-950 shadow-md'
+                    ? 'bg-cyan-400 text-neutral-950 shadow-md font-black'
                     : 'text-neutral-400 hover:text-white'
                 }`}
               >
@@ -259,9 +269,9 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ lang, onSuccess, onConti
                   setIsSignUp(false);
                   setError(null);
                 }}
-                className={`flex-1 py-2.5 rounded-xl text-xs font-mono font-bold transition-all ${
+                className={`flex-1 py-2 rounded-full text-xs font-mono font-bold transition-all ${
                   !isSignUp
-                    ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-neutral-950 shadow-md'
+                    ? 'bg-cyan-400 text-neutral-950 shadow-md font-black'
                     : 'text-neutral-400 hover:text-white'
                 }`}
               >
@@ -293,7 +303,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ lang, onSuccess, onConti
                       value={name}
                       onChange={(e) => setName(e.target.value)}
                       placeholder="Ej. David Guerrero"
-                      className="w-full bg-[#09090b] border border-white/10 rounded-2xl pl-10 pr-4 py-3 text-xs text-white placeholder-neutral-500 focus:border-cyan-500 focus:outline-none transition-colors"
+                      className="w-full bg-[#09090b] border border-white/10 rounded-2xl pl-10 pr-4 py-3 text-xs text-white placeholder-neutral-500 focus:border-cyan-400 focus:outline-none transition-colors"
                     />
                   </div>
                 </div>
@@ -312,7 +322,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ lang, onSuccess, onConti
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="atleta@correo.com"
-                    className="w-full bg-[#09090b] border border-white/10 rounded-2xl pl-10 pr-4 py-3 text-xs text-white placeholder-neutral-500 focus:border-cyan-500 focus:outline-none transition-colors"
+                    className="w-full bg-[#09090b] border border-white/10 rounded-2xl pl-10 pr-4 py-3 text-xs text-white placeholder-neutral-500 focus:border-cyan-400 focus:outline-none transition-colors"
                   />
                 </div>
               </div>
@@ -330,7 +340,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ lang, onSuccess, onConti
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="w-full bg-[#09090b] border border-white/10 rounded-2xl pl-10 pr-10 py-3 text-xs text-white placeholder-neutral-500 focus:border-cyan-500 focus:outline-none transition-colors"
+                    className="w-full bg-[#09090b] border border-white/10 rounded-2xl pl-10 pr-10 py-3 text-xs text-white placeholder-neutral-500 focus:border-cyan-400 focus:outline-none transition-colors"
                   />
                   <button
                     type="button"
@@ -343,33 +353,33 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ lang, onSuccess, onConti
                 </div>
               </div>
 
-              {/* Submit Main Action Button */}
+              {/* Submit Main Action Button (EvoMare Cyan Pill) */}
               <button
                 id="btn-auth-submit"
                 type="submit"
                 disabled={loading}
-                className="w-full mt-2 py-3.5 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-neutral-950 font-mono font-bold text-xs shadow-lg shadow-cyan-500/25 flex items-center justify-center gap-2 transition-all hover:scale-[1.01] active:scale-98 disabled:opacity-50"
+                className="w-full mt-2 py-3.5 rounded-full bg-cyan-400 hover:bg-cyan-300 active:bg-cyan-500 text-neutral-950 font-display font-black text-xs uppercase tracking-wider shadow-[0_0_20px_rgba(6,182,212,0.4)] flex items-center justify-center gap-2 transition-all hover:scale-[1.01] active:scale-98 disabled:opacity-50 cursor-pointer"
               >
                 {loading ? (
                   <span className="animate-pulse font-mono">Conectando con la nube...</span>
                 ) : (
                   <>
-                    <span>{isSignUp ? 'Crear Perfil y Empezar desde Cero' : 'Acceder a mi Cuenta'}</span>
-                    <ArrowRight className="w-4 h-4" />
+                    <span>{isSignUp ? 'Crear Perfil y Empezar' : 'Acceder a mi Cuenta'}</span>
+                    <ArrowRight className="w-4 h-4 stroke-[2.5]" />
                   </>
                 )}
               </button>
             </form>
 
-            {/* Social Authentication Providers */}
-            <div className="space-y-2.5">
+            {/* Social Authentication Providers (EvoMare Pill Style) */}
+            <div className="mt-4 space-y-2.5">
               {/* Apple Provider Button */}
               <button
                 id="btn-auth-apple"
                 type="button"
                 onClick={handleAppleSignIn}
                 disabled={loading}
-                className="w-full py-3 rounded-2xl bg-white text-black hover:bg-neutral-200 font-mono font-bold text-xs flex items-center justify-center gap-2.5 transition-colors shadow-md"
+                className="w-full py-3 rounded-full bg-white text-black hover:bg-neutral-200 font-mono font-bold text-xs flex items-center justify-center gap-2.5 transition-colors shadow-md cursor-pointer"
               >
                 <svg className="w-4 h-4 fill-current" viewBox="0 0 170 170">
                   <path d="M150.37 130.25c-2.45 5.66-5.35 10.87-8.71 15.66-4.58 6.53-8.33 11.05-11.22 13.56-4.48 4.12-9.28 6.23-14.42 6.35-3.69 0-8.14-1.05-13.32-3.18-5.19-2.12-9.97-3.17-14.34-3.17-4.58 0-9.49 1.05-14.75 3.17-5.26 2.13-9.5 3.24-12.74 3.35-4.35.13-9.16-1.9-14.42-6.08-3.7-3.04-7.58-7.7-11.63-13.98-5.77-8.94-10.37-19.19-13.8-30.74-3.43-11.55-5.15-22.37-5.15-32.47 0-14.15 3.65-25.9 10.96-35.25 7.3-9.35 16.53-14.07 27.68-14.16 4.9.1 10.15 1.25 15.75 3.44 5.6 2.19 9.38 3.34 11.34 3.44 1.74-.1 5.72-1.35 11.94-3.76 6.22-2.4 11.75-3.52 16.59-3.34 12.85.62 23.08 5.41 30.68 14.38-11.09 6.74-16.53 16.03-16.32 27.87.2 9.5 3.86 17.51 10.98 24.03 7.12 6.52 15.34 10.22 24.67 11.11-2.18 6.31-4.79 12.76-7.83 19.34zM119.22 31.84c0-7.39 2.68-14.18 8.04-20.36 5.37-6.19 11.89-9.87 19.58-11.04.22 1.09.33 2.18.33 3.27 0 7.39-2.73 14.28-8.19 20.67-5.46 6.39-12.04 10.02-19.76 10.89v-3.43z"/>
@@ -383,7 +393,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ lang, onSuccess, onConti
                 type="button"
                 onClick={handleGoogleSignIn}
                 disabled={loading}
-                className="w-full py-3 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 text-white font-mono font-semibold text-xs flex items-center justify-center gap-3 transition-colors"
+                className="w-full py-3 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-white font-mono font-semibold text-xs flex items-center justify-center gap-3 transition-colors cursor-pointer"
               >
                 <svg className="w-4 h-4" viewBox="0 0 24 24">
                   <path
@@ -413,7 +423,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ lang, onSuccess, onConti
                 type="button"
                 id="btn-auth-guest"
                 onClick={onContinueGuest}
-                className="text-xs text-neutral-400 hover:text-cyan-400 font-mono transition-colors"
+                className="text-xs text-neutral-400 hover:text-cyan-400 font-mono transition-colors cursor-pointer"
               >
                 ¿Quieres probar primero? <span className="underline font-bold">Explorar como Invitado Local</span>
               </button>

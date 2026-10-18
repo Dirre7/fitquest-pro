@@ -349,13 +349,13 @@ export const Navbar: React.FC<NavbarProps> = ({
         </div>
       </header>
 
-      {/* Floating Dynamic Island / Liquid Glass Bottom Navigation Dock */}
+      {/* Floating Dynamic Liquid Glass Bottom Navigation Dock (EvoMare Style) */}
       <div 
         style={{ bottom: 'max(0.75rem, calc(0.5rem + env(safe-area-inset-bottom, 0px)))' }}
         className="fixed left-1/2 -translate-x-1/2 z-50 w-[94%] xs:w-[92%] sm:w-auto max-w-lg pointer-events-auto select-none"
       >
         <nav 
-          className="bg-neutral-950/92 backdrop-blur-2xl border border-white/10 rounded-2xl sm:rounded-full p-1 sm:p-1.5 shadow-[0_20px_50px_rgba(0,0,0,0.9),0_0_25px_rgba(6,182,212,0.15)] flex items-center justify-around sm:justify-center sm:gap-2 ring-1 ring-white/5"
+          className="bg-[#121215]/95 backdrop-blur-2xl border border-white/10 rounded-full p-1.5 shadow-[0_20px_50px_rgba(0,0,0,0.9),0_0_25px_rgba(6,182,212,0.15)] flex items-center justify-around sm:justify-center sm:gap-2 ring-1 ring-white/5"
           aria-label="Navegación principal"
         >
           {dockItems.map((item) => {
@@ -369,14 +369,14 @@ export const Navbar: React.FC<NavbarProps> = ({
                   handleSetTab(item.id);
                   sound.playBeep(650, 40);
                 }}
-                className={`flex-1 sm:flex-initial flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-2 py-1.5 sm:py-2 px-1.5 sm:px-4.5 rounded-xl sm:rounded-full font-mono font-bold transition-all duration-200 cursor-pointer min-w-0 ${
+                className={`flex-1 sm:flex-initial flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 py-2 px-2 sm:px-4 rounded-full font-mono font-bold transition-all duration-300 cursor-pointer min-w-0 ${
                   isActive
-                    ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-neutral-950 shadow-[0_0_15px_rgba(6,182,212,0.4)] scale-[1.02]'
+                    ? 'bg-cyan-400 text-neutral-950 shadow-[0_0_20px_rgba(6,182,212,0.5)] scale-[1.03]'
                     : 'text-neutral-400 hover:text-white hover:bg-white/5'
                 }`}
               >
-                <Icon className={`w-4 h-4 sm:w-4 sm:h-4 shrink-0 ${isActive ? 'text-neutral-950 stroke-[2.5]' : 'text-neutral-400'}`} />
-                <span className="text-[10px] sm:text-xs font-extrabold whitespace-nowrap tracking-tight truncate">
+                <Icon className={`w-4 h-4 sm:w-4 sm:h-4 shrink-0 transition-transform ${isActive ? 'text-neutral-950 stroke-[2.5] scale-110' : 'text-neutral-400'}`} />
+                <span className={`text-[10px] sm:text-xs font-black tracking-tight whitespace-nowrap truncate ${isActive ? 'text-neutral-950' : 'text-neutral-400'}`}>
                   {item.label}
                 </span>
               </button>
