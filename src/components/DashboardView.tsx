@@ -91,9 +91,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     const programs = FitStorage.getPrograms();
     if (user.programProgress) {
       for (const prog of programs) {
-        const completedDays = user.programProgress[prog.id] || [];
-        if (completedDays.length > 0 && completedDays.length < prog.days.length) {
-          const nextDay = prog.days.find((d) => !completedDays.includes(d.dayNumber));
+        const rawProgress = user.programProgress[prog.id];
+        const completedDayNum = typeof rawProgress === 'number' ? rawProgress : Array.isArray(rawProgress) ? rawProgress.length : 0;
+        if (completedDayNum < prog.days.length) {
+          const nextDay = prog.days.find((d) => d.dayNumber === completedDayNum + 1);
           if (nextDay && routines.some((r) => r.id === nextDay.routine.id)) {
             return nextDay.routine.id;
           }
@@ -600,16 +601,38 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       {/* 🎯 3. ENTRENAMIENTOS SUGERIDOS / MISIÓN DEL DÍA (ENVATO / EVOMARE SLIM BANNER) */}
       {currentRoutine && (() => {
         const workoutThumbnail = getRoutinePhoto(currentRoutine);
+        
+        // Check if this routine belongs to an active multi-day program
+        const programs = FitStorage.getPrograms();
+        let matchedProgramInfo: { programTitle: string; dayNumber: number; totalDays: number } | null = null;
+        for (const prog of programs) {
+          const dayMatch = prog.days.find((d) => d.routine.id === currentRoutine.id);
+          if (dayMatch) {
+            matchedProgramInfo = {
+              programTitle: prog.title,
+              dayNumber: dayMatch.dayNumber,
+              totalDays: prog.days.length,
+            };
+            break;
+          }
+        }
 
         return (
           <div className="bg-[#141417] border border-white/10 rounded-2xl p-3.5 sm:p-4 shadow-xl relative overflow-hidden group">
             {/* Header tag */}
-            <div className="flex items-center justify-between gap-2 mb-2.5 relative z-10">
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] font-mono font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-cyan-500/15 border border-cyan-500/30 text-cyan-400 flex items-center gap-1">
-                  <Sparkles className="w-3 h-3 text-cyan-400 fill-current" />
-                  ENTRENAMIENTO SUGERIDO
-                </span>
+            <div className="flex items-center justify-between gap-2 mb-2.5 relative z-10 flex-wrap">
+              <div className="flex items-center gap-2 flex-wrap">
+                {matchedProgramInfo ? (
+                  <span className="text-[10px] font-mono font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-cyan-500/20 border border-cyan-500/40 text-cyan-300 flex items-center gap-1.5 shadow-[0_0_12px_rgba(6,182,212,0.25)]">
+                    <Layers className="w-3 h-3 text-cyan-400" />
+                    <span>{matchedProgramInfo.programTitle}: Día {matchedProgramInfo.dayNumber}/{matchedProgramInfo.totalDays}</span>
+                  </span>
+                ) : (
+                  <span className="text-[10px] font-mono font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-cyan-500/15 border border-cyan-500/30 text-cyan-400 flex items-center gap-1">
+                    <Sparkles className="w-3 h-3 text-cyan-400 fill-current" />
+                    ENTRENAMIENTO SUGERIDO
+                  </span>
+                )}
                 {trainedToday && (
                   <span className="text-[10px] font-mono font-black uppercase px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center gap-1">
                     <CheckCircle2 className="w-3 h-3" /> COMPLETADO

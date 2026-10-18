@@ -284,6 +284,76 @@ export const WorkoutCatalogView: React.FC<WorkoutCatalogViewProps> = ({
       {/* ===================== VIEW 1: MULTI-DAY PROGRAMS ===================== */}
       {catalogTab === 'programs' && (
         <div className="space-y-6">
+          {/* 🌟 ACTIVE PROGRAM HERO WIDGET (If user has started a program) */}
+          {(() => {
+            const activeProg = programs.find((p) => {
+              const comp = programProgress[p.id] || 0;
+              return comp > 0 && comp < p.days.length;
+            }) || (programs[0] && (programProgress[programs[0].id] || 0) < programs[0].days.length ? programs[0] : null);
+
+            if (!activeProg) return null;
+            const completedDays = programProgress[activeProg.id] || 0;
+            const nextDay = activeProg.days.find((d) => d.dayNumber === completedDays + 1) || activeProg.days[0];
+            const progressPct = Math.min(100, Math.round((completedDays / activeProg.days.length) * 100));
+
+            return (
+              <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-cyan-950/40 via-neutral-900/90 to-blue-950/30 border border-cyan-500/40 p-5 sm:p-6 shadow-[0_0_35px_rgba(6,182,212,0.15)]">
+                <div className="absolute top-0 right-0 w-80 h-80 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
+
+                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5 relative z-10">
+                  <div className="space-y-2 max-w-xl">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-[10px] font-mono font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-cyan-400 text-neutral-950 shadow-[0_0_12px_rgba(6,182,212,0.5)] flex items-center gap-1">
+                        <Flame className="w-3 h-3 fill-current" />
+                        PROGRAMA ACTIVO
+                      </span>
+                      <span className="text-[10px] font-mono font-bold text-cyan-300 px-2 py-0.5 rounded-full bg-cyan-500/15 border border-cyan-500/30">
+                        Día {completedDays + 1} de {activeProg.days.length}
+                      </span>
+                    </div>
+
+                    <h3 className="font-display font-black text-xl sm:text-2xl text-white tracking-tight">
+                      {activeProg.title}
+                    </h3>
+                    <p className="text-xs sm:text-sm text-neutral-300 leading-relaxed">
+                      Siguiente sesión sugerida: <strong className="text-white">{nextDay.title}</strong> — {nextDay.focus}
+                    </p>
+
+                    {/* Progress Bar & Percentage */}
+                    <div className="pt-2">
+                      <div className="flex items-center justify-between text-[11px] font-mono text-neutral-400 mb-1.5">
+                        <span className="text-cyan-400 font-bold">{progressPct}% completado</span>
+                        <span>{completedDays}/{activeProg.days.length} días superados</span>
+                      </div>
+                      <div className="h-2 bg-neutral-950 rounded-full overflow-hidden border border-white/10 p-0.5">
+                        <div
+                          className="h-full bg-gradient-to-r from-cyan-400 via-blue-500 to-indigo-500 rounded-full transition-all duration-700 shadow-[0_0_10px_rgba(6,182,212,0.6)]"
+                          style={{ width: `${Math.max(4, progressPct)}%` }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Direct Launch Button */}
+                  <div className="flex flex-col sm:flex-row lg:flex-col items-stretch sm:items-center lg:items-end justify-center gap-2 shrink-0">
+                    <button
+                      id={`btn-continue-active-program-${activeProg.id}`}
+                      onClick={() => handleStartProgramDay(activeProg.id, nextDay)}
+                      className="px-6 py-3.5 rounded-2xl bg-gradient-to-r from-cyan-400 via-cyan-300 to-blue-500 hover:from-cyan-300 hover:to-blue-400 text-neutral-950 font-display font-black text-sm uppercase tracking-wider flex items-center justify-center gap-2 shadow-[0_0_25px_rgba(6,182,212,0.4)] transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+                    >
+                      <Play className="w-4 h-4 fill-current" />
+                      <span>Continuar: Día {nextDay.dayNumber}</span>
+                    </button>
+                    <span className="text-[10px] font-mono text-neutral-400 text-center lg:text-right">
+                      +{nextDay.routine.xpReward} XP al completar
+                    </span>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* All Programs List */}
           <div className="grid grid-cols-1 gap-6">
             {programs.map((program) => {
               const currentCompletedDays = programProgress[program.id] || 0;
@@ -301,7 +371,7 @@ export const WorkoutCatalogView: React.FC<WorkoutCatalogViewProps> = ({
                   {/* Header row */}
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-white/5 relative z-10">
                     <div>
-                      <div className="flex items-center gap-2 mb-1.5">
+                      <div className="flex items-center gap-2 mb-1.5 flex-wrap">
                         <span className="text-[10px] font-mono font-black uppercase px-2.5 py-0.5 rounded-full bg-cyan-500/20 text-cyan-400 border border-cyan-500/30">
                           {program.daysPerWeek} DÍAS / SEMANA
                         </span>
@@ -342,13 +412,55 @@ export const WorkoutCatalogView: React.FC<WorkoutCatalogViewProps> = ({
                     })()}
                   </div>
 
-                  {/* Program Progress Bar */}
-                  <div className="my-4 relative z-10">
-                    <div className="h-2.5 bg-neutral-900 rounded-full overflow-hidden p-0.5 border border-white/5">
-                      <div
-                        className="h-full bg-gradient-to-r from-cyan-500 via-blue-500 to-indigo-500 rounded-full transition-all duration-700 shadow-[0_0_12px_rgba(6,182,212,0.5)]"
-                        style={{ width: `${Math.max(5, percent)}%` }}
-                      />
+                  {/* Visual Timeline Roadmap Strip */}
+                  <div className="my-5 relative z-10">
+                    <div className="flex items-center justify-between gap-1 overflow-x-auto pb-2 scrollbar-none">
+                      {program.days.map((d, idx) => {
+                        const isDone = currentCompletedDays >= d.dayNumber;
+                        const isCurr = currentCompletedDays + 1 === d.dayNumber;
+                        const isLast = idx === program.days.length - 1;
+
+                        return (
+                          <div key={d.dayNumber} className="flex items-center flex-1 min-w-[70px]">
+                            {/* Step Node */}
+                            <div className="flex flex-col items-center gap-1 w-full text-center">
+                              <div
+                                className={`w-8 h-8 rounded-full flex items-center justify-center font-mono font-black text-xs transition-all ${
+                                  isDone
+                                    ? 'bg-emerald-500 text-neutral-950 shadow-[0_0_12px_rgba(16,185,129,0.4)]'
+                                    : isCurr
+                                    ? 'bg-cyan-400 text-neutral-950 ring-4 ring-cyan-500/30 shadow-[0_0_15px_rgba(6,182,212,0.6)] animate-pulse'
+                                    : 'bg-white/5 text-neutral-500 border border-white/10'
+                                }`}
+                              >
+                                {isDone ? '✓' : isCurr ? d.dayNumber : <Lock className="w-3 h-3 text-neutral-500" />}
+                              </div>
+                              <span
+                                className={`text-[10px] font-mono truncate max-w-[80px] ${
+                                  isDone
+                                    ? 'text-emerald-400 font-bold'
+                                    : isCurr
+                                    ? 'text-cyan-400 font-bold'
+                                    : 'text-neutral-500'
+                                }`}
+                              >
+                                D{d.dayNumber}
+                              </span>
+                            </div>
+
+                            {/* Connecting Line */}
+                            {!isLast && (
+                              <div
+                                className={`h-1 flex-1 mx-1 rounded-full transition-all ${
+                                  isDone
+                                    ? 'bg-emerald-500/80 shadow-[0_0_8px_rgba(16,185,129,0.3)]'
+                                    : 'bg-white/10'
+                                }`}
+                              />
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
 
@@ -356,7 +468,7 @@ export const WorkoutCatalogView: React.FC<WorkoutCatalogViewProps> = ({
                   <div className="space-y-3 relative z-10">
                     <div className="flex items-center justify-between">
                       <h4 className="font-mono font-bold text-xs uppercase tracking-wider text-neutral-400">
-                        Calendario de Sesiones del Plan:
+                        Calendario Detallado de Sesiones:
                       </h4>
                       <button
                         onClick={() => setExpandedProgramId(isExpanded ? null : program.id)}
@@ -461,7 +573,7 @@ export const WorkoutCatalogView: React.FC<WorkoutCatalogViewProps> = ({
                     )}
 
                     {/* Program Completed Banner & Cycle Restart */}
-                    {isProgramFinished && isExpanded && (
+                    {isProgramFinished && (
                       <div className="mt-3 p-4 bg-emerald-500/10 border border-emerald-500/30 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3 animate-in zoom-in-95">
                         <div className="flex items-center gap-3 text-center sm:text-left">
                           <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0 shadow-[0_0_12px_rgba(16,185,129,0.3)]">
