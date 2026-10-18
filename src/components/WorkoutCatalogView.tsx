@@ -217,19 +217,14 @@ export const WorkoutCatalogView: React.FC<WorkoutCatalogViewProps> = ({
     <div className="space-y-6 animate-in fade-in duration-300">
       
       {/* Top Header & View Mode Switcher */}
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 pb-2 border-b border-white/5">
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 pb-2 border-b border-white/5">
         <div>
-          <p className="text-cyan-400 font-mono text-xs tracking-widest uppercase mb-1">
-            PROTOCOLOS Y CATÁLOGO DE ENTRENAMIENTO
+          <p className="text-cyan-400 font-mono text-[10px] tracking-widest uppercase mb-0.5">
+            PROTOCOLOS
           </p>
           <h2 className="font-display font-black text-2xl sm:text-3xl text-white">
             {catalogTab === 'routines' ? 'Catálogo de Rutinas' : 'Programas Multidía'}
           </h2>
-          <p className="text-xs sm:text-sm text-neutral-400 mt-1">
-            {catalogTab === 'routines'
-              ? 'Rutinas estructuradas con sobrecarga progresiva y puntos de experiencia'
-              : 'Planes estructurados de varios días por semana con seguimiento de ciclo continuo'}
-          </p>
         </div>
 
         {/* Tab switcher: Rutinas vs Programas */}
@@ -651,13 +646,10 @@ export const WorkoutCatalogView: React.FC<WorkoutCatalogViewProps> = ({
                   {/* Body Content */}
                   <div className="p-4 sm:p-5 flex-1 flex flex-col justify-between">
                     <div>
-                      {/* Title and description */}
+                      {/* Title */}
                       <h3 className="font-display font-black text-lg sm:text-xl text-white group-hover:text-cyan-400 transition-colors uppercase tracking-tight">
                         {routine.title}
                       </h3>
-                      <p className="text-xs text-neutral-400 mt-1 leading-relaxed line-clamp-2">
-                        {routine.description}
-                      </p>
 
                       {/* Target muscle chips */}
                       <div className="flex flex-wrap gap-1.5 mt-3">

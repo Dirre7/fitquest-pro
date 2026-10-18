@@ -219,618 +219,369 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
       
-      {/* 👑 1. TOP HERO CARD: FICHA PRINCIPAL DEL ATLETA (Nivel, Título, Liga, Progreso XP & Métricas) */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      {/* 👑 BENTO GRID: DASHBOARD PRINCIPAL */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
         
-        {/* Main Command Hero Card with Immersive Glowing Radial Backdrop */}
-        <div className="lg:col-span-8 bg-gradient-to-br from-[#18181b] via-[#121215] to-[#09090b] rounded-3xl border border-white/10 p-6 sm:p-8 flex flex-col relative overflow-hidden shadow-2xl">
-          <div className="absolute top-0 right-0 w-80 h-80 bg-cyan-500/10 blur-[100px] pointer-events-none" />
-          <div className="absolute -bottom-10 -left-10 w-64 h-64 bg-blue-500/10 blur-[90px] pointer-events-none" />
-
-          {/* Top Header of the Athlete Card: Avatar, Big Level, Name, League */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5 mb-6 relative z-10">
+        {/* BENTO 1: FICHA ATLETA & NIVEL XP (lg:col-span-8) */}
+        <div className="lg:col-span-8 bg-[#141417] border border-white/10 rounded-3xl p-5 sm:p-6 shadow-xl relative overflow-hidden flex flex-col justify-between">
+          <div className="flex items-center justify-between gap-4">
             <div 
               onClick={onOpenProfileModal}
-              className="flex items-center gap-4 sm:gap-5 cursor-pointer group transition-transform hover:scale-[1.01]"
-              title="Haz clic para personalizar avatar, nombre o título honorífico"
+              className="flex items-center gap-3.5 cursor-pointer group min-w-0"
+              title="Personalizar avatar y perfil"
             >
-              {/* Avatar with Animated Glow and Badge */}
               <div className="relative shrink-0">
                 <img
                   src={user.avatar}
                   alt={user.name}
-                  className={`w-20 h-20 sm:w-24 sm:h-24 rounded-3xl object-cover border-2 shadow-2xl group-hover:scale-105 transition-all ${equippedFrameClasses.borderClass} ${equippedFrameClasses.glowClass}`}
+                  className={`w-14 h-14 sm:w-16 sm:h-16 rounded-2xl object-cover border-2 shadow-lg group-hover:scale-105 transition-all ${equippedFrameClasses.borderClass} ${equippedFrameClasses.glowClass}`}
                 />
-                <span 
-                  className="absolute -top-1.5 -right-1 text-base drop-shadow bg-neutral-950/80 rounded-full px-1 border border-white/10" 
-                  title={equippedFrameMeta.name}
-                >
+                <span className="absolute -top-1.5 -right-1 text-sm bg-neutral-950/80 rounded-full px-1 border border-white/10">
                   {equippedFrameMeta.badgeEmoji}
                 </span>
-                <div
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (onOpenLevelRoadmap) onOpenLevelRoadmap();
-                    else if (onOpenProfileModal) onOpenProfileModal();
-                  }}
-                  className="absolute -bottom-2 -right-2 px-2.5 py-1 rounded-xl text-neutral-950 text-xs font-black font-mono flex items-center gap-1 shadow-2xl cursor-pointer hover:scale-110 transition-transform border border-black/40"
-                  style={{
-                    backgroundColor: currentTier.accentColor,
-                    boxShadow: `0 0 16px ${currentTier.glowColor}`,
-                  }}
-                  title="Ver Ruta de Rangos y Recompensas"
-                >
-                  <span>{currentTier.badgeIcon}</span>
-                  <span>NVL {user.level}</span>
-                </div>
               </div>
-
-              {/* Name, Prominent Level Headline & Badges */}
               <div className="min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
+                <div className="flex items-center gap-1.5 flex-wrap">
                   <span
-                    className="text-xs font-mono font-black px-3 py-0.5 rounded-full border uppercase tracking-wider flex items-center gap-1.5 shadow-sm"
+                    className="text-[10px] font-mono font-black px-2 py-0.5 rounded-md border uppercase tracking-wider"
                     style={{
                       color: currentTier.accentColor,
                       borderColor: `${currentTier.accentColor}50`,
                       backgroundColor: `${currentTier.accentColor}15`,
                     }}
                   >
-                    <span>{currentTier.badgeIcon}</span>
-                    <span>{currentTier.name}</span>
+                    NVL {user.level} · {currentTier.name}
                   </span>
-
-                  <span className="text-xs font-mono font-black px-3 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/25 uppercase tracking-wider">
+                  <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-md bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
                     LIGA {user.league}
                   </span>
                 </div>
-
-                <h1 className="font-display font-black text-2xl sm:text-4xl text-white tracking-tight mt-1 group-hover:text-cyan-300 transition-colors truncate">
+                <h1 className="font-display font-black text-xl sm:text-2xl text-white tracking-tight mt-0.5 truncate">
                   {user.name}
                 </h1>
-
-                <div className="flex items-center gap-2 mt-1 flex-wrap">
-                  <p className="text-sm font-bold text-cyan-400 flex items-center gap-1.5 font-mono">
-                    <Shield className="w-4 h-4 text-cyan-400 shrink-0" />
-                    <span>{user.rankTitle || 'Recluta Inicial'}</span>
-                  </p>
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (onOpenLevelRoadmap) onOpenLevelRoadmap();
-                    }}
-                    className="text-xs text-neutral-400 hover:text-cyan-300 underline font-mono cursor-pointer"
-                  >
-                    Ver ruta de rangos →
-                  </button>
-                </div>
-
-                <p className="text-xs text-neutral-400 mt-1 font-mono">
-                  {displayTotalWorkouts} entrenos completados • {Math.round(displayTotalVolumeKg / 1000)}t tonelaje levantado
+                <p className="text-xs text-neutral-400 font-mono">
+                  {user.rankTitle || 'Recluta Inicial'}
                 </p>
-
-                {/* 🛡️ Streak & Shields Status + Weekend Beast Event */}
-                <div className="flex items-center gap-2 mt-2 flex-wrap">
-                  <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-orange-500/10 border border-orange-500/30 text-orange-400 text-xs font-mono font-bold shadow-sm">
-                    <Flame className="w-3.5 h-3.5 text-orange-400 fill-orange-400/20 animate-pulse" />
-                    <span>Racha: {effectiveStreak}d</span>
-                  </div>
-
-                  <div
-                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 text-xs font-mono font-bold shadow-sm"
-                    title="Escudos de Racha: protegen tu racha automáticamente los días de descanso. Ganas 1 escudo al subir de nivel o al completar retos semanales (máx 2)."
-                  >
-                    <Shield className="w-3.5 h-3.5 text-cyan-400 fill-cyan-400/20" />
-                    <span>{user.streakShields ?? 1}/2 Escudos</span>
-                  </div>
-
-                  {(new Date().getDay() === 0 || new Date().getDay() === 6) && (
-                    <div className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-gradient-to-r from-amber-500/20 to-yellow-500/20 border border-amber-400/40 text-amber-300 text-xs font-mono font-black shadow-[0_0_15px_rgba(251,191,36,0.25)] animate-pulse">
-                      <span>⚡ WEEKEND BEAST (XP x1.5)</span>
-                    </div>
-                  )}
-                </div>
               </div>
             </div>
 
-            {/* Quick action button in header */}
-            <button
-              id="btn-dashboard-start-workout"
-              onClick={onOpenQuickStart ? onOpenQuickStart : () => onNavigateTab('routines')}
-              className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-neutral-950 px-4 py-2.5 rounded-2xl text-xs font-mono font-black uppercase tracking-wider shadow-[0_0_20px_rgba(6,182,212,0.4)] flex items-center gap-2 self-start sm:self-center transition-all hover:scale-105 active:scale-95 cursor-pointer shrink-0"
-            >
-              <Zap className="w-3.5 h-3.5 fill-current animate-pulse" />
-              <span>EXPLORAR RUTINAS</span>
-            </button>
-          </div>
-
-          {/* Compact Level XP Bar + Weekly Consistency Mini Chart Row (Envato/EvoMare Ultra-Compact Style) */}
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center flex-1 relative z-10 pt-4 border-t border-white/10">
-            
-            {/* Left: Compact Level & XP Bar */}
-            <div className="md:col-span-6 bg-black/40 border border-white/5 rounded-2xl p-3.5 flex flex-col justify-between shadow-inner">
-              <div className="flex items-center justify-between gap-2 mb-2">
-                <div className="flex items-center gap-2">
-                  <span
-                    className="text-xs font-mono font-black px-2.5 py-0.5 rounded-lg border uppercase tracking-wider"
-                    style={{
-                      color: currentTier.accentColor,
-                      borderColor: `${currentTier.accentColor}50`,
-                      backgroundColor: `${currentTier.accentColor}15`,
-                    }}
-                  >
-                    NIVEL {user.level} · {currentTier.name}
-                  </span>
-                  <span className="text-[11px] font-mono font-bold text-white">
-                    {xpPercent}%
-                  </span>
-                </div>
-                <button
-                  type="button"
-                  onClick={onOpenLevelRoadmap}
-                  className="text-[10px] font-mono text-cyan-400 hover:text-cyan-300 flex items-center gap-0.5 cursor-pointer font-bold"
-                >
-                  <span>Ruta Rangos</span>
-                  <ChevronRight className="w-3 h-3" />
-                </button>
+            {/* Streak & Shields Pills */}
+            <div className="flex flex-col sm:flex-row items-end sm:items-center gap-1.5 shrink-0">
+              <div className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-orange-500/10 border border-orange-500/30 text-orange-400 text-xs font-mono font-bold shadow-sm">
+                <Flame className="w-3.5 h-3.5 fill-orange-400/20 animate-pulse" />
+                <span>{effectiveStreak}d</span>
               </div>
-
-              {/* Progress Track */}
-              <div className="w-full h-2 bg-neutral-900 rounded-full overflow-hidden p-0.5 border border-white/5">
-                <div
-                  className="h-full bg-gradient-to-r from-cyan-500 via-blue-500 to-indigo-500 rounded-full transition-all duration-700 shadow-[0_0_10px_rgba(6,182,212,0.5)]"
-                  style={{ width: `${Math.max(4, Math.min(100, xpPercent))}%` }}
-                />
-              </div>
-
-              <div className="flex items-center justify-between text-[10px] font-mono text-neutral-400 mt-2">
-                <span>{user.currentLevelXp} / {user.nextLevelXp} XP</span>
-                <span>Faltan <span className="text-white font-bold">{remainingXp} XP</span> para Nvl {user.level + 1}</span>
-              </div>
-            </div>
-
-            {/* Right: Weekly Consistency Bar Chart ("Healtnes / Actividad Semanal") */}
-            <div className="md:col-span-6 bg-black/40 border border-white/5 rounded-2xl p-3.5 flex flex-col justify-between shadow-inner">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[10px] font-mono font-bold text-neutral-400 uppercase tracking-wider flex items-center gap-1.5">
-                  <Activity className="w-3 h-3 text-cyan-400" />
-                  ACTIVIDAD SEMANAL
-                </span>
-                <span className="text-[10px] font-mono font-bold text-cyan-400 bg-cyan-500/10 px-2 py-0.5 rounded-md border border-cyan-500/20">
-                  {weekDaysActivity.filter((d) => d.hasWorkout).length}/7 Días Activos
-                </span>
-              </div>
-
-              {/* 7 Vertical Bars (L M X J V S D) */}
-              <div className="flex items-end justify-between gap-1 h-12 pt-1 px-1">
-                {weekDaysActivity.map((day, idx) => {
-                  const barHeight = day.hasWorkout ? '100%' : day.isToday ? '35%' : day.isPast ? '20%' : '15%';
-                  return (
-                    <div key={idx} className="flex-1 flex flex-col items-center gap-1 h-full justify-end">
-                      <div className="w-full max-w-[20px] h-full flex items-end justify-center">
-                        <div
-                          className={`w-full rounded-full transition-all duration-500 ${
-                            day.hasWorkout
-                              ? 'bg-gradient-to-t from-cyan-500 to-blue-500 shadow-[0_0_10px_rgba(6,182,212,0.6)]'
-                              : day.isToday
-                              ? 'bg-cyan-500/30 border border-cyan-400/60 animate-pulse'
-                              : 'bg-white/10'
-                          }`}
-                          style={{ height: barHeight }}
-                          title={`${day.dateStr}: ${day.hasWorkout ? `${day.workoutsCount} entrenos` : 'Descanso'}`}
-                        />
-                      </div>
-                      <span className={`text-[9px] font-mono font-bold ${day.isToday ? 'text-cyan-400' : 'text-neutral-500'}`}>
-                        {day.label}
-                      </span>
-                    </div>
-                  );
-                })}
+              <div className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 text-xs font-mono font-bold shadow-sm">
+                <Shield className="w-3.5 h-3.5 fill-cyan-400/20" />
+                <span>{user.streakShields ?? 1}/2</span>
               </div>
             </div>
           </div>
 
-          {/* ⚡ 4 Ultra-Compact Micro-Metrics Cards ("Your Metrics" - Envato Style) */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mt-4 relative z-10">
-            {/* Card 1: Agua / Hidratación */}
-            <div 
-              onClick={() => onNavigateTab('nutrition')}
-              className="bg-[#141417] border border-white/10 hover:border-blue-500/40 rounded-2xl p-3 flex items-center justify-between shadow-lg cursor-pointer transition-all hover:scale-[1.02]"
-            >
-              <div>
-                <p className="text-[10px] font-mono uppercase text-neutral-400 font-bold">Agua Hoy</p>
-                <p className="text-base sm:text-lg font-mono font-black text-white mt-0.5">
-                  {todayWaterLiters} <span className="text-[11px] text-blue-400 font-normal">L</span>
-                </p>
-              </div>
-              <div className="w-8 h-8 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-400 flex items-center justify-center shrink-0">
-                <Droplet className="w-4 h-4 fill-blue-400/20" />
-              </div>
-            </div>
-
-            {/* Card 2: Calorías Quemadas */}
-            <div className="bg-[#141417] border border-white/10 hover:border-orange-500/40 rounded-2xl p-3 flex items-center justify-between shadow-lg transition-all">
-              <div>
-                <p className="text-[10px] font-mono uppercase text-neutral-400 font-bold">Calorías Quemadas</p>
-                <p className="text-base sm:text-lg font-mono font-black text-white mt-0.5">
-                  {todayCalories.toLocaleString()} <span className="text-[11px] text-orange-400 font-normal">Kcal</span>
-                </p>
-              </div>
-              <div className="w-8 h-8 rounded-xl bg-orange-500/10 border border-orange-500/20 text-orange-400 flex items-center justify-center shrink-0">
-                <Flame className="w-4 h-4 fill-orange-400/20" />
-              </div>
-            </div>
-
-            {/* Card 3: Pulso / Hierro */}
-            <div className="bg-[#141417] border border-white/10 hover:border-purple-500/40 rounded-2xl p-3 flex items-center justify-between shadow-lg transition-all">
-              <div>
-                <p className="text-[10px] font-mono uppercase text-neutral-400 font-bold">
-                  {smartwatch?.liveHeartRate && smartwatch.liveHeartRate > 0 ? 'Frecuencia' : (todayDistanceKm > 0 ? 'Distancia' : 'Hierro')}
-                </p>
-                <p className="text-base sm:text-lg font-mono font-black text-white mt-0.5">
-                  {smartwatch?.liveHeartRate && smartwatch.liveHeartRate > 0
-                    ? `${smartwatch.liveHeartRate} bpm`
-                    : (todayDistanceKm > 0 ? `${todayDistanceKm.toFixed(1)} km` : `${todayVolumeKg.toLocaleString()} kg`)}
-                </p>
-              </div>
-              <div className="w-8 h-8 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-400 flex items-center justify-center shrink-0">
-                {smartwatch?.liveHeartRate && smartwatch.liveHeartRate > 0 ? (
-                  <Heart className="w-4 h-4 text-rose-400 fill-rose-400/20 animate-pulse" />
-                ) : (
-                  <Dumbbell className="w-4 h-4 text-purple-400" />
-                )}
-              </div>
-            </div>
-
-            {/* Card 4: XP Ganada Hoy */}
-            <div className="bg-[#141417] border border-white/10 hover:border-amber-500/40 rounded-2xl p-3 flex items-center justify-between shadow-lg transition-all">
-              <div>
-                <p className="text-[10px] font-mono uppercase text-neutral-400 font-bold">XP Hoy ({workoutsToday.length} ses.)</p>
-                <p className="text-base sm:text-lg font-mono font-black text-amber-400 mt-0.5">
-                  +{todayEarnedXp} <span className="text-[11px] text-neutral-300 font-normal">XP</span>
-                </p>
-              </div>
-              <div className="w-8 h-8 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center shrink-0">
-                <Zap className="w-4 h-4 fill-amber-400/20" />
-              </div>
-            </div>
-          </div>
-
-          {/* ⚔️ 2. ATRIBUTOS DEL ATLETA (10-99 Scale + OVR Media + Arquetipo + Desglose) */}
-          <div className="mt-6 pt-5 border-t border-white/10 relative z-10">
-            <div className="flex flex-wrap items-center justify-between gap-2 mb-3.5">
-              <div className="flex flex-wrap items-center gap-2">
-                <p className="text-[10px] font-mono font-bold uppercase tracking-widest text-neutral-400">
-                  ATRIBUTOS DEL ATLETA
-                </p>
-                <span className="px-2.5 py-0.5 rounded-full bg-gradient-to-r from-cyan-500/20 to-blue-500/20 border border-cyan-500/35 text-cyan-300 text-[10px] font-mono font-black tracking-wide">
-                  MEDIA {attrBreakdown.overall} OVR · {attrBreakdown.overallTierLabel.toUpperCase()}
-                </span>
-                <span className="px-2.5 py-0.5 rounded-full bg-white/5 border border-white/10 text-neutral-200 text-[10px] font-semibold">
-                  {attrBreakdown.archetype.icon} {attrBreakdown.archetype.name}
-                </span>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setSelectedAttrKey('strength')}
-                className="text-[11px] font-mono font-bold text-cyan-400 hover:text-cyan-300 flex items-center gap-1 cursor-pointer transition-colors"
+          {/* Level Progress Track in Card */}
+          <div className="mt-4 pt-3 border-t border-white/5">
+            <div className="flex items-center justify-between text-[11px] font-mono font-bold mb-1.5">
+              <span className="text-neutral-400">Progreso de Nivel</span>
+              <button 
+                type="button" 
+                onClick={onOpenLevelRoadmap} 
+                className="text-cyan-400 hover:underline flex items-center gap-0.5"
               >
-                <Info className="w-3.5 h-3.5" />
-                <span>Ver Ficha y Bonus XP →</span>
+                <span>{user.currentLevelXp} / {user.nextLevelXp} XP ({xpPercent}%)</span>
+                <ChevronRight className="w-3 h-3" />
               </button>
             </div>
-
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              {/* FUERZA (PWR) */}
-              <button
-                type="button"
-                onClick={() => setSelectedAttrKey('strength')}
-                className="text-left bg-white/5 hover:bg-white/[0.08] p-3.5 rounded-2xl border border-white/5 hover:border-red-500/40 transition-all flex flex-col justify-between group cursor-pointer"
-              >
-                <div className="flex items-start justify-between w-full gap-2">
-                  <div>
-                    <span className="text-[10px] font-bold text-neutral-400 font-mono tracking-wider block">
-                      FUERZA
-                    </span>
-                    <div className="flex items-baseline gap-1 mt-0.5">
-                      <span className="text-xl font-mono font-extrabold text-white">
-                        {attrBreakdown.details.strength.score}
-                      </span>
-                      <span className="text-[10px] font-mono text-neutral-500">/99</span>
-                    </div>
-                  </div>
-                  <div className="w-8 h-8 rounded-xl bg-red-500/10 border border-red-500/25 flex items-center justify-center text-red-400 font-mono font-black text-xs shadow-[0_0_8px_rgba(239,68,68,0.2)] group-hover:scale-105 transition-transform">
-                    PWR
-                  </div>
-                </div>
-
-                <div className="w-full h-1.5 bg-neutral-900 rounded-full overflow-hidden mt-2.5 border border-white/5">
-                  <div
-                    className="h-full bg-gradient-to-r from-red-500 to-orange-400 rounded-full transition-all duration-500"
-                    style={{ width: `${Math.min(100, (attrBreakdown.details.strength.score / 99) * 100)}%` }}
-                  />
-                </div>
-
-                <div className="flex items-center justify-between mt-2 text-[10px] font-mono">
-                  <span className="text-neutral-400">{attrBreakdown.details.strength.tierLabel}</span>
-                  <span className="text-red-400 font-bold">+{attrBreakdown.details.strength.bonusPct}% XP</span>
-                </div>
-              </button>
-
-              {/* RESISTENCIA (END) */}
-              <button
-                type="button"
-                onClick={() => setSelectedAttrKey('endurance')}
-                className="text-left bg-white/5 hover:bg-white/[0.08] p-3.5 rounded-2xl border border-white/5 hover:border-cyan-500/40 transition-all flex flex-col justify-between group cursor-pointer"
-              >
-                <div className="flex items-start justify-between w-full gap-2">
-                  <div>
-                    <span className="text-[10px] font-bold text-neutral-400 font-mono tracking-wider block">
-                      RESISTENCIA
-                    </span>
-                    <div className="flex items-baseline gap-1 mt-0.5">
-                      <span className="text-xl font-mono font-extrabold text-white">
-                        {attrBreakdown.details.endurance.score}
-                      </span>
-                      <span className="text-[10px] font-mono text-neutral-500">/99</span>
-                    </div>
-                  </div>
-                  <div className="w-8 h-8 rounded-xl bg-cyan-500/10 border border-cyan-500/25 flex items-center justify-center text-cyan-400 font-mono font-black text-xs shadow-[0_0_8px_rgba(6,182,212,0.2)] group-hover:scale-105 transition-transform">
-                    END
-                  </div>
-                </div>
-
-                <div className="w-full h-1.5 bg-neutral-900 rounded-full overflow-hidden mt-2.5 border border-white/5">
-                  <div
-                    className="h-full bg-gradient-to-r from-cyan-500 to-blue-400 rounded-full transition-all duration-500"
-                    style={{ width: `${Math.min(100, (attrBreakdown.details.endurance.score / 99) * 100)}%` }}
-                  />
-                </div>
-
-                <div className="flex items-center justify-between mt-2 text-[10px] font-mono">
-                  <span className="text-neutral-400">{attrBreakdown.details.endurance.tierLabel}</span>
-                  <span className="text-cyan-400 font-bold">+{attrBreakdown.details.endurance.bonusPct}% XP</span>
-                </div>
-              </button>
-
-              {/* AGILIDAD (AGI) */}
-              <button
-                type="button"
-                onClick={() => setSelectedAttrKey('agility')}
-                className="text-left bg-white/5 hover:bg-white/[0.08] p-3.5 rounded-2xl border border-white/5 hover:border-amber-500/40 transition-all flex flex-col justify-between group cursor-pointer"
-              >
-                <div className="flex items-start justify-between w-full gap-2">
-                  <div>
-                    <span className="text-[10px] font-bold text-neutral-400 font-mono tracking-wider block">
-                      AGILIDAD
-                    </span>
-                    <div className="flex items-baseline gap-1 mt-0.5">
-                      <span className="text-xl font-mono font-extrabold text-white">
-                        {attrBreakdown.details.agility.score}
-                      </span>
-                      <span className="text-[10px] font-mono text-neutral-500">/99</span>
-                    </div>
-                  </div>
-                  <div className="w-8 h-8 rounded-xl bg-amber-500/10 border border-amber-500/25 flex items-center justify-center text-amber-400 font-mono font-black text-xs shadow-[0_0_8px_rgba(245,158,11,0.2)] group-hover:scale-105 transition-transform">
-                    AGI
-                  </div>
-                </div>
-
-                <div className="w-full h-1.5 bg-neutral-900 rounded-full overflow-hidden mt-2.5 border border-white/5">
-                  <div
-                    className="h-full bg-gradient-to-r from-amber-500 to-yellow-400 rounded-full transition-all duration-500"
-                    style={{ width: `${Math.min(100, (attrBreakdown.details.agility.score / 99) * 100)}%` }}
-                  />
-                </div>
-
-                <div className="flex items-center justify-between mt-2 text-[10px] font-mono">
-                  <span className="text-neutral-400">{attrBreakdown.details.agility.tierLabel}</span>
-                  <span className="text-amber-400 font-bold">+{attrBreakdown.details.agility.bonusPct}% XP</span>
-                </div>
-              </button>
-
-              {/* DISCIPLINA (DIS) */}
-              <button
-                type="button"
-                onClick={() => setSelectedAttrKey('discipline')}
-                className="text-left bg-white/5 hover:bg-white/[0.08] p-3.5 rounded-2xl border border-white/5 hover:border-emerald-500/40 transition-all flex flex-col justify-between group cursor-pointer"
-              >
-                <div className="flex items-start justify-between w-full gap-2">
-                  <div>
-                    <span className="text-[10px] font-bold text-neutral-400 font-mono tracking-wider block">
-                      DISCIPLINA
-                    </span>
-                    <div className="flex items-baseline gap-1 mt-0.5">
-                      <span className="text-xl font-mono font-extrabold text-white">
-                        {attrBreakdown.details.discipline.score}
-                      </span>
-                      <span className="text-[10px] font-mono text-neutral-500">/99</span>
-                    </div>
-                  </div>
-                  <div className="w-8 h-8 rounded-xl bg-emerald-500/10 border border-emerald-500/25 flex items-center justify-center text-emerald-400 font-mono font-black text-xs shadow-[0_0_8px_rgba(16,185,129,0.2)] group-hover:scale-105 transition-transform">
-                    DIS
-                  </div>
-                </div>
-
-                <div className="w-full h-1.5 bg-neutral-900 rounded-full overflow-hidden mt-2.5 border border-white/5">
-                  <div
-                    className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full transition-all duration-500"
-                    style={{ width: `${Math.min(100, (attrBreakdown.details.discipline.score / 99) * 100)}%` }}
-                  />
-                </div>
-
-                <div className="flex items-center justify-between mt-2 text-[10px] font-mono">
-                  <span className="text-neutral-400">{attrBreakdown.details.discipline.tierLabel}</span>
-                  <span className="text-emerald-400 font-bold">+{attrBreakdown.details.discipline.bonusPct}% XP</span>
-                </div>
-              </button>
+            <div className="w-full h-2 bg-neutral-900 rounded-full overflow-hidden p-0.5 border border-white/5">
+              <div
+                className="h-full bg-gradient-to-r from-cyan-500 via-blue-500 to-indigo-500 rounded-full transition-all duration-700 shadow-[0_0_10px_rgba(6,182,212,0.5)]"
+                style={{ width: `${Math.max(4, Math.min(100, xpPercent))}%` }}
+              />
             </div>
           </div>
         </div>
 
-        {/* Right Side Column: Streak & Global Leaderboard Snapshot */}
-        <div className="lg:col-span-4 flex flex-col gap-6">
-          
-          {/* Global Leaderboard Snapshot Card */}
-          <div className="bg-[#121214] border border-white/5 rounded-3xl p-6 flex flex-col shadow-2xl">
-            <div className="flex items-center justify-between mb-5">
-              <h3 className="text-xs font-mono font-bold uppercase tracking-widest text-neutral-400">
-                CLASIFICACIÓN LIGA {user.league}
-              </h3>
-              <button 
-                onClick={() => onNavigateTab('leaderboard')}
-                className="text-xs font-mono font-semibold text-cyan-400 hover:text-cyan-300 transition-colors cursor-pointer"
-              >
-                VER LIGA →
-              </button>
-            </div>
+        {/* BENTO 2: ACTIVIDAD SEMANAL WIDGET (lg:col-span-4) */}
+        <div className="lg:col-span-4 bg-[#141417] border border-white/10 rounded-3xl p-5 sm:p-6 shadow-xl flex flex-col justify-between">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[10px] font-mono font-bold text-neutral-400 uppercase tracking-wider flex items-center gap-1.5">
+              <Activity className="w-3.5 h-3.5 text-cyan-400" />
+              ACTIVIDAD SEMANAL
+            </span>
+            <span className="text-[10px] font-mono font-bold text-cyan-400 bg-cyan-500/10 px-2 py-0.5 rounded-md border border-cyan-500/20">
+              {weekDaysActivity.filter((d) => d.hasWorkout).length}/7 Días
+            </span>
+          </div>
 
-            <div className="space-y-3 flex-1">
-              {topTwoRivals.map((rival, idx) => (
-                <div
-                  key={rival.name}
-                  className="flex items-center gap-3.5 bg-white/5 p-3.5 rounded-2xl border border-white/5 hover:border-white/10 transition-colors"
-                >
-                  <div className="text-neutral-400 font-mono font-bold w-6 text-sm">
-                    0{rival.rank}
+          {/* 7 Vertical Bars */}
+          <div className="flex items-end justify-between gap-1 h-14 pt-1 px-1">
+            {weekDaysActivity.map((day, idx) => {
+              const barHeight = day.hasWorkout ? '100%' : day.isToday ? '35%' : day.isPast ? '20%' : '15%';
+              return (
+                <div key={idx} className="flex-1 flex flex-col items-center gap-1 h-full justify-end">
+                  <div className="w-full max-w-[20px] h-full flex items-end justify-center">
+                    <div
+                      className={`w-full rounded-full transition-all duration-500 ${
+                        day.hasWorkout
+                          ? 'bg-gradient-to-t from-cyan-500 to-blue-500 shadow-[0_0_10px_rgba(6,182,212,0.6)]'
+                          : day.isToday
+                          ? 'bg-cyan-500/30 border border-cyan-400/60 animate-pulse'
+                          : 'bg-white/10'
+                      }`}
+                      style={{ height: barHeight }}
+                      title={`${day.dateStr}: ${day.hasWorkout ? `${day.workoutsCount} entrenos` : 'Descanso'}`}
+                    />
                   </div>
-                  <img
-                    src={rival.avatar}
-                    alt={rival.name}
-                    className="w-10 h-10 rounded-2xl object-cover border border-white/10 shadow-md"
-                  />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold text-white truncate">{rival.name}</p>
-                    <p className="text-[10px] text-neutral-400 font-mono">
-                      Nvl {rival.level} • {rival.xpEarned.toLocaleString()} XP sem.
-                    </p>
-                  </div>
-                  <div className="text-xs font-mono font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-lg border border-emerald-500/20">
-                    {idx === 0 ? '👑' : '🥈'}
-                  </div>
-                </div>
-              ))}
-
-              {currentUserEntry && (
-                <div className="flex items-center gap-3.5 bg-cyan-500/10 p-3.5 rounded-2xl border border-cyan-500/30 shadow-[0_0_15px_rgba(6,182,212,0.1)]">
-                  <div className="text-cyan-400 font-mono font-bold w-6 text-sm">
-                    {currentUserEntry.rank < 10 ? `0${currentUserEntry.rank}` : currentUserEntry.rank}
-                  </div>
-                  <div className="w-10 h-10 rounded-2xl bg-cyan-500 flex items-center justify-center text-neutral-950 font-bold text-xs shadow-[0_0_10px_rgba(6,182,212,0.4)]">
-                    TÚ
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold text-white truncate">{user.name}</p>
-                    <p className="text-[10px] text-cyan-300 font-mono">
-                      Nvl {user.level} • {currentUserEntry.xpEarned.toLocaleString()} XP sem.
-                    </p>
-                  </div>
-                  <div className="text-xs font-mono font-bold text-cyan-400">
-                    #{currentUserEntry.rank}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Achievement Unlocked Teaser Banner */}
-            {featuredAchievement && (
-              <div
-                onClick={() => onNavigateTab('achievements')}
-                className="mt-5 p-4 bg-cyan-500/10 hover:bg-cyan-500/15 border border-cyan-500/20 rounded-2xl shadow-inner cursor-pointer transition-colors"
-              >
-                <div className="flex items-center justify-between mb-1.5">
-                  <p className="text-[10px] font-mono uppercase font-bold text-cyan-400">
-                    {featuredAchievement.unlocked ? '🏆 LOGRO DESBLOQUEADO' : '🎯 PRÓXIMO LOGRO EN PROGRESO'}
-                  </p>
-                  <span className="text-[10px] font-mono font-bold text-cyan-300">
-                    {featuredAchievement.progress}/{featuredAchievement.maxProgress}
+                  <span className={`text-[9px] font-mono font-bold ${day.isToday ? 'text-cyan-400' : 'text-neutral-500'}`}>
+                    {day.label}
                   </span>
                 </div>
-                <div className="flex gap-3 items-center">
-                  <div className="w-8 h-8 rounded-xl bg-cyan-500 flex items-center justify-center text-neutral-950 font-black shadow-[0_0_10px_rgba(6,182,212,0.4)] shrink-0">
-                    <Sparkles className="w-4 h-4" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-xs font-bold text-white truncate">{featuredAchievement.title}</p>
-                    <p className="text-[11px] text-neutral-300 line-clamp-1">{featuredAchievement.description}</p>
-                  </div>
-                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      {/* ⚔️ BENTO: ATRIBUTOS RPG DEL ATLETA */}
+      <div className="bg-[#141417] border border-white/10 rounded-3xl p-4 sm:p-5 shadow-xl">
+        <div className="flex items-center justify-between gap-2 mb-3">
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-mono font-bold uppercase text-neutral-400 tracking-wider">
+              ATRIBUTOS DEL ATLETA
+            </span>
+            <span className="text-[10px] font-mono font-black px-2.5 py-0.5 rounded-full bg-cyan-500/15 text-cyan-400 border border-cyan-500/30">
+              MEDIA {attrBreakdown.overall} OVR
+            </span>
+            <span className="text-[10px] font-semibold text-neutral-300 hidden sm:inline">
+              {attrBreakdown.archetype.icon} {attrBreakdown.archetype.name}
+            </span>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setSelectedAttrKey('strength')}
+            className="text-[10px] font-mono font-bold text-cyan-400 hover:text-cyan-300 flex items-center gap-0.5 cursor-pointer"
+          >
+            <span>Ver Ficha y Bonus</span>
+            <ChevronRight className="w-3 h-3" />
+          </button>
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+          {/* PWR */}
+          <button
+            type="button"
+            onClick={() => setSelectedAttrKey('strength')}
+            className="bg-white/5 hover:bg-white/[0.08] p-3 rounded-2xl border border-white/5 hover:border-red-500/30 transition-all text-left cursor-pointer"
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-mono font-bold text-neutral-400">FUERZA</span>
+              <span className="text-[10px] font-mono font-black text-red-400 px-1.5 py-0.2 rounded bg-red-500/10">PWR</span>
+            </div>
+            <p className="text-xl font-mono font-black text-white mt-1">
+              {attrBreakdown.details.strength.score} <span className="text-[10px] text-neutral-500 font-normal">/99</span>
+            </p>
+            <div className="w-full h-1 bg-neutral-900 rounded-full overflow-hidden mt-1.5">
+              <div className="h-full bg-red-500 rounded-full" style={{ width: `${(attrBreakdown.details.strength.score / 99) * 100}%` }} />
+            </div>
+            <p className="text-[9px] font-mono text-red-400 mt-1">+{attrBreakdown.details.strength.bonusPct}% XP</p>
+          </button>
+
+          {/* END */}
+          <button
+            type="button"
+            onClick={() => setSelectedAttrKey('endurance')}
+            className="bg-white/5 hover:bg-white/[0.08] p-3 rounded-2xl border border-white/5 hover:border-cyan-500/30 transition-all text-left cursor-pointer"
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-mono font-bold text-neutral-400">RESISTENCIA</span>
+              <span className="text-[10px] font-mono font-black text-cyan-400 px-1.5 py-0.2 rounded bg-cyan-500/10">END</span>
+            </div>
+            <p className="text-xl font-mono font-black text-white mt-1">
+              {attrBreakdown.details.endurance.score} <span className="text-[10px] text-neutral-500 font-normal">/99</span>
+            </p>
+            <div className="w-full h-1 bg-neutral-900 rounded-full overflow-hidden mt-1.5">
+              <div className="h-full bg-cyan-400 rounded-full" style={{ width: `${(attrBreakdown.details.endurance.score / 99) * 100}%` }} />
+            </div>
+            <p className="text-[9px] font-mono text-cyan-400 mt-1">+{attrBreakdown.details.endurance.bonusPct}% XP</p>
+          </button>
+
+          {/* AGI */}
+          <button
+            type="button"
+            onClick={() => setSelectedAttrKey('agility')}
+            className="bg-white/5 hover:bg-white/[0.08] p-3 rounded-2xl border border-white/5 hover:border-amber-500/30 transition-all text-left cursor-pointer"
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-mono font-bold text-neutral-400">AGILIDAD</span>
+              <span className="text-[10px] font-mono font-black text-amber-400 px-1.5 py-0.2 rounded bg-amber-500/10">AGI</span>
+            </div>
+            <p className="text-xl font-mono font-black text-white mt-1">
+              {attrBreakdown.details.agility.score} <span className="text-[10px] text-neutral-500 font-normal">/99</span>
+            </p>
+            <div className="w-full h-1 bg-neutral-900 rounded-full overflow-hidden mt-1.5">
+              <div className="h-full bg-amber-400 rounded-full" style={{ width: `${(attrBreakdown.details.agility.score / 99) * 100}%` }} />
+            </div>
+            <p className="text-[9px] font-mono text-amber-400 mt-1">+{attrBreakdown.details.agility.bonusPct}% XP</p>
+          </button>
+
+          {/* DIS */}
+          <button
+            type="button"
+            onClick={() => setSelectedAttrKey('discipline')}
+            className="bg-white/5 hover:bg-white/[0.08] p-3 rounded-2xl border border-white/5 hover:border-emerald-500/30 transition-all text-left cursor-pointer"
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-mono font-bold text-neutral-400">DISCIPLINA</span>
+              <span className="text-[10px] font-mono font-black text-emerald-400 px-1.5 py-0.2 rounded bg-emerald-500/10">DIS</span>
+            </div>
+            <p className="text-xl font-mono font-black text-white mt-1">
+              {attrBreakdown.details.discipline.score} <span className="text-[10px] text-neutral-500 font-normal">/99</span>
+            </p>
+            <div className="w-full h-1 bg-neutral-900 rounded-full overflow-hidden mt-1.5">
+              <div className="h-full bg-emerald-400 rounded-full" style={{ width: `${(attrBreakdown.details.discipline.score / 99) * 100}%` }} />
+            </div>
+            <p className="text-[9px] font-mono text-emerald-400 mt-1">+{attrBreakdown.details.discipline.bonusPct}% XP</p>
+          </button>
+        </div>
+      </div>
+
+      {/* 📊 BENTO: TUS MÉTRICAS DE HOY (4 WIDGETS) */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        {/* Agua */}
+        <div 
+          onClick={() => onNavigateTab('nutrition')}
+          className="bg-[#141417] border border-white/10 hover:border-blue-500/40 rounded-2xl p-3.5 flex items-center justify-between shadow-lg cursor-pointer transition-all hover:scale-[1.02]"
+        >
+          <div>
+            <p className="text-[10px] font-mono uppercase text-neutral-400 font-bold">Agua Hoy</p>
+            <p className="text-lg font-mono font-black text-white mt-0.5">
+              {todayWaterLiters} <span className="text-xs text-blue-400 font-normal">L</span>
+            </p>
+          </div>
+          <div className="w-9 h-9 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-400 flex items-center justify-center shrink-0">
+            <Droplet className="w-4 h-4 fill-blue-400/20" />
+          </div>
+        </div>
+
+        {/* Calorías */}
+        <div className="bg-[#141417] border border-white/10 hover:border-orange-500/40 rounded-2xl p-3.5 flex items-center justify-between shadow-lg transition-all">
+          <div>
+            <p className="text-[10px] font-mono uppercase text-neutral-400 font-bold">Calorías Quemadas</p>
+            <p className="text-lg font-mono font-black text-white mt-0.5">
+              {todayCalories.toLocaleString()} <span className="text-xs text-orange-400 font-normal">Kcal</span>
+            </p>
+          </div>
+          <div className="w-9 h-9 rounded-xl bg-orange-500/10 border border-orange-500/20 text-orange-400 flex items-center justify-center shrink-0">
+            <Flame className="w-4 h-4 fill-orange-400/20" />
+          </div>
+        </div>
+
+        {/* Pulso / Hierro */}
+        <div className="bg-[#141417] border border-white/10 hover:border-purple-500/40 rounded-2xl p-3.5 flex items-center justify-between shadow-lg transition-all">
+          <div>
+            <p className="text-[10px] font-mono uppercase text-neutral-400 font-bold">
+              {smartwatch?.liveHeartRate && smartwatch.liveHeartRate > 0 ? 'Frecuencia' : (todayDistanceKm > 0 ? 'Distancia' : 'Hierro')}
+            </p>
+            <p className="text-lg font-mono font-black text-white mt-0.5">
+              {smartwatch?.liveHeartRate && smartwatch.liveHeartRate > 0
+                ? `${smartwatch.liveHeartRate} bpm`
+                : (todayDistanceKm > 0 ? `${todayDistanceKm.toFixed(1)} km` : `${todayVolumeKg.toLocaleString()} kg`)}
+            </p>
+          </div>
+          <div className="w-9 h-9 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-400 flex items-center justify-center shrink-0">
+            {smartwatch?.liveHeartRate && smartwatch.liveHeartRate > 0 ? (
+              <Heart className="w-4 h-4 text-rose-400 fill-rose-400/20 animate-pulse" />
+            ) : (
+              <Dumbbell className="w-4 h-4 text-purple-400" />
+            )}
+          </div>
+        </div>
+
+        {/* Tiempo Activo */}
+        <div className="bg-[#141417] border border-white/10 hover:border-amber-500/40 rounded-2xl p-3.5 flex items-center justify-between shadow-lg transition-all">
+          <div>
+            <p className="text-[10px] font-mono uppercase text-neutral-400 font-bold">Tiempo Activo</p>
+            <p className="text-lg font-mono font-black text-amber-400 mt-0.5">
+              {todayMinutes} <span className="text-xs text-neutral-300 font-normal">Min ({workoutsToday.length} ses.)</span>
+            </p>
+          </div>
+          <div className="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center shrink-0">
+            <Clock className="w-4 h-4 text-amber-400" />
+          </div>
+        </div>
+      </div>
+
+      {/* ⚔️ BENTO: RETO SEMANAL & CLASIFICACIÓN (2 WIDGETS) */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+        {/* Reto Semanal Widget */}
+        {activeChallenge && (
+          <div 
+            onClick={() => onNavigateTab('challenges')}
+            className={`bg-[#141417] border border-white/10 hover:border-cyan-500/40 rounded-3xl p-5 shadow-xl relative overflow-hidden group cursor-pointer transition-all hover:scale-[1.01] ${activeChallenge ? 'lg:col-span-6' : 'lg:col-span-12'}`}
+          >
+            <div className="flex items-center justify-between gap-2 mb-2">
+              <span className="text-[10px] font-mono font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-cyan-500/15 border border-cyan-500/30 text-cyan-400">
+                ⚔️ RETO ({weeklyRotationData.rotationMeta.badge})
+              </span>
+              <span className="text-xs font-mono font-bold text-cyan-300 bg-cyan-950/60 border border-cyan-500/30 px-2.5 py-0.5 rounded-full">
+                +{activeChallenge.rewardXp} XP
+              </span>
+            </div>
+
+            <h3 className="font-display font-black text-base sm:text-lg text-white uppercase tracking-tight">
+              {activeChallenge.title}
+            </h3>
+
+            {/* Progress bar */}
+            <div className="my-2 bg-black/40 rounded-xl p-2.5 border border-white/5">
+              <div className="flex justify-between text-[11px] font-mono font-bold text-white mb-1">
+                <span>{activeChallenge.userCurrent.toLocaleString()} / {activeChallenge.goal.toLocaleString()} {activeChallenge.unit}</span>
+                <span>{Math.min(100, Math.round((activeChallenge.userCurrent / Math.max(1, activeChallenge.goal)) * 100))}%</span>
+              </div>
+              <div className="h-2 bg-neutral-900 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-gradient-to-r from-cyan-400 to-blue-500 rounded-full transition-all duration-700"
+                  style={{ width: `${Math.min(100, Math.round((activeChallenge.userCurrent / Math.max(1, activeChallenge.goal)) * 100))}%` }}
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Clasificación Liga Widget */}
+        <div className={`bg-[#141417] border border-white/10 rounded-3xl p-5 shadow-xl flex flex-col justify-between ${activeChallenge ? 'lg:col-span-6' : 'lg:col-span-12'}`}>
+          <div className="flex items-center justify-between mb-2.5">
+            <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-neutral-400">
+              LIGA {user.league}
+            </span>
+            <button 
+              onClick={() => onNavigateTab('leaderboard')}
+              className="text-[10px] font-mono font-bold text-cyan-400 hover:text-cyan-300 flex items-center gap-0.5 cursor-pointer"
+            >
+              <span>Ver Liga</span>
+              <ChevronRight className="w-3 h-3" />
+            </button>
+          </div>
+
+          <div className="space-y-2">
+            {topTwoRivals.slice(0, 1).map((rival) => (
+              <div key={rival.name} className="flex items-center gap-2.5 bg-white/5 p-2 rounded-xl">
+                <span className="text-xs font-mono font-bold text-neutral-400 w-4">0{rival.rank}</span>
+                <img src={rival.avatar} alt={rival.name} className="w-7 h-7 rounded-lg object-cover" />
+                <span className="text-xs font-bold text-white truncate flex-1">{rival.name}</span>
+                <span className="text-[10px] font-mono text-emerald-400 font-bold">{rival.xpEarned.toLocaleString()} XP</span>
+              </div>
+            ))}
+
+            {currentUserEntry && (
+              <div className="flex items-center gap-2.5 bg-cyan-500/10 border border-cyan-500/30 p-2 rounded-xl">
+                <span className="text-xs font-mono font-bold text-cyan-400 w-4">#{currentUserEntry.rank}</span>
+                <div className="w-7 h-7 rounded-lg bg-cyan-500 text-neutral-950 font-bold text-[10px] flex items-center justify-center">TÚ</div>
+                <span className="text-xs font-bold text-white truncate flex-1">{user.name}</span>
+                <span className="text-[10px] font-mono text-cyan-400 font-bold">{currentUserEntry.xpEarned.toLocaleString()} XP</span>
               </div>
             )}
           </div>
-
-          {/* Join Sprint / Weekly Rotating Challenge Card matching Immersive UI Design */}
-          {activeChallenge && (
-            <div 
-              onClick={() => onNavigateTab('challenges')}
-              className="bg-gradient-to-br from-cyan-600 to-blue-700 rounded-3xl p-6 relative overflow-hidden group cursor-pointer shadow-2xl hover:scale-[1.02] transition-transform"
-            >
-              <div className="relative z-10">
-                <div className="flex items-center justify-between gap-2 mb-2">
-                  <span className="text-[10px] font-mono uppercase font-bold px-2.5 py-0.5 rounded-full bg-white/20 text-white tracking-widest inline-block">
-                    ⚔️ RETO SEMANAL ({weeklyRotationData.rotationMeta.badge})
-                  </span>
-                  {activeChallenge.userCurrent >= activeChallenge.goal &&
-                    !claimedChallengeIds.includes(activeChallenge.claimId) && (
-                      <span className="text-[10px] font-mono font-black uppercase px-2 py-0.5 rounded-full bg-yellow-400 text-neutral-950 animate-bounce">
-                        ¡LISTO PARA RECLAMAR!
-                      </span>
-                    )}
-                </div>
-                <h3 className="text-lg sm:text-xl font-black italic tracking-tighter uppercase mb-1 text-white">
-                  {activeChallenge.title}
-                </h3>
-                <p className="text-xs text-cyan-100 leading-tight mb-3 max-w-[260px]">
-                  {activeChallenge.description}
-                </p>
-
-                {/* Live Weekly Challenge Progress Bar */}
-                <div className="mb-3.5 bg-black/25 rounded-2xl p-2.5 border border-white/15">
-                  <div className="flex justify-between text-[11px] font-mono font-bold text-white mb-1">
-                    <span>
-                      {activeChallenge.userCurrent.toLocaleString()} / {activeChallenge.goal.toLocaleString()}{' '}
-                      {activeChallenge.unit}
-                    </span>
-                    <span>
-                      {Math.min(100, Math.round((activeChallenge.userCurrent / Math.max(1, activeChallenge.goal)) * 100))}%
-                    </span>
-                  </div>
-                  <div className="h-2 bg-black/40 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-white rounded-full transition-all duration-700"
-                      style={{
-                        width: `${Math.min(
-                          100,
-                          Math.round((activeChallenge.userCurrent / Math.max(1, activeChallenge.goal)) * 100)
-                        )}%`,
-                      }}
-                    />
-                  </div>
-                </div>
-                
-                <div className="flex items-center justify-between">
-                  <div className="flex -space-x-2">
-                    <div className="w-7 h-7 rounded-full border-2 border-cyan-600 bg-neutral-300"></div>
-                    <div className="w-7 h-7 rounded-full border-2 border-cyan-600 bg-neutral-400"></div>
-                    <div className="w-7 h-7 rounded-full border-2 border-cyan-600 bg-neutral-500"></div>
-                    <div className="px-2 h-7 rounded-full border-2 border-cyan-600 bg-black/40 text-white flex items-center justify-center text-[9px] font-mono font-bold">
-                      +{activeChallenge.participantsCount || 184}
-                    </div>
-                  </div>
-                  <span className="text-xs font-mono font-bold text-white bg-black/30 px-3 py-1 rounded-xl border border-white/10">
-                    +{activeChallenge.rewardXp} XP
-                  </span>
-                </div>
-              </div>
-              
-              {/* Background decorative SVG icon */}
-              <div className="absolute -right-4 -bottom-4 opacity-15 group-hover:scale-110 transition-transform">
-                <Target className="w-32 h-32 text-white" />
-              </div>
-            </div>
-          )}
         </div>
       </div>
 
