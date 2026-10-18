@@ -904,223 +904,175 @@ export const WorkoutCatalogView: React.FC<WorkoutCatalogViewProps> = ({
             </div>
           </div>
 
-          {/* Routine Cards Grid (EvoMare Style) */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          {/* Routine Cards Grid (Compact Horizontal Layout - Option 1) */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
             {filteredRoutines.map((routine) => {
               const isExpanded = expandedRoutineId === routine.id;
-              
-              // Routine thumbnail image with unique photography per routine
               const routineImage = getRoutinePhoto(routine);
-
-              // Intensity percentage ring
               const intensityPct = routine.difficulty === 'Advanced' ? 85 : routine.difficulty === 'Intermediate' ? 65 : 45;
               const intensityLabel = routine.difficulty === 'Advanced' ? 'Alta' : routine.difficulty === 'Intermediate' ? 'Media' : 'Básica';
 
               return (
                 <div
                   key={routine.id}
-                  className="bg-[#141417] border border-white/10 hover:border-cyan-500/40 rounded-3xl overflow-hidden transition-all duration-300 flex flex-col justify-between shadow-2xl group relative"
+                  className="bg-[#141417] border border-white/10 hover:border-cyan-500/40 rounded-2xl overflow-hidden transition-all duration-200 shadow-xl group flex flex-col"
                 >
-                  {/* Photographic Header Banner */}
-                  <div className="relative h-44 sm:h-48 w-full overflow-hidden">
-                    <img
-                      src={routineImage}
-                      alt={routine.title}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
-                      loading="lazy"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-[#141417] via-[#141417]/40 to-black/60" />
+                  {/* Horizontal Compact Main Row */}
+                  <div className="p-3 sm:p-3.5 flex items-center gap-3 sm:gap-3.5">
+                    {/* Left: Thumbnail (76x76) with duration & category pill */}
+                    <div className="relative w-20 h-20 sm:w-22 sm:h-22 rounded-xl overflow-hidden shrink-0 border border-white/10 shadow-md">
+                      <img
+                        src={routineImage}
+                        alt={routine.title}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        loading="lazy"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-transparent" />
+                      <span className="absolute bottom-1 left-1 right-1 text-center text-[9px] font-mono font-black uppercase px-1 py-0.5 rounded bg-black/80 text-cyan-400 backdrop-blur-sm truncate">
+                        {routine.durationMinutes}m • {routine.category}
+                      </span>
+                    </div>
 
-                    {/* Top Overlays: Category & Custom Badges + Actions */}
-                    <div className="absolute top-3 left-3 right-3 flex items-center justify-between gap-2 z-10">
+                    {/* Center: Info Column */}
+                    <div className="flex-1 min-w-0 space-y-1">
+                      {/* Top badges: Difficulty, Custom, XP */}
                       <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className="text-[10px] font-mono font-black uppercase px-2.5 py-0.5 rounded-full bg-cyan-500/90 text-neutral-950 backdrop-blur-md">
-                          {routine.category}
-                        </span>
-                        <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-black/60 text-white backdrop-blur-md border border-white/15">
+                        <span className="text-[9px] font-mono font-bold px-2 py-0.5 rounded-full bg-white/5 text-neutral-300 border border-white/10">
                           {routine.difficulty}
                         </span>
                         {routine.isCustom && (
-                          <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-purple-500/80 text-white backdrop-blur-md">
+                          <span className="text-[9px] font-mono font-black px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30">
                             CUSTOM
                           </span>
                         )}
-                      </div>
-
-                      <div className="flex items-center gap-1.5">
-                        {routine.isCustom && (
-                          <>
-                            <button
-                              type="button"
-                              onClick={() => handleOpenEditRoutine(routine)}
-                              className="p-1.5 rounded-xl bg-black/60 backdrop-blur-md hover:bg-cyan-500/20 text-neutral-300 hover:text-cyan-400 border border-white/15 transition-all cursor-pointer"
-                              title="Editar rutina"
-                            >
-                              <Edit2 className="w-3.5 h-3.5" />
-                            </button>
-                            {onDeleteRoutine && (
-                              confirmDeleteRoutineId === routine.id ? (
-                                <div className="flex items-center gap-1">
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      onDeleteRoutine(routine.id);
-                                      setConfirmDeleteRoutineId(null);
-                                    }}
-                                    className="px-2 py-1 rounded-xl bg-red-500 text-neutral-950 font-mono font-black text-[10px] hover:bg-red-400 transition-colors cursor-pointer"
-                                  >
-                                    Borrar
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => setConfirmDeleteRoutineId(null)}
-                                    className="p-1 rounded-xl bg-black/60 text-neutral-300 hover:text-white cursor-pointer"
-                                  >
-                                    <X className="w-3 h-3" />
-                                  </button>
-                                </div>
-                              ) : (
-                                <button
-                                  type="button"
-                                  onClick={() => setConfirmDeleteRoutineId(routine.id)}
-                                  className="p-1.5 rounded-xl bg-black/60 backdrop-blur-md hover:bg-red-500/20 text-neutral-300 hover:text-red-400 border border-white/15 transition-all cursor-pointer"
-                                  title="Eliminar rutina"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </button>
-                              )
-                            )}
-                          </>
-                        )}
-                        <span className="text-xs font-mono font-black text-cyan-300 bg-black/70 backdrop-blur-md px-2.5 py-0.5 rounded-xl border border-cyan-500/30">
+                        <span className="text-[10px] font-mono font-black text-cyan-400">
                           +{routine.xpReward} XP
                         </span>
                       </div>
-                    </div>
 
-                    {/* Bottom overlay pills on banner: Time & Calories */}
-                    <div className="absolute bottom-2.5 left-3 right-3 flex items-center justify-between text-xs font-mono text-white z-10">
-                      <div className="flex items-center gap-2">
-                        <span className="px-2.5 py-1 rounded-full bg-black/70 backdrop-blur-md border border-white/10 flex items-center gap-1 text-[11px]">
-                          <Clock className="w-3 h-3 text-cyan-400" />
-                          {routine.durationMinutes} Min
-                        </span>
-                        <span className="px-2.5 py-1 rounded-full bg-black/70 backdrop-blur-md border border-white/10 flex items-center gap-1 text-[11px] text-orange-300">
-                          <Flame className="w-3 h-3 text-orange-400" />
-                          ~{routine.estimatedCalories} Kcal
-                        </span>
-                      </div>
-                      <span className="text-[11px] font-mono text-neutral-300">
-                        {routine.exercises.length} Ejercicios
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Body Content */}
-                  <div className="p-4 sm:p-5 flex-1 flex flex-col justify-between">
-                    <div>
-                      {/* Title */}
-                      <h3 className="font-display font-black text-lg sm:text-xl text-white group-hover:text-cyan-400 transition-colors uppercase tracking-tight">
+                      {/* Routine Title */}
+                      <h3 className="font-display font-black text-sm sm:text-base text-white group-hover:text-cyan-400 transition-colors uppercase tracking-tight truncate">
                         {routine.title}
                       </h3>
 
-                      {/* Target muscle chips */}
-                      <div className="flex flex-wrap gap-1.5 mt-3">
-                        {routine.targetMuscles.map((muscle) => (
-                          <span
-                            key={muscle}
-                            className="text-[10px] font-mono font-medium px-2.5 py-0.5 rounded-full bg-white/5 text-neutral-300 border border-white/10"
-                          >
-                            {muscle}
-                          </span>
-                        ))}
-                      </div>
-
-                      {/* Exercises preview dropdown */}
-                      <div className="mt-4 pt-3 border-t border-white/5">
-                        <button
-                          onClick={() => setExpandedRoutineId(isExpanded ? null : routine.id)}
-                          className="w-full flex items-center justify-between text-xs font-mono font-bold text-neutral-300 hover:text-cyan-400 transition-colors"
-                        >
-                          <span>{routine.exercises.length} Ejercicios detallados</span>
-                          {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-                        </button>
-
-                        {isExpanded && (
-                          <div className="mt-3 space-y-2 animate-in fade-in">
-                            {routine.exercises.map((ex, exIdx) => (
-                              <div
-                                key={ex.id}
-                                className="p-2.5 bg-white/5 rounded-xl border border-white/5 text-xs flex items-center justify-between"
-                              >
-                                <div className="flex items-center gap-2">
-                                  <span className="w-5 h-5 rounded bg-cyan-500/20 text-cyan-400 font-mono font-bold text-[10px] flex items-center justify-center">
-                                    {exIdx + 1}
-                                  </span>
-                                  <span className="font-medium text-white">{ex.name}</span>
-                                </div>
-                                <span className="text-neutral-400 font-mono text-[10px]">
-                                  {ex.sets.length} series • {ex.restSeconds}s rest
-                                </span>
-                              </div>
-                            ))}
-                          </div>
+                      {/* Quick Metrics Strip & Target Muscles */}
+                      <div className="flex items-center gap-2 text-[11px] font-mono text-neutral-400 truncate">
+                        <span className="flex items-center gap-1 text-orange-400 shrink-0">
+                          <Flame className="w-3 h-3" />
+                          ~{routine.estimatedCalories} kcal
+                        </span>
+                        <span>•</span>
+                        <span className="shrink-0">{routine.exercises.length} ejer.</span>
+                        {routine.targetMuscles.length > 0 && (
+                          <>
+                            <span className="hidden sm:inline">•</span>
+                            <span className="hidden sm:inline text-neutral-400 truncate">
+                              {routine.targetMuscles.slice(0, 2).join(', ')}
+                            </span>
+                          </>
                         )}
                       </div>
                     </div>
 
-                    {/* Bottom Action Footer with EvoMare Intensity Ring and Start Button */}
-                    <div className="mt-4 pt-3.5 border-t border-white/10 flex items-center justify-between gap-3">
-                      {/* EvoMare Style Circular Intensity Ring */}
-                      <div className="flex items-center gap-2.5">
-                        <div className="relative w-9 h-9 flex items-center justify-center shrink-0">
-                          <svg className="w-9 h-9 -rotate-90">
-                            <circle
-                              cx="18"
-                              cy="18"
-                              r="13"
-                              stroke="currentColor"
-                              strokeWidth="3"
-                              className="text-white/10"
-                              fill="transparent"
-                            />
-                            <circle
-                              cx="18"
-                              cy="18"
-                              r="13"
-                              stroke="currentColor"
-                              strokeWidth="3"
-                              strokeDasharray={2 * Math.PI * 13}
-                              strokeDashoffset={2 * Math.PI * 13 * (1 - intensityPct / 100)}
-                              strokeLinecap="round"
-                              className="text-cyan-400"
-                              fill="transparent"
-                            />
-                          </svg>
-                          <span className="absolute text-[9px] font-mono font-black text-white">
-                            {intensityPct}%
-                          </span>
+                    {/* Right: Actions & Start Button */}
+                    <div className="flex flex-col sm:flex-row items-end sm:items-center gap-2 shrink-0">
+                      {routine.isCustom && (
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => handleOpenEditRoutine(routine)}
+                            className="p-1.5 rounded-xl bg-white/5 hover:bg-cyan-500/20 text-neutral-400 hover:text-cyan-400 border border-white/10 transition-colors cursor-pointer"
+                            title="Editar rutina"
+                          >
+                            <Edit2 className="w-3.5 h-3.5" />
+                          </button>
+                          {onDeleteRoutine && (
+                            confirmDeleteRoutineId === routine.id ? (
+                              <div className="flex items-center gap-1">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    onDeleteRoutine(routine.id);
+                                    setConfirmDeleteRoutineId(null);
+                                  }}
+                                  className="px-2 py-1 rounded-xl bg-red-500 text-neutral-950 font-mono font-black text-[10px] hover:bg-red-400 transition-colors cursor-pointer"
+                                >
+                                  Borrar
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setConfirmDeleteRoutineId(null)}
+                                  className="p-1 rounded-xl bg-black/60 text-neutral-300 hover:text-white cursor-pointer"
+                                >
+                                  <X className="w-3 h-3" />
+                                </button>
+                              </div>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => setConfirmDeleteRoutineId(routine.id)}
+                                className="p-1.5 rounded-xl bg-white/5 hover:bg-red-500/20 text-neutral-400 hover:text-red-400 border border-white/10 transition-colors cursor-pointer"
+                                title="Eliminar rutina"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            )
+                          )}
                         </div>
-                        <div className="text-[10px] font-mono leading-tight">
-                          <p className="text-neutral-400 uppercase font-semibold">Intensidad</p>
-                          <p className="text-cyan-400 font-bold">{intensityLabel}</p>
-                        </div>
-                      </div>
+                      )}
 
-                      {/* Cyan Pill Start Button */}
+                      {/* Expand / Details Toggle Button */}
+                      <button
+                        type="button"
+                        onClick={() => setExpandedRoutineId(isExpanded ? null : routine.id)}
+                        className="p-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-neutral-400 hover:text-white transition-colors cursor-pointer"
+                        title={isExpanded ? "Ocultar ejercicios" : "Ver lista de ejercicios"}
+                      >
+                        {isExpanded ? <ChevronDown className="w-4 h-4 text-cyan-400" /> : <ChevronRight className="w-4 h-4" />}
+                      </button>
+
+                      {/* Start Button */}
                       <button
                         id={`btn-start-routine-${routine.id}`}
                         onClick={() => {
                           sound.playAchievement();
                           onStartRoutine(routine);
                         }}
-                        className="py-2.5 px-4 rounded-full bg-cyan-400 hover:bg-cyan-300 active:bg-cyan-500 text-neutral-950 font-display font-black text-xs uppercase tracking-wider shadow-[0_0_15px_rgba(6,182,212,0.35)] flex items-center gap-1.5 transition-all hover:scale-105 active:scale-95 cursor-pointer"
+                        className="py-2 px-3 sm:px-3.5 rounded-xl bg-cyan-400 hover:bg-cyan-300 active:bg-cyan-500 text-neutral-950 font-display font-black text-xs uppercase tracking-wider shadow-md shadow-cyan-500/20 flex items-center gap-1.5 transition-all hover:scale-105 active:scale-95 cursor-pointer shrink-0"
                       >
                         <Play className="w-3.5 h-3.5 fill-current" />
-                        <span>{t.startWorkout}</span>
+                        <span className="hidden sm:inline">Iniciar</span>
                       </button>
                     </div>
                   </div>
+
+                  {/* Collapsible Exercises List Drawer */}
+                  {isExpanded && (
+                    <div className="px-3 pb-3 sm:px-4 sm:pb-3.5 pt-2 border-t border-white/5 bg-black/30 space-y-1.5 animate-in fade-in">
+                      <div className="flex items-center justify-between text-[11px] font-mono text-neutral-400 pb-1">
+                        <span>Protocolo ({routine.exercises.length} ejercicios):</span>
+                        <span className="text-cyan-400 font-bold">{intensityLabel} Intensidad ({intensityPct}%)</span>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 max-h-48 overflow-y-auto pr-1">
+                        {routine.exercises.map((ex, exIdx) => (
+                          <div
+                            key={ex.id}
+                            className="p-2 bg-white/5 rounded-xl border border-white/5 text-xs flex items-center justify-between gap-2"
+                          >
+                            <div className="flex items-center gap-2 min-w-0 truncate">
+                              <span className="w-4 h-4 rounded bg-cyan-500/20 text-cyan-400 font-mono font-bold text-[9px] flex items-center justify-center shrink-0">
+                                {exIdx + 1}
+                              </span>
+                              <span className="font-medium text-white truncate text-[11px]">{ex.name}</span>
+                            </div>
+                            <span className="text-neutral-400 font-mono text-[9px] shrink-0">
+                              {ex.sets.length}s • {ex.restSeconds}s rest
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               );
             })}
