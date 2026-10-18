@@ -27,7 +27,7 @@ import {
   defaultPushReminders,
   defaultWorkoutHistory,
 } from './initialData';
-import { db, auth, deleteUser } from './firebase';
+import { db, auth, deleteUser, signOut } from './firebase';
 import { doc, getDoc, setDoc, deleteDoc, collection, getDocs, addDoc, query, orderBy } from 'firebase/firestore';
 
 const KEYS = {
@@ -1496,18 +1496,24 @@ export class FitStorage {
         const userDocRef = doc(db, 'users', currentUser.uid);
         await setDoc(userDocRef, {
           ...freshUser,
+          workoutHistory: [],
+          customRoutines: [],
           programProgress: {},
           activeSession: null,
           updatedAt: resetTimestamp,
           lastResetAt: resetTimestamp,
         });
 
-        // Clear history subcollection in cloud
-        const historyCol = collection(db, 'users', currentUser.uid, 'history');
-        const historySnap = await getDocs(historyCol);
-        for (const docSnap of historySnap.docs) {
-          await deleteDoc(doc(db, 'users', currentUser.uid, 'history', docSnap.id));
-        }
+        // Fast parallel cleanup of subcollections if existing
+        try {
+          const historyCol = collection(db, 'users', currentUser.uid, 'history');
+          const historySnap = await getDocs(historyCol);
+          await Promise.all(
+            historySnap.docs.map((docSnap) =>
+              deleteDoc(doc(db, 'users', currentUser.uid, 'history', docSnap.id)).catch(() => {})
+            )
+          );
+        } catch {}
       } catch (err) {
         console.warn('Cloud reset warning:', err);
       }
@@ -1517,8 +1523,8 @@ export class FitStorage {
   }
 
   public static async deleteUserAccountAndData(): Promise<boolean> {
+    const currentUser = auth.currentUser;
     try {
-      const currentUser = auth.currentUser;
       if (currentUser) {
         // 1. Delete Firestore user document
         try {
@@ -1527,15 +1533,27 @@ export class FitStorage {
         } catch (dbErr) {
           console.warn('Firestore doc deletion warning:', dbErr);
         }
-        // 2. Delete Firebase Auth account
-        await deleteUser(currentUser);
+        // 2. Attempt to delete Firebase Auth account if token is fresh
+        try {
+          await deleteUser(currentUser);
+        } catch (authErr: any) {
+          console.warn('Firebase deleteUser note (e.g. requires recent login):', authErr);
+        }
+        // 3. Always sign out cleanly
+        try {
+          await signOut(auth);
+        } catch {}
       }
-      // 3. Clear all Local Storage keys
-      localStorage.clear();
+      // 4. Clear all Local Storage keys and device session
+      try {
+        localStorage.clear();
+      } catch {}
       return true;
     } catch (err) {
-      console.error('Failed to fully delete account from auth:', err);
-      localStorage.clear();
+      console.error('Account deletion general fallback:', err);
+      try {
+        localStorage.clear();
+      } catch {}
       return false;
     }
   }

@@ -139,8 +139,19 @@ export const CloudAndSettingsView: React.FC<CloudAndSettingsViewProps> = ({
   const handleDeleteAccount = async () => {
     setIsDeletingAccount(true);
     sound.playWarning();
-    await FitStorage.deleteUserAccountAndData();
-    window.location.reload();
+    try {
+      await FitStorage.deleteUserAccountAndData();
+      if ('caches' in window) {
+        try {
+          const keys = await caches.keys();
+          await Promise.all(keys.map((k) => caches.delete(k)));
+        } catch {}
+      }
+    } finally {
+      setShowDeleteAccountModal(false);
+      setIsDeletingAccount(false);
+      window.location.reload();
+    }
   };
 
   // Sync now action
