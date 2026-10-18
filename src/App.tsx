@@ -111,28 +111,65 @@ export default function App() {
   const [levelUpModalOpen, setLevelUpModalOpen] = useState<boolean>(false);
   const [onboardingModalOpen, setOnboardingModalOpen] = useState<boolean>(false);
   const [celebrationLevel, setCelebrationLevel] = useState<number>(user.level || 1);
-  const prevLevelRef = useRef<number>(user.level || 1);
-  const isInitialAuthSyncRef = useRef<boolean>(true);
 
-  // Trigger Level Up Celebration when level increases (strictly during actual in-app progression)
+  // 1. Listen for real-time Level Up event triggered during active progression (XP earned)
   useEffect(() => {
-    if (authLoading) {
-      prevLevelRef.current = user.level || 1;
-      return;
-    }
-    if (isInitialAuthSyncRef.current) {
-      isInitialAuthSyncRef.current = false;
-      prevLevelRef.current = user.level || 1;
-      return;
-    }
-    if (user.level && user.level > prevLevelRef.current) {
-      setCelebrationLevel(user.level);
+    const handleLevelUp = (e: Event) => {
+      const customEvt = e as CustomEvent<{ newLevel: number }>;
+      const lvl = customEvt.detail?.newLevel;
+      if (lvl) {
+        setCelebrationLevel(lvl);
+        setLevelUpModalOpen(true);
+        localStorage.setItem('fitquest_last_celebrated_level', String(lvl));
+        try {
+          sound.playLevelUp();
+        } catch {}
+      }
+    };
+
+    window.addEventListener('fitquest_level_up', handleLevelUp);
+    return () => {
+      window.removeEventListener('fitquest_level_up', handleLevelUp);
+    };
+  }, []);
+
+  // 2. Persistent Level Up Celebration Guard (verifies against persisted lastCelebratedLevel)
+  useEffect(() => {
+    if (authLoading) return;
+
+    const currentLevel = user.level || 1;
+    const storedCelebrated = Number(localStorage.getItem('fitquest_last_celebrated_level') || 0);
+    const lastCelebrated = Math.max(user.lastCelebratedLevel || 0, storedCelebrated);
+
+    if (currentLevel > 1 && lastCelebrated > 0 && currentLevel > lastCelebrated) {
+      setCelebrationLevel(currentLevel);
       setLevelUpModalOpen(true);
+      localStorage.setItem('fitquest_last_celebrated_level', String(currentLevel));
       try {
         sound.playLevelUp();
       } catch {}
+      setUser((prev) => ({
+        ...prev,
+        lastCelebratedLevel: currentLevel,
+      }));
+    } else if (lastCelebrated === 0) {
+      // Catch-up check: if user advanced past Level 8 right before this update, celebrate it!
+      if (currentLevel > 8) {
+        setCelebrationLevel(currentLevel);
+        setLevelUpModalOpen(true);
+        localStorage.setItem('fitquest_last_celebrated_level', String(currentLevel));
+        try {
+          sound.playLevelUp();
+        } catch {}
+        setUser((prev) => ({
+          ...prev,
+          lastCelebratedLevel: currentLevel,
+        }));
+      } else {
+        // Otherwise initialize baseline so login never causes a false celebration
+        localStorage.setItem('fitquest_last_celebrated_level', String(currentLevel));
+      }
     }
-    prevLevelRef.current = user.level || 1;
   }, [user.level, authLoading]);
 
   const handleEquipTitle = async (newTitle: string) => {
@@ -260,8 +297,6 @@ export default function App() {
           cloudData.achievements || FitStorage.getAchievements(),
           (cloudData.routines || []).filter((r) => r.isCustom).length
         );
-        prevLevelRef.current = syncedUser.level || 1;
-        isInitialAuthSyncRef.current = true;
         setUser(syncedUser);
         setHistory(cloudData.history);
         setAchievements(evaluatedAch);
@@ -713,8 +748,6 @@ export default function App() {
   // Auth Success Callback
   const handleAuthSuccess = async (userId: string, name: string, email?: string) => {
     const cloudData = await FitStorage.loadUserFromCloud(userId, email, name);
-    prevLevelRef.current = cloudData.user.level || 1;
-    isInitialAuthSyncRef.current = true;
     setUser(cloudData.user);
     setHistory(cloudData.history);
     setAchievements(cloudData.achievements);
@@ -738,8 +771,6 @@ export default function App() {
     setIsGuestMode(false);
     // Switch to clean fresh user
     const guestUser = FitStorage.getUser();
-    prevLevelRef.current = 1;
-    isInitialAuthSyncRef.current = true;
     setUser(guestUser);
     setHistory(FitStorage.getHistory());
   };

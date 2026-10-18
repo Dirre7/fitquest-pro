@@ -93,6 +93,7 @@ export interface UserProfile {
   onboardingCompleted?: boolean;
   equippedFrame?: string; // ID of the equipped cosmetic avatar frame
   activeNutritionPlanId?: string; // ID of active nutrition plan (e.g. 'plan_recomp', 'plan_fat_loss')
+  lastCelebratedLevel?: number; // Highest level for which the celebration modal was shown
 }
 
 export interface NutritionPlanTargets {

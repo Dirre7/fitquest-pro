@@ -102,12 +102,14 @@ export class FitStorage {
       if (!data) return createFreshUser('guest_user', 'Atleta Nuevo');
       const parsed: UserProfile = JSON.parse(data);
       const prog = calculateLevelFromTotalXp(parsed.xp || 0);
+      const storedCelebrated = Number(localStorage.getItem('fitquest_last_celebrated_level') || 0);
       return {
         ...parsed,
         level: prog.level,
         xp: prog.xp,
         currentLevelXp: prog.currentLevelXp,
         nextLevelXp: prog.nextLevelXp,
+        lastCelebratedLevel: parsed.lastCelebratedLevel || storedCelebrated || prog.level,
       };
     } catch {
       return createFreshUser('guest_user', 'Atleta Nuevo');
@@ -709,7 +711,11 @@ export class FitStorage {
           xp: balancedProg.xp,
           currentLevelXp: balancedProg.currentLevelXp,
           nextLevelXp: balancedProg.nextLevelXp,
+          lastCelebratedLevel: userProfile.lastCelebratedLevel || balancedProg.level,
         };
+        try {
+          localStorage.setItem('fitquest_last_celebrated_level', String(userProfile.lastCelebratedLevel));
+        } catch {}
       }
 
       // Update local storage with combined sanitized history & user, and sync clean stats to cloud
@@ -1247,6 +1253,16 @@ export class FitStorage {
       if (milestone?.title && (!user.rankTitle || user.rankTitle === 'Recluta Inicial')) {
         rankTitle = milestone.title;
       }
+      try {
+        localStorage.setItem('fitquest_last_celebrated_level', String(prog.level));
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(
+            new CustomEvent('fitquest_level_up', {
+              detail: { newLevel: prog.level, previousLevel: user.level || 1 },
+            })
+          );
+        }
+      } catch {}
     }
 
     const updatedUser: UserProfile = {
@@ -1256,6 +1272,7 @@ export class FitStorage {
       currentLevelXp: prog.currentLevelXp,
       nextLevelXp: prog.nextLevelXp,
       rankTitle,
+      lastCelebratedLevel: didLevelUp ? prog.level : (user.lastCelebratedLevel || prog.level),
       streakShields: didLevelUp ? Math.min(2, (user.streakShields ?? 1) + 1) : (user.streakShields ?? 1),
       attributes: {
         strength: Math.min(100, user.attributes.strength + Math.floor(amount / 300)),
