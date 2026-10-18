@@ -595,15 +595,28 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
 
       {/* ATHLETE PROFILE MODAL CARD */}
       {selectedAthlete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-neutral-950/80 backdrop-blur-md animate-in fade-in duration-200">
-          <div className="bg-gradient-to-b from-neutral-900 to-neutral-950 border border-white/10 rounded-3xl max-w-lg w-full p-6 sm:p-7 shadow-2xl relative overflow-hidden space-y-6">
+        <div 
+          style={{ 
+            paddingTop: 'max(1rem, env(safe-area-inset-top, 0px))', 
+            paddingBottom: 'max(1rem, env(safe-area-inset-bottom, 0px))' 
+          }}
+          onClick={() => {
+            setSelectedAthlete(null);
+            setIsEditingBio(false);
+          }}
+          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-neutral-950/85 backdrop-blur-md animate-in fade-in duration-200 overflow-y-auto"
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            className="bg-gradient-to-b from-neutral-900 to-neutral-950 border border-white/10 rounded-3xl max-w-lg w-full shadow-2xl relative overflow-hidden flex flex-col max-h-[92vh] sm:max-h-[88vh]"
+          >
             
             {/* Background Glow */}
             <div className="absolute -right-12 -top-12 w-40 h-40 bg-cyan-500/10 blur-3xl pointer-events-none" />
             <div className="absolute -left-12 -bottom-12 w-40 h-40 bg-amber-500/10 blur-3xl pointer-events-none" />
 
-            {/* Header / Close button */}
-            <div className="flex items-center justify-between relative z-10">
+            {/* Sticky Header / Close button */}
+            <div className="flex items-center justify-between p-4 sm:p-5 border-b border-white/10 shrink-0 bg-neutral-900/95 backdrop-blur-md relative z-20">
               <span className="text-[10px] font-mono font-black uppercase px-2.5 py-1 rounded-xl bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 flex items-center gap-1.5">
                 <Shield className="w-3.5 h-3.5" /> Carnet de Atleta • Liga {selectedAthlete.league}
               </span>
@@ -612,11 +625,15 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
                   setSelectedAthlete(null);
                   setIsEditingBio(false);
                 }}
-                className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 text-neutral-400 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
+                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-neutral-300 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
+                title="Cerrar (o toca fuera)"
               >
-                <X className="w-4 h-4" />
+                <X className="w-4 h-4 stroke-[2.5]" />
               </button>
             </div>
+
+            {/* Scrollable Body Content */}
+            <div className="p-4 sm:p-6 space-y-5 overflow-y-auto flex-1 no-scrollbar relative z-10">
 
             {/* Main Avatar & Profile Info */}
             {(() => {
@@ -909,8 +926,20 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
               </div>
             )}
 
-            {/* Action Buttons */}
-            <div className="pt-2 border-t border-white/5 flex gap-3 relative z-10">
+            </div>
+
+            {/* Sticky Action Footer */}
+            <div className="p-4 sm:p-5 border-t border-white/10 bg-neutral-900/95 backdrop-blur-md flex gap-2.5 shrink-0 relative z-20">
+              <button
+                onClick={() => {
+                  setSelectedAthlete(null);
+                  setIsEditingBio(false);
+                }}
+                className="px-4 py-3 rounded-2xl text-xs font-mono font-bold bg-white/5 hover:bg-white/10 border border-white/10 text-neutral-300 hover:text-white transition-colors cursor-pointer shrink-0"
+              >
+                Cerrar
+              </button>
+
               {/* Cheer button */}
               <button
                 onClick={() => handleCheerAthlete(selectedAthlete)}
@@ -954,8 +983,18 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
 
       {/* SOCIAL CONNECTIONS MODAL (SIGUIENDO / SEGUIDORES) */}
       {connectionsModalType && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-neutral-950/80 backdrop-blur-md animate-in fade-in duration-200">
-          <div className="bg-gradient-to-b from-neutral-900 to-neutral-950 border border-white/10 rounded-3xl max-w-md w-full p-6 shadow-2xl relative space-y-4">
+        <div 
+          style={{ 
+            paddingTop: 'max(1rem, env(safe-area-inset-top, 0px))', 
+            paddingBottom: 'max(1rem, env(safe-area-inset-bottom, 0px))' 
+          }}
+          onClick={() => setConnectionsModalType(null)}
+          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-neutral-950/85 backdrop-blur-md animate-in fade-in duration-200 overflow-y-auto"
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            className="bg-gradient-to-b from-neutral-900 to-neutral-950 border border-white/10 rounded-3xl max-w-md w-full p-6 shadow-2xl relative space-y-4 max-h-[88vh] flex flex-col overflow-hidden"
+          >
             
             {/* Modal Header */}
             <div className="flex items-center justify-between border-b border-white/5 pb-3">
