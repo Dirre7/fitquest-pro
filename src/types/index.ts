@@ -139,6 +139,9 @@ export interface ExerciseSet {
   completed: boolean;
   rpe?: number; // Rate of Perceived Exertion (1-10)
   isWarmup?: boolean;
+  setType?: 'normal' | 'warmup' | 'dropset'; // 'WU' | 'WRK' | 'DS'
+  previousWeightKg?: number; // Previous session benchmark
+  previousReps?: number;
 }
 
 export interface Exercise {
