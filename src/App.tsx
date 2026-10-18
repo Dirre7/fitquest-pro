@@ -112,9 +112,19 @@ export default function App() {
   const [onboardingModalOpen, setOnboardingModalOpen] = useState<boolean>(false);
   const [celebrationLevel, setCelebrationLevel] = useState<number>(user.level || 1);
   const prevLevelRef = useRef<number>(user.level || 1);
+  const isInitialAuthSyncRef = useRef<boolean>(true);
 
-  // Trigger Level Up Celebration when level increases
+  // Trigger Level Up Celebration when level increases (strictly during actual in-app progression)
   useEffect(() => {
+    if (authLoading) {
+      prevLevelRef.current = user.level || 1;
+      return;
+    }
+    if (isInitialAuthSyncRef.current) {
+      isInitialAuthSyncRef.current = false;
+      prevLevelRef.current = user.level || 1;
+      return;
+    }
     if (user.level && user.level > prevLevelRef.current) {
       setCelebrationLevel(user.level);
       setLevelUpModalOpen(true);
@@ -123,7 +133,7 @@ export default function App() {
       } catch {}
     }
     prevLevelRef.current = user.level || 1;
-  }, [user.level]);
+  }, [user.level, authLoading]);
 
   const handleEquipTitle = async (newTitle: string) => {
     const updatedUser: UserProfile = {
@@ -250,6 +260,8 @@ export default function App() {
           cloudData.achievements || FitStorage.getAchievements(),
           (cloudData.routines || []).filter((r) => r.isCustom).length
         );
+        prevLevelRef.current = syncedUser.level || 1;
+        isInitialAuthSyncRef.current = true;
         setUser(syncedUser);
         setHistory(cloudData.history);
         setAchievements(evaluatedAch);
@@ -701,6 +713,8 @@ export default function App() {
   // Auth Success Callback
   const handleAuthSuccess = async (userId: string, name: string, email?: string) => {
     const cloudData = await FitStorage.loadUserFromCloud(userId, email, name);
+    prevLevelRef.current = cloudData.user.level || 1;
+    isInitialAuthSyncRef.current = true;
     setUser(cloudData.user);
     setHistory(cloudData.history);
     setAchievements(cloudData.achievements);
@@ -714,7 +728,6 @@ export default function App() {
       localStorage.removeItem('fitquest_saturday_weigh_ins');
       setOnboardingModalOpen(true);
     }
-    sound.playLevelUp();
   };
 
   // Sign out handler
@@ -725,6 +738,8 @@ export default function App() {
     setIsGuestMode(false);
     // Switch to clean fresh user
     const guestUser = FitStorage.getUser();
+    prevLevelRef.current = 1;
+    isInitialAuthSyncRef.current = true;
     setUser(guestUser);
     setHistory(FitStorage.getHistory());
   };
