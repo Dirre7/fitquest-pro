@@ -193,6 +193,7 @@ export interface WorkoutProgram {
   targetMuscles: string[];
   xpReward: number;
   days: ProgramDay[];
+  isCustom?: boolean;
 }
 
 export interface ActiveWorkoutState {

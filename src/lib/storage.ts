@@ -569,6 +569,19 @@ export class FitStorage {
       routinesList = [...defaultRoutines, ...Array.from(customRoutinesMap.values())];
       localStorage.setItem(KEYS.ROUTINES, JSON.stringify(routinesList));
 
+      // 3b. Merge Custom Programs from Cloud + Local
+      const customProgramsMap = new Map<string, WorkoutProgram>();
+      if (!isCloudResetActive) {
+        this.getPrograms().filter((p) => p.isCustom).forEach((p) => customProgramsMap.set(p.id, p));
+      }
+      if (Array.isArray(cloudData.customPrograms)) {
+        (cloudData.customPrograms as WorkoutProgram[]).forEach((p) => {
+          if (p && p.id) customProgramsMap.set(p.id, { ...p, isCustom: true });
+        });
+      }
+      const mergedCustomPrograms = Array.from(customProgramsMap.values());
+      localStorage.setItem('fitquest_custom_programs', JSON.stringify(mergedCustomPrograms));
+
       // 4. Merge Achievements State from Cloud + Local
       const localAch = isCloudResetActive ? createFreshAchievements() : this.getAchievements();
       const cloudAch: Achievement[] = Array.isArray(cloudData.achievementsState) ? cloudData.achievementsState : [];
@@ -667,7 +680,63 @@ export class FitStorage {
   }
 
   public static getPrograms(): WorkoutProgram[] {
-    return defaultPrograms;
+    try {
+      const data = localStorage.getItem('fitquest_custom_programs');
+      const custom: WorkoutProgram[] = data ? JSON.parse(data) : [];
+      return [...defaultPrograms, ...custom];
+    } catch {
+      return defaultPrograms;
+    }
+  }
+
+  public static saveCustomProgram(program: WorkoutProgram): WorkoutProgram[] {
+    try {
+      const allCustom = this.getPrograms().filter((p) => p.isCustom);
+      const existingIdx = allCustom.findIndex((p) => p.id === program.id);
+      if (existingIdx >= 0) {
+        allCustom[existingIdx] = program;
+      } else {
+        allCustom.push({ ...program, isCustom: true });
+      }
+      localStorage.setItem('fitquest_custom_programs', JSON.stringify(allCustom));
+
+      const uid = auth.currentUser?.uid;
+      if (uid) {
+        setDoc(
+          doc(db, 'users', uid),
+          sanitizeForFirestore({
+            customPrograms: allCustom,
+            updatedAt: new Date().toISOString(),
+          }),
+          { merge: true }
+        ).catch((err) => console.warn('Custom programs sync warning:', err));
+      }
+      return this.getPrograms();
+    } catch (e) {
+      console.error('Error saving custom program', e);
+      return this.getPrograms();
+    }
+  }
+
+  public static deleteCustomProgram(progId: string): WorkoutProgram[] {
+    try {
+      const allCustom = this.getPrograms().filter((p) => p.isCustom && p.id !== progId);
+      localStorage.setItem('fitquest_custom_programs', JSON.stringify(allCustom));
+      const uid = auth.currentUser?.uid;
+      if (uid) {
+        setDoc(
+          doc(db, 'users', uid),
+          sanitizeForFirestore({
+            customPrograms: allCustom,
+            updatedAt: new Date().toISOString(),
+          }),
+          { merge: true }
+        ).catch((err) => console.warn('Custom programs delete sync warning:', err));
+      }
+      return this.getPrograms();
+    } catch {
+      return this.getPrograms();
+    }
   }
 
   public static getProgramProgress(): { [progId: string]: number } {

@@ -57,7 +57,7 @@ export const WorkoutCatalogView: React.FC<WorkoutCatalogViewProps> = ({
   const [catalogTab, setCatalogTab] = useState<'routines' | 'programs'>('routines');
 
   // Program tracking state reactive to user profile and storage
-  const [programs] = useState<WorkoutProgram[]>(() => FitStorage.getPrograms());
+  const [programs, setPrograms] = useState<WorkoutProgram[]>(() => FitStorage.getPrograms());
   const [programProgress, setProgramProgress] = useState<{ [id: string]: number }>(() =>
     user?.programProgress || FitStorage.getProgramProgress() || {}
   );
@@ -70,11 +70,15 @@ export const WorkoutCatalogView: React.FC<WorkoutCatalogViewProps> = ({
   const [selectedDifficulty, setSelectedDifficulty] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [showCreateModal, setShowCreateModal] = useState<boolean>(false);
+  const [creationMode, setCreationMode] = useState<'routine' | 'program'>('routine');
   const [editingRoutineId, setEditingRoutineId] = useState<string | null>(null);
   const [confirmDeleteRoutineId, setConfirmDeleteRoutineId] = useState<string | null>(null);
+  const [confirmDeleteProgramId, setConfirmDeleteProgramId] = useState<string | null>(null);
   const [showExerciseSelector, setShowExerciseSelector] = useState<boolean>(false);
+  const [activeExerciseSelectorTargetDay, setActiveExerciseSelectorTargetDay] = useState<number | null>(null);
   const [expandedRoutineId, setExpandedRoutineId] = useState<string | null>(null);
   const [expandedProgramId, setExpandedProgramId] = useState<string | null>('prog_ppl_3day');
+  const [saveToastMessage, setSaveToastMessage] = useState<string | null>(null);
 
   // New / Edit Custom Routine Form State
   const [newTitle, setNewTitle] = useState<string>('');
@@ -97,7 +101,104 @@ export const WorkoutCatalogView: React.FC<WorkoutCatalogViewProps> = ({
     },
   ]);
 
-  const handleOpenCreateModal = () => {
+  // Multi-Day Program Builder State
+  const [programDaysPerWeek, setProgramDaysPerWeek] = useState<number>(3);
+  const [programDaysData, setProgramDaysData] = useState<ProgramDay[]>([
+    {
+      dayNumber: 1,
+      title: 'Día 1: Empuje (Pecho & Hombros)',
+      focus: 'Fuerza e hipertrofia del tren superior anterior',
+      routine: {
+        id: `rt_prog_day1_${Date.now()}`,
+        title: 'Día 1: Empuje',
+        description: 'Sesión de empuje',
+        category: 'Strength',
+        difficulty: 'Intermediate',
+        durationMinutes: 45,
+        estimatedCalories: 380,
+        xpReward: 300,
+        exercises: [
+          {
+            id: `ex_p1_1`,
+            name: 'Press de Banca Plano',
+            muscleGroup: 'Chest',
+            equipment: 'Barbell',
+            restSeconds: 90,
+            sets: [
+              { id: 's1', setNumber: 1, targetReps: 8, actualReps: 8, targetWeightKg: 60, actualWeightKg: 60, completed: false },
+              { id: 's2', setNumber: 2, targetReps: 8, actualReps: 8, targetWeightKg: 60, actualWeightKg: 60, completed: false },
+              { id: 's3', setNumber: 3, targetReps: 8, actualReps: 8, targetWeightKg: 60, actualWeightKg: 60, completed: false },
+            ],
+          },
+        ],
+        targetMuscles: ['Chest', 'Shoulders'],
+        tags: ['Custom', 'Strength'],
+      },
+    },
+    {
+      dayNumber: 2,
+      title: 'Día 2: Tirón (Espalda & Bíceps)',
+      focus: 'Amplitud dorsal y densidad de espalda',
+      routine: {
+        id: `rt_prog_day2_${Date.now()}`,
+        title: 'Día 2: Tirón',
+        description: 'Sesión de tirón',
+        category: 'Strength',
+        difficulty: 'Intermediate',
+        durationMinutes: 45,
+        estimatedCalories: 380,
+        xpReward: 300,
+        exercises: [
+          {
+            id: `ex_p2_1`,
+            name: 'Dominadas Pronas',
+            muscleGroup: 'Back',
+            equipment: 'Bodyweight',
+            restSeconds: 90,
+            sets: [
+              { id: 's1', setNumber: 1, targetReps: 8, actualReps: 8, targetWeightKg: 0, actualWeightKg: 0, completed: false },
+              { id: 's2', setNumber: 2, targetReps: 8, actualReps: 8, targetWeightKg: 0, actualWeightKg: 0, completed: false },
+            ],
+          },
+        ],
+        targetMuscles: ['Back', 'Arms'],
+        tags: ['Custom', 'Strength'],
+      },
+    },
+    {
+      dayNumber: 3,
+      title: 'Día 3: Pierna & Core',
+      focus: 'Fuerza de cuádriceps, glúteos e isquios',
+      routine: {
+        id: `rt_prog_day3_${Date.now()}`,
+        title: 'Día 3: Pierna',
+        description: 'Sesión de pierna',
+        category: 'Strength',
+        difficulty: 'Intermediate',
+        durationMinutes: 45,
+        estimatedCalories: 420,
+        xpReward: 300,
+        exercises: [
+          {
+            id: `ex_p3_1`,
+            name: 'Sentadilla Trasera con Barra',
+            muscleGroup: 'Legs',
+            equipment: 'Barbell',
+            restSeconds: 120,
+            sets: [
+              { id: 's1', setNumber: 1, targetReps: 8, actualReps: 8, targetWeightKg: 80, actualWeightKg: 80, completed: false },
+              { id: 's2', setNumber: 2, targetReps: 8, actualReps: 8, targetWeightKg: 80, actualWeightKg: 80, completed: false },
+            ],
+          },
+        ],
+        targetMuscles: ['Legs', 'Core'],
+        tags: ['Custom', 'Strength'],
+      },
+    },
+  ]);
+
+  const handleOpenCreateModal = (mode: 'routine' | 'program' = 'routine') => {
+    setCreationMode(mode);
     setEditingRoutineId(null);
     setNewTitle('');
     setNewDescription('');
@@ -122,6 +223,7 @@ export const WorkoutCatalogView: React.FC<WorkoutCatalogViewProps> = ({
   };
 
   const handleOpenEditRoutine = (routine: WorkoutRoutine) => {
+    setCreationMode('routine');
     setEditingRoutineId(routine.id);
     setNewTitle(routine.title);
     setNewDescription(routine.description);
@@ -132,8 +234,55 @@ export const WorkoutCatalogView: React.FC<WorkoutCatalogViewProps> = ({
     setShowCreateModal(true);
   };
 
+  // Adjust program days count dynamically
+  const handleChangeProgramDaysCount = (count: number) => {
+    const validCount = Math.max(2, Math.min(6, count));
+    setProgramDaysPerWeek(validCount);
+    setProgramDaysData((prev) => {
+      const current = [...prev];
+      if (current.length < validCount) {
+        for (let i = current.length + 1; i <= validCount; i++) {
+          current.push({
+            dayNumber: i,
+            title: `Día ${i}: Sesión Personalizada`,
+            focus: 'Enfoque de fuerza y desarrollo muscular',
+            routine: {
+              id: `rt_custom_prog_${Date.now()}_d${i}`,
+              title: `Día ${i}`,
+              description: `Sesión de día ${i}`,
+              category: newCategory,
+              difficulty: newDifficulty,
+              durationMinutes: 45,
+              estimatedCalories: 350,
+              xpReward: 300,
+              exercises: [
+                {
+                  id: `ex_cp_${i}_1`,
+                  name: 'Press de Banca Plano',
+                  muscleGroup: 'Chest',
+                  equipment: 'Barbell',
+                  restSeconds: 60,
+                  sets: [
+                    { id: 's1', setNumber: 1, targetReps: 10, actualReps: 10, targetWeightKg: 50, actualWeightKg: 50, completed: false },
+                    { id: 's2', setNumber: 2, targetReps: 10, actualReps: 10, targetWeightKg: 50, actualWeightKg: 50, completed: false },
+                  ],
+                },
+              ],
+              targetMuscles: ['Full Body'],
+              tags: ['Custom'],
+            },
+          });
+        }
+      } else if (current.length > validCount) {
+        return current.slice(0, validCount);
+      }
+      return current;
+    });
+  };
+
   const categories = [
     { id: 'all', label: t.allCategories },
+    { id: 'custom', label: '⭐ Mis Rutinas' },
     { id: 'Strength', label: t.strength },
     { id: 'Hypertrophy', label: t.hypertrophy },
     { id: 'HIIT', label: t.hiit },
@@ -143,7 +292,12 @@ export const WorkoutCatalogView: React.FC<WorkoutCatalogViewProps> = ({
   ];
 
   const filteredRoutines = routines.filter((r) => {
-    const matchesCat = selectedCategory === 'all' || r.category === selectedCategory;
+    const matchesCat =
+      selectedCategory === 'all'
+        ? true
+        : selectedCategory === 'custom'
+        ? Boolean(r.isCustom)
+        : r.category === selectedCategory;
     const matchesDiff = selectedDifficulty === 'all' || r.difficulty === selectedDifficulty;
     const matchesSearch =
       r.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -169,29 +323,84 @@ export const WorkoutCatalogView: React.FC<WorkoutCatalogViewProps> = ({
   };
 
   const handleSaveCustomRoutine = () => {
-    if (!newTitle.trim() || newExercises.length === 0) return;
+    if (!newTitle.trim()) return;
 
-    const routine: WorkoutRoutine = {
-      id: editingRoutineId || `rt_custom_${Date.now()}`,
-      title: newTitle.trim(),
-      description: newDescription.trim() || 'Rutina personalizada diseñada por el usuario.',
-      category: newCategory,
-      difficulty: newDifficulty,
-      durationMinutes: newDuration,
-      estimatedCalories: Math.round(newDuration * 8),
-      xpReward: Math.round(newDuration * 5.5),
-      exercises: newExercises,
-      targetMuscles: Array.from(new Set(newExercises.map((e) => e.muscleGroup))),
-      tags: ['Personalizada', newCategory],
-      isCustom: true,
-    };
+    if (creationMode === 'routine') {
+      if (newExercises.length === 0) return;
+      const routine: WorkoutRoutine = {
+        id: editingRoutineId || `rt_custom_${Date.now()}`,
+        title: newTitle.trim(),
+        description: newDescription.trim() || 'Rutina personalizada diseñada por el usuario.',
+        category: newCategory,
+        difficulty: newDifficulty,
+        durationMinutes: newDuration,
+        estimatedCalories: Math.round(newDuration * 8),
+        xpReward: Math.round(newDuration * 5.5),
+        exercises: newExercises,
+        targetMuscles: Array.from(new Set(newExercises.map((e) => e.muscleGroup))),
+        tags: ['Personalizada', newCategory],
+        isCustom: true,
+      };
 
-    onCreateRoutine(routine);
-    sound.playAchievement();
-    setShowCreateModal(false);
-    setEditingRoutineId(null);
-    setNewTitle('');
-    setNewDescription('');
+      onCreateRoutine(routine);
+      sound.playAchievement();
+      setShowCreateModal(false);
+      setEditingRoutineId(null);
+      setNewTitle('');
+      setNewDescription('');
+
+      // Auto-switch to routines tab and select 'custom' filter so user immediately sees their creation
+      setCatalogTab('routines');
+      setSelectedCategory('custom');
+      setSaveToastMessage(`¡Rutina "${routine.title}" guardada con éxito! (+120 XP)`);
+      setTimeout(() => setSaveToastMessage(null), 4000);
+    } else {
+      // Saving Multi-Day Program
+      const targetMusclesSet = new Set<string>();
+      programDaysData.forEach((d) => {
+        d.routine.exercises.forEach((ex) => targetMusclesSet.add(ex.muscleGroup));
+      });
+
+      const newProg: WorkoutProgram = {
+        id: `prog_custom_${Date.now()}`,
+        title: newTitle.trim(),
+        description: newDescription.trim() || `Plan personalizado de ${programDaysPerWeek} días a la semana.`,
+        daysPerWeek: programDaysPerWeek,
+        difficulty: newDifficulty,
+        category: (newCategory as any) || 'Strength',
+        targetMuscles: Array.from(targetMusclesSet),
+        xpReward: 300 + programDaysPerWeek * 100,
+        days: programDaysData.map((d) => ({
+          ...d,
+          routine: {
+            ...d.routine,
+            difficulty: newDifficulty,
+            category: newCategory,
+          },
+        })),
+        isCustom: true,
+      };
+
+      const updatedPrograms = FitStorage.saveCustomProgram(newProg);
+      setPrograms(updatedPrograms);
+      sound.playLevelUp();
+      setShowCreateModal(false);
+      setNewTitle('');
+      setNewDescription('');
+
+      // Auto-switch to programs tab and expand this newly created program
+      setCatalogTab('programs');
+      setExpandedProgramId(newProg.id);
+      setSaveToastMessage(`¡Plan Multidía "${newProg.title}" (${newProg.daysPerWeek} días) creado y activo!`);
+      setTimeout(() => setSaveToastMessage(null), 4500);
+    }
+  };
+
+  const handleDeleteCustomProgram = (progId: string) => {
+    const updated = FitStorage.deleteCustomProgram(progId);
+    setPrograms(updated);
+    setConfirmDeleteProgramId(null);
+    sound.playClick();
   };
 
   const handleStartProgramDay = (progId: string, day: ProgramDay) => {
@@ -215,8 +424,19 @@ export const WorkoutCatalogView: React.FC<WorkoutCatalogViewProps> = ({
   };
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-300">
+    <div className="space-y-6 animate-in fade-in duration-300 relative">
       
+      {/* Toast alert confirmation when a routine or program is saved */}
+      {saveToastMessage && (
+        <div className="fixed top-20 right-4 sm:right-6 z-50 bg-gradient-to-r from-cyan-400 via-cyan-300 to-blue-500 text-neutral-950 px-5 py-3 rounded-2xl shadow-[0_0_30px_rgba(6,182,212,0.6)] flex items-center gap-3 font-mono font-black text-xs animate-bounce border-2 border-white">
+          <Sparkles className="w-4 h-4 fill-current shrink-0" />
+          <span>{saveToastMessage}</span>
+          <button onClick={() => setSaveToastMessage(null)} className="ml-2 hover:opacity-70 cursor-pointer">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
       {/* Top Header & View Mode Switcher */}
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 pb-2 border-b border-white/5">
         <div>
@@ -229,7 +449,7 @@ export const WorkoutCatalogView: React.FC<WorkoutCatalogViewProps> = ({
         </div>
 
         {/* Tab switcher: Rutinas vs Programas */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <div className="bg-[#121214] border border-white/10 p-1 rounded-2xl flex items-center gap-1 shadow-lg">
             <button
               id="btn-tab-routines"
@@ -268,16 +488,15 @@ export const WorkoutCatalogView: React.FC<WorkoutCatalogViewProps> = ({
             </button>
           )}
 
-          {catalogTab === 'routines' && (
-            <button
-              id="btn-open-create-routine"
-              onClick={handleOpenCreateModal}
-              className="px-3.5 py-2 rounded-2xl bg-white/5 hover:bg-white/10 text-cyan-400 border border-cyan-500/30 font-mono font-bold text-xs shadow flex items-center gap-1.5 transition-all shrink-0 cursor-pointer"
-            >
-              <Plus className="w-3.5 h-3.5 stroke-[3]" />
-              <span className="hidden sm:inline">Nueva Rutina</span>
-            </button>
-          )}
+          {/* New Custom Creator Button with dropdown/mode support */}
+          <button
+            id="btn-open-create-routine"
+            onClick={() => handleOpenCreateModal(catalogTab === 'programs' ? 'program' : 'routine')}
+            className="px-4 py-2 rounded-2xl bg-cyan-400 hover:bg-cyan-300 text-neutral-950 font-display font-black text-xs uppercase tracking-wider shadow-[0_0_15px_rgba(6,182,212,0.4)] flex items-center gap-1.5 transition-all hover:scale-105 active:scale-95 shrink-0 cursor-pointer"
+          >
+            <Plus className="w-3.5 h-3.5 stroke-[3]" />
+            <span>{catalogTab === 'programs' ? '+ Crear Plan Multidía' : '+ Nueva Rutina'}</span>
+          </button>
         </div>
       </div>
 
@@ -379,6 +598,11 @@ export const WorkoutCatalogView: React.FC<WorkoutCatalogViewProps> = ({
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-white/5 relative z-10">
                     <div>
                       <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                        {program.isCustom && (
+                          <span className="text-[10px] font-mono font-black uppercase px-2.5 py-0.5 rounded-full bg-purple-500 text-white shadow-[0_0_10px_rgba(168,85,247,0.4)]">
+                            PERSONALIZADO
+                          </span>
+                        )}
                         <span className="text-[10px] font-mono font-black uppercase px-2.5 py-0.5 rounded-full bg-cyan-500/20 text-cyan-400 border border-cyan-500/30">
                           {program.daysPerWeek} DÍAS / SEMANA
                         </span>
@@ -388,6 +612,33 @@ export const WorkoutCatalogView: React.FC<WorkoutCatalogViewProps> = ({
                         <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-white/5 text-neutral-400 border border-white/5">
                           {program.category}
                         </span>
+                        {program.isCustom && (
+                          confirmDeleteProgramId === program.id ? (
+                            <div className="flex items-center gap-1 ml-auto">
+                              <button
+                                onClick={() => handleDeleteCustomProgram(program.id)}
+                                className="px-2 py-0.5 rounded bg-red-500 text-neutral-950 font-mono font-black text-[10px] hover:bg-red-400 cursor-pointer"
+                              >
+                                Confirmar Borrar
+                              </button>
+                              <button
+                                onClick={() => setConfirmDeleteProgramId(null)}
+                                className="px-2 py-0.5 rounded bg-white/10 text-white font-mono text-[10px] cursor-pointer"
+                              >
+                                Cancelar
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => setConfirmDeleteProgramId(program.id)}
+                              className="p-1 rounded-lg bg-white/5 hover:bg-red-500/20 text-neutral-400 hover:text-red-400 border border-white/10 text-[10px] font-mono flex items-center gap-1 transition-colors ml-auto cursor-pointer"
+                              title="Eliminar este plan personalizado"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                              <span>Borrar</span>
+                            </button>
+                          )
+                        )}
                       </div>
                       <h3 className="font-display font-black text-xl sm:text-2xl text-white">
                         {program.title}
@@ -876,17 +1127,17 @@ export const WorkoutCatalogView: React.FC<WorkoutCatalogViewProps> = ({
         </>
       )}
 
-      {/* Custom Routine Creation / Edit Modal */}
+      {/* Custom Routine / Multi-Day Program Creation & Edit Modal */}
       {showCreateModal && (
         <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-xl flex items-center justify-center p-4">
-          <div className="bg-[#121214] border border-cyan-500/30 rounded-3xl p-6 max-w-lg w-full shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto animate-in zoom-in-95">
-            <div className="flex items-center justify-between pb-3 border-b border-white/5">
+          <div className="bg-[#121214] border border-cyan-500/30 rounded-3xl p-5 sm:p-6 max-w-lg w-full shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto animate-in zoom-in-95 flex flex-col">
+            <div className="flex items-center justify-between pb-3 border-b border-white/5 shrink-0">
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 rounded-xl bg-cyan-500/10 text-cyan-400 flex items-center justify-center">
                   {editingRoutineId ? <Edit2 className="w-4 h-4" /> : <Plus className="w-5 h-5" />}
                 </div>
                 <h3 className="font-display font-bold text-white text-lg">
-                  {editingRoutineId ? 'Editar Rutina Personalizada' : t.createCustom}
+                  {editingRoutineId ? 'Editar Rutina' : creationMode === 'routine' ? 'Nueva Rutina Individual' : 'Nuevo Plan Multidía'}
                 </h3>
               </div>
               <button
@@ -900,25 +1151,57 @@ export const WorkoutCatalogView: React.FC<WorkoutCatalogViewProps> = ({
               </button>
             </div>
 
-            {/* Form Fields */}
-            <div className="space-y-3">
+            {/* Switcher Mode: Rutina (1 Día) vs Plan Multidía (Sólo si es nueva creación) */}
+            {!editingRoutineId && (
+              <div className="bg-white/5 p-1 rounded-2xl flex items-center gap-1 shrink-0 border border-white/5">
+                <button
+                  type="button"
+                  onClick={() => setCreationMode('routine')}
+                  className={`flex-1 py-2 rounded-xl text-xs font-mono font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                    creationMode === 'routine'
+                      ? 'bg-cyan-400 text-neutral-950 shadow-md font-black'
+                      : 'text-neutral-400 hover:text-white'
+                  }`}
+                >
+                  <Dumbbell className="w-3.5 h-3.5" />
+                  <span>Rutina (1 Sesión)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCreationMode('program')}
+                  className={`flex-1 py-2 rounded-xl text-xs font-mono font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                    creationMode === 'program'
+                      ? 'bg-cyan-400 text-neutral-950 shadow-md font-black'
+                      : 'text-neutral-400 hover:text-white'
+                  }`}
+                >
+                  <Layers className="w-3.5 h-3.5" />
+                  <span>Plan Multidía (Semanal)</span>
+                </button>
+              </div>
+            )}
+
+            {/* Form Fields: General */}
+            <div className="space-y-3 shrink-0">
               <div>
-                <label className="text-xs font-mono text-neutral-400 block mb-1">Nombre de la Rutina</label>
+                <label className="text-xs font-mono text-neutral-400 block mb-1">
+                  {creationMode === 'routine' ? 'Nombre de la Rutina' : 'Nombre del Plan Multidía'}
+                </label>
                 <input
                   type="text"
                   value={newTitle}
                   onChange={(e) => setNewTitle(e.target.value)}
-                  placeholder="Ej. Pecho & Tríceps Hipertrofia"
+                  placeholder={creationMode === 'routine' ? 'Ej. Pecho & Tríceps Hipertrofia' : 'Ej. Mi Plan Híbrido 4 Días'}
                   className="w-full px-3.5 py-2.5 bg-white/5 border border-white/10 rounded-xl text-xs text-white focus:border-cyan-500 focus:outline-none"
                 />
               </div>
 
               <div>
-                <label className="text-xs font-mono text-neutral-400 block mb-1">Descripción</label>
+                <label className="text-xs font-mono text-neutral-400 block mb-1">Descripción u Objetivo</label>
                 <textarea
                   value={newDescription}
                   onChange={(e) => setNewDescription(e.target.value)}
-                  placeholder="Objetivo principal, técnica y notas..."
+                  placeholder="Enfoque principal, técnica y notas para la semana..."
                   rows={2}
                   className="w-full px-3.5 py-2 bg-white/5 border border-white/10 rounded-xl text-xs text-white focus:border-cyan-500 focus:outline-none"
                 />
@@ -930,7 +1213,7 @@ export const WorkoutCatalogView: React.FC<WorkoutCatalogViewProps> = ({
                   <select
                     value={newCategory}
                     onChange={(e) => setNewCategory(e.target.value as any)}
-                    className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-xl text-xs text-white focus:border-cyan-500 focus:outline-none"
+                    className="w-full px-3 py-2 bg-[#18181b] border border-white/10 rounded-xl text-xs text-white focus:border-cyan-500 focus:outline-none"
                   >
                     <option value="Strength">Fuerza</option>
                     <option value="Hypertrophy">Hipertrofia</option>
@@ -941,78 +1224,172 @@ export const WorkoutCatalogView: React.FC<WorkoutCatalogViewProps> = ({
                   </select>
                 </div>
                 <div>
-                  <label className="text-xs font-mono text-neutral-400 block mb-1">Duración (min)</label>
-                  <input
-                    type="number"
-                    value={newDuration}
-                    onChange={(e) => setNewDuration(parseInt(e.target.value) || 45)}
-                    className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-xl text-xs text-white font-mono focus:border-cyan-500 focus:outline-none"
-                  />
+                  <label className="text-xs font-mono text-neutral-400 block mb-1">Dificultad</label>
+                  <select
+                    value={newDifficulty}
+                    onChange={(e) => setNewDifficulty(e.target.value as any)}
+                    className="w-full px-3 py-2 bg-[#18181b] border border-white/10 rounded-xl text-xs text-white focus:border-cyan-500 focus:outline-none"
+                  >
+                    <option value="Beginner">Principiante</option>
+                    <option value="Intermediate">Intermedio</option>
+                    <option value="Advanced">Avanzado</option>
+                  </select>
                 </div>
               </div>
             </div>
 
-            {/* Exercise Builder in Modal */}
-            <div className="pt-2 border-t border-white/5 space-y-2.5">
-              <div className="flex items-center justify-between flex-wrap gap-2">
-                <h4 className="text-xs font-mono font-bold text-white">Ejercicios ({newExercises.length})</h4>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setShowExerciseSelector(true)}
-                    className="px-2.5 py-1 rounded-xl bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-500/30 text-[11px] font-mono font-bold text-cyan-300 flex items-center gap-1 cursor-pointer transition-colors"
-                  >
-                    <Search className="w-3 h-3" /> Catálogo (+100)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleAddExerciseToForm}
-                    className="px-2.5 py-1 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-[11px] font-mono font-bold text-neutral-300 flex items-center gap-1 cursor-pointer transition-colors"
-                  >
-                    <Plus className="w-3 h-3" /> Libre
-                  </button>
+            {/* MODE 1: SINGLE ROUTINE BUILDER */}
+            {creationMode === 'routine' && (
+              <div className="pt-2 border-t border-white/5 space-y-2.5 overflow-y-auto flex-1">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <h4 className="text-xs font-mono font-bold text-white">Ejercicios de la Sesión ({newExercises.length})</h4>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveExerciseSelectorTargetDay(null);
+                        setShowExerciseSelector(true);
+                      }}
+                      className="px-2.5 py-1 rounded-xl bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-500/30 text-[11px] font-mono font-bold text-cyan-300 flex items-center gap-1 cursor-pointer transition-colors"
+                    >
+                      <Search className="w-3 h-3" /> Catálogo (+100)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleAddExerciseToForm}
+                      className="px-2.5 py-1 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-[11px] font-mono font-bold text-neutral-300 flex items-center gap-1 cursor-pointer transition-colors"
+                    >
+                      <Plus className="w-3 h-3" /> Libre
+                    </button>
+                  </div>
+                </div>
+
+                <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
+                  {newExercises.map((ex, idx) => (
+                    <div key={ex.id} className="p-3 bg-white/5 rounded-xl border border-white/5 space-y-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <input
+                          type="text"
+                          value={ex.name}
+                          onChange={(e) => {
+                            const updated = [...newExercises];
+                            updated[idx] = { ...updated[idx], name: e.target.value };
+                            setNewExercises(updated);
+                          }}
+                          className="bg-transparent font-bold text-xs text-white border-b border-white/10 focus:border-cyan-500 focus:outline-none flex-1 py-0.5"
+                        />
+                        {newExercises.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => setNewExercises(newExercises.filter((_, i) => i !== idx))}
+                            className="text-neutral-500 hover:text-red-400 cursor-pointer"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-3 text-[10px] font-mono text-neutral-400">
+                        <span>{ex.muscleGroup}</span>
+                        <span>•</span>
+                        <span>{ex.sets.length} series</span>
+                        <span>•</span>
+                        <span>{ex.restSeconds}s descanso</span>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
+            )}
 
-              <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
-                {newExercises.map((ex, idx) => (
-                  <div key={ex.id} className="p-3 bg-white/5 rounded-xl border border-white/5 space-y-2">
-                    <div className="flex items-center justify-between gap-2">
-                      <input
-                        type="text"
-                        value={ex.name}
-                        onChange={(e) => {
-                          const updated = [...newExercises];
-                          updated[idx] = { ...updated[idx], name: e.target.value };
-                          setNewExercises(updated);
-                        }}
-                        className="bg-transparent font-bold text-xs text-white border-b border-white/10 focus:border-cyan-500 focus:outline-none flex-1 py-0.5"
-                      />
-                      {newExercises.length > 1 && (
+            {/* MODE 2: MULTI-DAY PROGRAM BUILDER */}
+            {creationMode === 'program' && (
+              <div className="pt-2 border-t border-white/5 space-y-3 overflow-y-auto flex-1">
+                {/* Select Number of Days */}
+                <div>
+                  <label className="text-xs font-mono text-neutral-400 block mb-1.5">
+                    ¿Cuántos días por semana tendrá el plan? ({programDaysPerWeek} Días)
+                  </label>
+                  <div className="grid grid-cols-5 gap-1.5">
+                    {[2, 3, 4, 5, 6].map((num) => (
+                      <button
+                        key={num}
+                        type="button"
+                        onClick={() => handleChangeProgramDaysCount(num)}
+                        className={`py-2 rounded-xl font-mono text-xs font-black transition-all cursor-pointer ${
+                          programDaysPerWeek === num
+                            ? 'bg-cyan-400 text-neutral-950 shadow-md shadow-cyan-500/30 scale-105'
+                            : 'bg-white/5 text-neutral-400 hover:text-white border border-white/5'
+                        }`}
+                      >
+                        {num} Días
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Days Configuration Cards */}
+                <div className="space-y-2.5 max-h-56 overflow-y-auto pr-1">
+                  {programDaysData.map((d, dIdx) => (
+                    <div key={d.dayNumber} className="p-3 bg-[#18181b] rounded-2xl border border-white/10 space-y-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="w-5 h-5 rounded bg-cyan-400 text-neutral-950 font-mono font-black text-[10px] flex items-center justify-center shrink-0">
+                          {d.dayNumber}
+                        </span>
+                        <input
+                          type="text"
+                          value={d.title}
+                          onChange={(e) => {
+                            const updated = [...programDaysData];
+                            updated[dIdx] = {
+                              ...updated[dIdx],
+                              title: e.target.value,
+                              routine: { ...updated[dIdx].routine, title: e.target.value },
+                            };
+                            setProgramDaysData(updated);
+                          }}
+                          placeholder={`Nombre del Día ${d.dayNumber}`}
+                          className="bg-transparent font-bold text-xs text-white border-b border-white/10 focus:border-cyan-400 focus:outline-none flex-1 py-0.5"
+                        />
                         <button
                           type="button"
-                          onClick={() => setNewExercises(newExercises.filter((_, i) => i !== idx))}
-                          className="text-neutral-500 hover:text-red-400 cursor-pointer"
+                          onClick={() => {
+                            setActiveExerciseSelectorTargetDay(d.dayNumber);
+                            setShowExerciseSelector(true);
+                          }}
+                          className="px-2 py-0.5 rounded-lg bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-300 font-mono text-[10px] font-bold border border-cyan-500/30 shrink-0 cursor-pointer"
                         >
-                          <Trash2 className="w-3.5 h-3.5" />
+                          + Ejercicio
                         </button>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-3 text-[10px] font-mono text-neutral-400">
-                      <span>{ex.muscleGroup}</span>
-                      <span>•</span>
-                      <span>{ex.sets.length} series</span>
-                      <span>•</span>
-                      <span>{ex.restSeconds}s descanso</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
+                      </div>
 
-            {/* Actions */}
-            <div className="flex gap-3 pt-3 border-t border-white/5">
+                      <input
+                        type="text"
+                        value={d.focus}
+                        onChange={(e) => {
+                          const updated = [...programDaysData];
+                          updated[dIdx] = { ...updated[dIdx], focus: e.target.value };
+                          setProgramDaysData(updated);
+                        }}
+                        placeholder="Enfoque muscular (ej. 'Pecho y Tríceps', 'Espalda')..."
+                        className="w-full bg-white/5 px-2.5 py-1 rounded-lg text-[11px] text-neutral-300 placeholder-neutral-500 border border-white/5 focus:outline-none"
+                      />
+
+                      <div className="text-[10px] font-mono text-neutral-400 pl-1 flex items-center gap-1.5 flex-wrap">
+                        <span>{d.routine.exercises.length} Ejercicios:</span>
+                        <span className="text-cyan-400">
+                          {d.routine.exercises.map((e) => e.name).join(', ') || 'Sin ejercicios'}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Actions Bottom Bar */}
+            <div className="flex gap-3 pt-3 border-t border-white/5 shrink-0">
               <button
+                type="button"
                 onClick={() => {
                   setShowCreateModal(false);
                   setEditingRoutineId(null);
@@ -1022,10 +1399,15 @@ export const WorkoutCatalogView: React.FC<WorkoutCatalogViewProps> = ({
                 Cancelar
               </button>
               <button
+                type="button"
                 onClick={handleSaveCustomRoutine}
-                className="flex-1 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-neutral-950 text-xs font-mono font-bold shadow-md shadow-cyan-500/25 cursor-pointer"
+                className="flex-1 py-2.5 rounded-xl bg-cyan-400 hover:bg-cyan-300 text-neutral-950 text-xs font-display font-black uppercase tracking-wider shadow-lg shadow-cyan-500/25 transition-transform hover:scale-105 active:scale-95 cursor-pointer"
               >
-                {editingRoutineId ? 'Guardar Cambios' : 'Guardar Rutina'}
+                {editingRoutineId
+                  ? 'Guardar Cambios'
+                  : creationMode === 'routine'
+                  ? 'Guardar Rutina (+120 XP)'
+                  : 'Crear Plan Multidía'}
               </button>
             </div>
           </div>
@@ -1035,12 +1417,33 @@ export const WorkoutCatalogView: React.FC<WorkoutCatalogViewProps> = ({
       {/* Exercise Selector Modal from +100 Exercise Database */}
       <ExerciseSelectorModal
         isOpen={showExerciseSelector}
-        onClose={() => setShowExerciseSelector(false)}
+        onClose={() => {
+          setShowExerciseSelector(false);
+          setActiveExerciseSelectorTargetDay(null);
+        }}
         title="Añadir Ejercicios a la Rutina"
         buttonLabel="Añadir a la Rutina"
         onSelectExercises={(selectedExercises) => {
-          setNewExercises((prev) => [...prev, ...selectedExercises]);
+          if (activeExerciseSelectorTargetDay !== null) {
+            // Target specific program day
+            setProgramDaysData((prev) => {
+              return prev.map((d) => {
+                if (d.dayNumber !== activeExerciseSelectorTargetDay) return d;
+                return {
+                  ...d,
+                  routine: {
+                    ...d.routine,
+                    exercises: [...d.routine.exercises, ...selectedExercises],
+                  },
+                };
+              });
+            });
+          } else {
+            // Target single routine
+            setNewExercises((prev) => [...prev, ...selectedExercises]);
+          }
           setShowExerciseSelector(false);
+          setActiveExerciseSelectorTargetDay(null);
         }}
       />
     </div>
