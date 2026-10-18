@@ -1352,20 +1352,21 @@ export default function App() {
               setChallenges(defaultChallenges.map((c) => ({ ...c, currentProgress: 0, completed: false })));
               sound.playLevelUp();
             }}
-            onDeleteAccount={async () => {
-              // 1. Immediately switch off auth and guest mode so user sees AuthScreen instantly
-              setIsAuthenticated(false);
-              setIsGuestMode(false);
-              const guestUser = createFreshUser('guest_' + Date.now(), 'Atleta', '');
-              setUser(guestUser);
-              setHistory([]);
-              setActiveSession(null);
-              setActiveRoutine(null);
-              setAchievements(createFreshAchievements());
-              setChallenges(defaultChallenges);
-              // 2. Perform deletion in background
-              FitStorage.deleteUserAccountAndData().catch(console.warn);
-              fbSignOut(auth).catch(console.warn);
+            onDeleteAccount={async (password?: string) => {
+              const res = await FitStorage.deleteUserAccountAndData(password);
+              if (res.success) {
+                setIsAuthenticated(false);
+                setIsGuestMode(false);
+                const guestUser = createFreshUser('guest_' + Date.now(), 'Atleta', '');
+                setUser(guestUser);
+                setHistory([]);
+                setActiveSession(null);
+                setActiveRoutine(null);
+                setAchievements(createFreshAchievements());
+                setChallenges(defaultChallenges);
+                return { success: true };
+              }
+              return res;
             }}
           />
         )}

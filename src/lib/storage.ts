@@ -27,7 +27,7 @@ import {
   defaultPushReminders,
   defaultWorkoutHistory,
 } from './initialData';
-import { db, auth, deleteUser, signOut } from './firebase';
+import { db, auth, deleteUser, signOut, EmailAuthProvider, reauthenticateWithCredential } from './firebase';
 import { doc, getDoc, setDoc, deleteDoc, collection, getDocs, addDoc, query, orderBy } from 'firebase/firestore';
 
 const KEYS = {
@@ -1537,54 +1537,79 @@ export class FitStorage {
     return freshUser;
   }
 
-  public static async deleteUserAccountAndData(): Promise<boolean> {
+  public static async deleteUserAccountAndData(
+    password?: string
+  ): Promise<{ success: boolean; requiresPassword?: boolean; error?: string }> {
     const currentUser = auth.currentUser;
-    const uid = currentUser?.uid;
+    if (!currentUser) {
+      try {
+        localStorage.clear();
+        sessionStorage.clear();
+      } catch {}
+      return { success: true };
+    }
 
-    // 1. Clear all local storage keys and session immediately
+    const uid = currentUser.uid;
+    const email = currentUser.email;
+
+    // 1. If password provided and user has email, re-authenticate first to guarantee Firebase Auth deletion
+    if (password && email) {
+      try {
+        const credential = EmailAuthProvider.credential(email, password);
+        await reauthenticateWithCredential(currentUser, credential);
+      } catch (authErr: any) {
+        console.warn('Re-auth error:', authErr);
+        if (
+          authErr.code === 'auth/wrong-password' ||
+          authErr.code === 'auth/invalid-credential' ||
+          authErr.code === 'auth/invalid-login-credentials'
+        ) {
+          return { success: false, error: 'Contraseña incorrecta. Por favor, compruébala.' };
+        }
+        return { success: false, error: 'Error al verificar credenciales: ' + (authErr.message || authErr.code) };
+      }
+    }
+
+    // 2. Delete user in Firebase Authentication
+    try {
+      await deleteUser(currentUser);
+    } catch (err: any) {
+      console.warn('Firebase deleteUser error:', err);
+      if (err.code === 'auth/requires-recent-login') {
+        return {
+          success: false,
+          requiresPassword: true,
+          error: 'Por seguridad de Firebase, introduce tu contraseña para confirmar el borrado definitivo de tu cuenta.',
+        };
+      }
+      return { success: false, error: 'Error al eliminar usuario en Firebase: ' + (err.message || err.code) };
+    }
+
+    // 3. User is now deleted from Firebase Auth! Delete user Firestore documents & subcollections
+    try {
+      const userDocRef = doc(db, 'users', uid);
+      await deleteDoc(userDocRef).catch(() => {});
+      ['history', 'nutrition', 'weighIns', 'routines'].forEach(async (subCol) => {
+        try {
+          const snap = await getDocs(collection(db, 'users', uid, subCol));
+          snap.docs.forEach((d) => deleteDoc(doc(db, 'users', uid, subCol, d.id)).catch(() => {}));
+        } catch {}
+      });
+    } catch (dbErr) {
+      console.warn('Firestore doc deletion warning:', dbErr);
+    }
+
+    // 4. Clear local storage and session
     try {
       localStorage.clear();
       sessionStorage.clear();
     } catch {}
 
-    // 2. Safe background cloud cleanup with timeout
-    if (uid && currentUser) {
-      const cloudCleanupPromise = async () => {
-        try {
-          // Delete master Firestore doc
-          const userDocRef = doc(db, 'users', uid);
-          await deleteDoc(userDocRef).catch(() => {});
+    try {
+      await signOut(auth);
+    } catch {}
 
-          // Clean up subcollections
-          ['history', 'nutrition', 'weighIns', 'routines'].forEach(async (subCol) => {
-            try {
-              const snap = await getDocs(collection(db, 'users', uid, subCol));
-              snap.docs.forEach((d) => deleteDoc(doc(db, 'users', uid, subCol, d.id)).catch(() => {}));
-            } catch {}
-          });
-        } catch (dbErr) {
-          console.warn('Firestore doc deletion warning:', dbErr);
-        }
-
-        // Attempt to delete Firebase Auth account if token is fresh, else sign out
-        try {
-          await deleteUser(currentUser);
-        } catch (authErr: any) {
-          console.warn('Firebase deleteUser note (e.g. requires recent login):', authErr);
-        }
-        try {
-          await signOut(auth);
-        } catch {}
-      };
-
-      // Wrap in 2.5s race so it never blocks UI thread
-      await Promise.race([
-        cloudCleanupPromise(),
-        new Promise((resolve) => setTimeout(resolve, 2500)),
-      ]).catch(() => {});
-    }
-
-    return true;
+    return { success: true };
   }
 
   public static logWeight(newWeightKg: number, date?: string, currentUser?: UserProfile): UserProfile {

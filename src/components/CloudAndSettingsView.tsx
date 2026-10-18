@@ -57,7 +57,7 @@ interface CloudAndSettingsViewProps {
   onUpdateReminders: (reminders: PushReminder[]) => void;
   onDataImported: () => void;
   onResetProgress?: () => Promise<void> | void;
-  onDeleteAccount?: () => Promise<void> | void;
+  onDeleteAccount?: (password?: string) => Promise<{ success: boolean; requiresPassword?: boolean; error?: string }> | void;
 }
 
 export const CloudAndSettingsView: React.FC<CloudAndSettingsViewProps> = ({
@@ -90,8 +90,16 @@ export const CloudAndSettingsView: React.FC<CloudAndSettingsViewProps> = ({
   const [testNotificationSent, setTestNotificationSent] = useState<boolean>(false);
   const [showDeleteAccountModal, setShowDeleteAccountModal] = useState<boolean>(false);
   const [isDeletingAccount, setIsDeletingAccount] = useState<boolean>(false);
+  const [deletePassword, setDeletePassword] = useState<string>('');
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [showResetProgressModal, setShowResetProgressModal] = useState<boolean>(false);
   const [isResettingProgress, setIsResettingProgress] = useState<boolean>(false);
+
+  const isPasswordUser = Boolean(
+    auth.currentUser?.email &&
+      (auth.currentUser?.providerData.some((p) => p.providerId === 'password') ||
+        !auth.currentUser?.providerData.some((p) => p.providerId === 'google.com' || p.providerId === 'apple.com'))
+  );
 
   // Sign out handler
   const handleSignOut = async () => {
@@ -137,20 +145,37 @@ export const CloudAndSettingsView: React.FC<CloudAndSettingsViewProps> = ({
     }
   };
 
-  // Delete account and data handler (Apple & GDPR compliance)
+  // Delete account and data handler (Apple & GDPR compliance with verified Firebase Auth removal)
   const handleDeleteAccount = async () => {
-    // Immediately close modal to eliminate freezing or hanging
-    setShowDeleteAccountModal(false);
-    setIsDeletingAccount(false);
+    if (isPasswordUser && !deletePassword.trim()) {
+      setDeleteError('Por favor, introduce tu contraseña para confirmar el borrado definitivo en Firebase.');
+      return;
+    }
+
+    setIsDeletingAccount(true);
+    setDeleteError(null);
     sound.playWarning();
+
     try {
-      if (onDeleteAccount) {
-        await onDeleteAccount();
-      } else {
-        await FitStorage.deleteUserAccountAndData();
+      const result = onDeleteAccount
+        ? await onDeleteAccount(deletePassword.trim())
+        : await FitStorage.deleteUserAccountAndData(deletePassword.trim());
+
+      if (result && !result.success) {
+        setIsDeletingAccount(false);
+        setDeleteError(result.error || 'No se pudo eliminar la cuenta de Firebase.');
+        sound.playWarning();
+        return;
       }
-    } catch (e) {
-      console.error('Delete account error:', e);
+
+      setShowDeleteAccountModal(false);
+      setIsDeletingAccount(false);
+      setDeletePassword('');
+      setDeleteError(null);
+    } catch (e: any) {
+      setIsDeletingAccount(false);
+      setDeleteError(e?.message || 'Error al eliminar la cuenta de Firebase.');
+      sound.playWarning();
     }
   };
 
@@ -622,7 +647,11 @@ export const CloudAndSettingsView: React.FC<CloudAndSettingsViewProps> = ({
             </div>
             <button
               id="btn-delete-account"
-              onClick={() => setShowDeleteAccountModal(true)}
+              onClick={() => {
+                setDeletePassword('');
+                setDeleteError(null);
+                setShowDeleteAccountModal(true);
+              }}
               className="w-full py-2.5 rounded-xl bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-500/40 text-xs font-mono font-bold flex items-center justify-center gap-2 transition-colors cursor-pointer"
             >
               <Trash2 className="w-3.5 h-3.5" />
@@ -695,8 +724,40 @@ export const CloudAndSettingsView: React.FC<CloudAndSettingsViewProps> = ({
               ¿Eliminar cuenta definitivamente?
             </h3>
             <p className="text-xs text-neutral-300 mt-2 leading-relaxed">
-              Esta acción eliminará de forma **permanente e irreversible** tu cuenta de atleta, todas tus series registradas, estadísticas, niveles y logros en la base de datos de la nube.
+              Esta acción eliminará de forma **permanente e irreversible** tu cuenta de usuario, tus series registradas, estadísticas, niveles y logros tanto en Firebase Authentication como en la base de datos de la nube.
             </p>
+
+            {/* Password verification input for email/password users */}
+            {isPasswordUser && (
+              <div className="mt-4 text-left">
+                <label className="text-[11px] font-mono text-neutral-400 block mb-1.5">
+                  Introduce tu contraseña para confirmar el borrado:
+                </label>
+                <input
+                  type="password"
+                  value={deletePassword}
+                  onChange={(e) => {
+                    setDeletePassword(e.target.value);
+                    if (deleteError) setDeleteError(null);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      handleDeleteAccount();
+                    }
+                  }}
+                  placeholder="Tu contraseña actual"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-white/5 border border-red-500/30 text-white text-xs placeholder:text-neutral-500 focus:outline-none focus:border-red-500 transition-colors"
+                />
+              </div>
+            )}
+
+            {deleteError && (
+              <div className="mt-3 p-2.5 rounded-xl bg-red-500/10 border border-red-500/30 text-red-300 text-[11px] flex items-center gap-2 text-left">
+                <AlertTriangle className="w-4 h-4 shrink-0 text-red-400" />
+                <span>{deleteError}</span>
+              </div>
+            )}
+
             <div className="mt-6 flex flex-col gap-2.5">
               <button
                 disabled={isDeletingAccount}
@@ -704,17 +765,21 @@ export const CloudAndSettingsView: React.FC<CloudAndSettingsViewProps> = ({
                 className="w-full py-3 rounded-2xl bg-red-600 hover:bg-red-500 text-white font-mono font-bold text-xs shadow-xl shadow-red-600/30 flex items-center justify-center gap-2 transition-all disabled:opacity-50 cursor-pointer"
               >
                 {isDeletingAccount ? (
-                  <span className="animate-pulse">Borrando datos del servidor...</span>
+                  <span className="animate-pulse">Eliminando usuario de Firebase...</span>
                 ) : (
                   <>
                     <Trash2 className="w-4 h-4" />
-                    <span>Sí, Eliminar Cuenta y Datos</span>
+                    <span>Sí, Eliminar Cuenta Definitivamente</span>
                   </>
                 )}
               </button>
               <button
                 disabled={isDeletingAccount}
-                onClick={() => setShowDeleteAccountModal(false)}
+                onClick={() => {
+                  setShowDeleteAccountModal(false);
+                  setDeletePassword('');
+                  setDeleteError(null);
+                }}
                 className="w-full py-3 rounded-2xl bg-white/5 hover:bg-white/10 text-neutral-300 font-mono font-bold text-xs border border-white/5 transition-colors cursor-pointer"
               >
                 Cancelar y Volver

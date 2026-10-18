@@ -10,6 +10,8 @@ import {
   deleteUser,
   updateProfile,
   onAuthStateChanged,
+  EmailAuthProvider,
+  reauthenticateWithCredential,
   User
 } from 'firebase/auth';
 import { 
@@ -78,6 +80,8 @@ export {
   createUserWithEmailAndPassword,
   signOut,
   deleteUser,
+  EmailAuthProvider,
+  reauthenticateWithCredential,
   updateProfile,
   onAuthStateChanged,
   doc,
