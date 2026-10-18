@@ -143,9 +143,9 @@ export const NUTRITION_PLANS: NutritionPlanConfig[] = [
   },
 ];
 
-export function getActiveNutritionPlan(planId?: string): NutritionPlanConfig {
-  if (!planId) return NUTRITION_PLANS[1]; // default: plan_recomp
-  return NUTRITION_PLANS.find((p) => p.id === planId) || NUTRITION_PLANS[1];
+export function getActiveNutritionPlan(planId?: string): NutritionPlanConfig | null {
+  if (!planId || planId === 'none') return null;
+  return NUTRITION_PLANS.find((p) => p.id === planId) || null;
 }
 
 // Backwards-compatible legacy alias

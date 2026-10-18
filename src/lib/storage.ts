@@ -1488,20 +1488,22 @@ export class FitStorage {
     }
   }
 
-  public static setActiveNutritionPlan(planId: string, currentUser?: UserProfile): UserProfile {
+  public static setActiveNutritionPlan(planId: string | null, currentUser?: UserProfile): UserProfile {
     const user = currentUser || this.getUser();
     const updatedUser: UserProfile = {
       ...user,
-      activeNutritionPlanId: planId,
+      activeNutritionPlanId: planId || undefined,
     };
     this.saveUser(updatedUser);
 
-    const activePlan = getActiveNutritionPlan(planId);
-    // Align today's log targets with the newly activated plan
+    const activePlan = getActiveNutritionPlan(planId || undefined);
+    // Align today's log targets with the newly activated plan or default baseline
     const todayStr = new Date().toISOString().split('T')[0];
     const currentTodayLog = this.getNutritionLog(todayStr);
     const dayType = currentTodayLog.dayType || 'workout';
-    const planTargets = dayType === 'rest' ? activePlan.targets.rest : activePlan.targets.workout;
+    const planTargets = activePlan
+      ? (dayType === 'rest' ? activePlan.targets.rest : activePlan.targets.workout)
+      : (dayType === 'rest' ? { calories: 2000, protein: 160, carbs: 180, fat: 65 } : { calories: 2300, protein: 180, carbs: 220, fat: 70 });
 
     const updatedTodayLog: DailyNutritionLog = {
       ...currentTodayLog,
@@ -1509,7 +1511,7 @@ export class FitStorage {
       targetProtein: planTargets.protein,
       targetCarbs: planTargets.carbs,
       targetFat: planTargets.fat,
-      waterGoalMl: activePlan.waterGoalMl,
+      waterGoalMl: activePlan ? activePlan.waterGoalMl : 3000,
     };
     this.saveNutritionLog(updatedTodayLog);
 
@@ -1527,10 +1529,18 @@ export class FitStorage {
       const user = this.getUser();
       const activePlan = getActiveNutritionPlan(user.activeNutritionPlanId);
 
+      const defaultTargets = activePlan
+        ? activePlan.targets
+        : {
+            workout: { calories: 2300, protein: 180, carbs: 220, fat: 70 },
+            rest: { calories: 2000, protein: 160, carbs: 180, fat: 65 },
+          };
+      const defaultWater = activePlan ? activePlan.waterGoalMl : 3000;
+
       if (logs[dateStr]) {
         const found = logs[dateStr];
         const dayType = found.dayType === 'rest' ? 'rest' : 'workout';
-        const planTargets = dayType === 'rest' ? activePlan.targets.rest : activePlan.targets.workout;
+        const planTargets = dayType === 'rest' ? defaultTargets.rest : defaultTargets.workout;
         return {
           ...found,
           date: dateStr,
@@ -1541,31 +1551,30 @@ export class FitStorage {
           targetProtein: Number(found.targetProtein) || planTargets.protein,
           targetCarbs: Number(found.targetCarbs) || planTargets.carbs,
           targetFat: Number(found.targetFat) || planTargets.fat,
-          waterGoalMl: Number(found.waterGoalMl) || activePlan.waterGoalMl,
+          waterGoalMl: Number(found.waterGoalMl) || defaultWater,
         };
       }
       return {
         date: dateStr,
         dayType: 'workout',
-        targetCalories: activePlan.targets.workout.calories,
-        targetProtein: activePlan.targets.workout.protein,
-        targetCarbs: activePlan.targets.workout.carbs,
-        targetFat: activePlan.targets.workout.fat,
+        targetCalories: defaultTargets.workout.calories,
+        targetProtein: defaultTargets.workout.protein,
+        targetCarbs: defaultTargets.workout.carbs,
+        targetFat: defaultTargets.workout.fat,
         waterMl: 0,
-        waterGoalMl: activePlan.waterGoalMl,
+        waterGoalMl: defaultWater,
         foods: [],
       };
     } catch {
-      const activePlan = getActiveNutritionPlan();
       return {
         date: dateStr,
         dayType: 'workout',
-        targetCalories: activePlan.targets.workout.calories,
-        targetProtein: activePlan.targets.workout.protein,
-        targetCarbs: activePlan.targets.workout.carbs,
-        targetFat: activePlan.targets.workout.fat,
+        targetCalories: 2300,
+        targetProtein: 180,
+        targetCarbs: 220,
+        targetFat: 70,
         waterMl: 0,
-        waterGoalMl: activePlan.waterGoalMl,
+        waterGoalMl: 3000,
         foods: [],
       };
     }

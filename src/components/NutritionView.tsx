@@ -297,7 +297,10 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
   // Toggle Day Type (Workout vs Rest)
   const handleToggleDayType = (type: 'workout' | 'rest') => {
     safePlayClick();
-    const targetConfig = activePlan.targets[type];
+    const targetConfig = activePlan
+      ? activePlan.targets[type]
+      : (type === 'rest' ? { calories: 2000, protein: 160, carbs: 180, fat: 65 } : { calories: 2300, protein: 180, carbs: 220, fat: 70 });
+
     const newLog: DailyNutritionLog = {
       ...log,
       dayType: type,
@@ -321,6 +324,19 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
     setLog(updatedLog);
     setIsPlanSelectorOpen(false);
     showToast(`✓ Plan activado: ${plan.name}`);
+  };
+
+  // Deactivate Nutrition Plan (Flexible / Free Logging Mode)
+  const handleDeactivatePlan = () => {
+    safePlayClick();
+    const updatedUser = FitStorage.setActiveNutritionPlan(null, user);
+    if (onUpdateUser) {
+      onUpdateUser(updatedUser);
+    }
+    const updatedLog = FitStorage.getNutritionLog(selectedDate);
+    setLog(updatedLog);
+    setIsPlanSelectorOpen(false);
+    showToast('✓ Modo Libre activado (Sin plan específico)');
   };
 
   // Hydration modification
@@ -907,37 +923,58 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
             </div>
           </div>
 
-          {/* 3. ACTIVE NUTRITION PLAN WIDGET (Photographic, compact, responsive, no text overflow) */}
+          {/* 3. NUTRITION PLAN WIDGET (Supports both Active Plan and Flexible / No Plan Mode) */}
           <div className="bg-[#121214] border border-white/10 rounded-3xl p-4 sm:p-5 shadow-xl relative overflow-hidden flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="flex items-center gap-3.5 min-w-0 flex-1">
-              {/* Photo thumbnail with emoji overlay */}
-              <div className="relative w-14 h-14 sm:w-16 sm:h-16 rounded-2xl overflow-hidden shrink-0 border border-white/10 shadow-md">
-                <img
-                  src={activePlan.imageUrl || 'https://images.unsplash.com/photo-1540420773420-3366772f4999?w=300&q=80&auto=format&fit=crop'}
-                  alt={activePlan.name}
-                  className="w-full h-full object-cover"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
-                <span className="absolute bottom-1 right-1 text-base leading-none drop-shadow">
-                  {activePlan.icon}
-                </span>
-              </div>
-
-              {/* Title & Plan meta */}
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-[10px] font-mono font-black uppercase px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-400 border border-cyan-500/30">
-                    {activePlan.badge}
-                  </span>
-                  <span className="text-xs font-mono font-bold text-neutral-400">
-                    Meta: {targetWeight.toFixed(1)} kg
+            {activePlan ? (
+              <div className="flex items-center gap-3.5 min-w-0 flex-1">
+                {/* Photo thumbnail with emoji overlay */}
+                <div className="relative w-14 h-14 sm:w-16 sm:h-16 rounded-2xl overflow-hidden shrink-0 border border-white/10 shadow-md">
+                  <img
+                    src={activePlan.imageUrl || 'https://images.unsplash.com/photo-1540420773420-3366772f4999?w=300&q=80&auto=format&fit=crop'}
+                    alt={activePlan.name}
+                    className="w-full h-full object-cover"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
+                  <span className="absolute bottom-1 right-1 text-base leading-none drop-shadow">
+                    {activePlan.icon}
                   </span>
                 </div>
-                <h3 className="font-display font-black text-base sm:text-lg text-white tracking-tight mt-1 truncate">
-                  {activePlan.name}
-                </h3>
+
+                {/* Title & Plan meta */}
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-[10px] font-mono font-black uppercase px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-400 border border-cyan-500/30">
+                      {activePlan.badge}
+                    </span>
+                    <span className="text-xs font-mono font-bold text-neutral-400">
+                      Meta: {targetWeight.toFixed(1)} kg
+                    </span>
+                  </div>
+                  <h3 className="font-display font-black text-base sm:text-lg text-white tracking-tight mt-1 truncate">
+                    {activePlan.name}
+                  </h3>
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="flex items-center gap-3.5 min-w-0 flex-1">
+                <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-2xl shrink-0 shadow-inner">
+                  🍽️
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-[10px] font-mono font-black uppercase px-2 py-0.5 rounded-full bg-white/10 text-neutral-300 border border-white/15">
+                      MODO LIBRE
+                    </span>
+                    <span className="text-xs font-mono font-bold text-neutral-400">
+                      Sin plan impuesto
+                    </span>
+                  </div>
+                  <h3 className="font-display font-black text-base sm:text-lg text-white tracking-tight mt-1 truncate">
+                    Registro Flexible Diario
+                  </h3>
+                </div>
+              </div>
+            )}
 
             <button
               type="button"
@@ -948,7 +985,7 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
               className="w-full sm:w-auto px-4 py-2.5 rounded-2xl bg-white/5 hover:bg-cyan-500/15 border border-white/10 hover:border-cyan-500/40 text-cyan-400 text-xs font-mono font-bold transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm active:scale-95 shrink-0"
             >
               <SlidersHorizontal className="w-4 h-4 text-cyan-400" />
-              <span>Explorar Planes (5)</span>
+              <span>{activePlan ? 'Cambiar Plan (5)' : 'Elegir un Plan (Opcional)'}</span>
             </button>
           </div>
 
@@ -1163,19 +1200,21 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
                       ))}
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        handleLoadMealTemplate(slot);
-                      }}
-                      title="Cargar menú sugerido de tu plan de nutrición con 1 click"
-                      className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-400 text-[11px] font-bold transition-all hover:scale-105 active:scale-95 cursor-pointer ml-auto"
-                    >
-                      <Sparkles className="w-3.5 h-3.5" />
-                      <span>Cargar Menú Plan</span>
-                    </button>
+                    {activePlan && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleLoadMealTemplate(slot);
+                        }}
+                        title={`Cargar menú sugerido del plan ${activePlan.name}`}
+                        className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-400 text-[11px] font-bold transition-all hover:scale-105 active:scale-95 cursor-pointer ml-auto"
+                      >
+                        <Sparkles className="w-3.5 h-3.5" />
+                        <span>Cargar Menú Plan</span>
+                      </button>
+                    )}
                   </div>
 
                   {/* Slot Items List when logged */}
@@ -2005,8 +2044,57 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
             </div>
 
             <div className="space-y-3.5">
+              {/* Option: MODO LIBRE / SIN PLAN */}
+              <div
+                className={`relative rounded-2xl p-4 sm:p-5 border transition-all ${
+                  !activePlan
+                    ? 'bg-cyan-500/10 border-cyan-500/50 shadow-lg shadow-cyan-500/10'
+                    : 'bg-black/40 border-white/10 hover:border-white/20 hover:bg-white/[0.02]'
+                }`}
+              >
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="flex items-start sm:items-center gap-3.5 min-w-0 flex-1">
+                    <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-2xl shrink-0 shadow-inner">
+                      🍽️
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap mb-1">
+                        <span className="text-[10px] font-mono font-black uppercase px-2 py-0.5 rounded-full bg-white/10 text-neutral-300 border border-white/15">
+                          MODO LIBRE
+                        </span>
+                        <h4 className="text-sm sm:text-base font-black text-white">
+                          Sin Plan Predefinido
+                        </h4>
+                        {!activePlan && (
+                          <span className="text-[10px] font-mono font-black uppercase px-2 py-0.5 rounded-full bg-cyan-500 text-neutral-950 flex items-center gap-1">
+                            <Check className="w-3 h-3 stroke-[3]" />
+                            Activo
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-neutral-400 leading-relaxed line-clamp-2">
+                        Registra libremente tus comidas día a día sin menús sugeridos ni imposiciones.
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleDeactivatePlan}
+                    disabled={!activePlan}
+                    className={`px-4 py-2 rounded-xl text-xs font-black transition-all shrink-0 self-start sm:self-auto ${
+                      !activePlan
+                        ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 cursor-default'
+                        : 'bg-white/10 hover:bg-white/20 text-white shadow-md hover:scale-105 active:scale-95 cursor-pointer'
+                    }`}
+                  >
+                    {!activePlan ? 'Modo Activo' : 'Usar Modo Libre'}
+                  </button>
+                </div>
+              </div>
+
               {NUTRITION_PLANS.map((plan) => {
-                const isActive = plan.id === activePlan.id;
+                const isActive = activePlan?.id === plan.id;
                 return (
                   <div
                     key={plan.id}
