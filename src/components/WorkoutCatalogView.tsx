@@ -28,6 +28,7 @@ import { translations } from '../lib/i18n';
 import { sound } from '../lib/soundFx';
 import { FitStorage } from '../lib/storage';
 import { ExerciseSelectorModal } from './ExerciseSelectorModal';
+import { getRoutinePhoto } from '../lib/routineImages';
 
 interface WorkoutCatalogViewProps {
   routines: WorkoutRoutine[];
@@ -527,17 +528,8 @@ export const WorkoutCatalogView: React.FC<WorkoutCatalogViewProps> = ({
             {filteredRoutines.map((routine) => {
               const isExpanded = expandedRoutineId === routine.id;
               
-              // Routine thumbnail image
-              const routineImage = (routine as any).imageUrl || 
-                (routine.category === 'Strength' || routine.category === 'Hypertrophy'
-                  ? 'https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?w=600&q=80&auto=format&fit=crop'
-                  : routine.category === 'Cardio'
-                  ? 'https://images.unsplash.com/photo-1538805060514-97d9cc17730c?w=600&q=80&auto=format&fit=crop'
-                  : routine.category === 'HIIT'
-                  ? 'https://images.unsplash.com/photo-1517838277536-f5f99be501cd?w=600&q=80&auto=format&fit=crop'
-                  : routine.category === 'Calisthenics'
-                  ? 'https://images.unsplash.com/photo-1599058945522-28d584b6f0ff?w=600&q=80&auto=format&fit=crop'
-                  : 'https://images.unsplash.com/photo-1574680096145-d05b474e2155?w=600&q=80&auto=format&fit=crop');
+              // Routine thumbnail image with unique photography per routine
+              const routineImage = getRoutinePhoto(routine);
 
               // Intensity percentage ring
               const intensityPct = routine.difficulty === 'Advanced' ? 85 : routine.difficulty === 'Intermediate' ? 65 : 45;

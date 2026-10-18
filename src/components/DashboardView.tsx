@@ -51,6 +51,7 @@ import {
 } from '../lib/leagueEngine';
 import { getWeeklyChallengesForRotation } from '../lib/weeklyChallengesEngine';
 import { getEquippedFrameClasses, getFrameById } from '../lib/cosmeticFrames';
+import { getRoutinePhoto } from '../lib/routineImages';
 
 interface DashboardViewProps {
   user: UserProfile;
@@ -598,12 +599,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
       {/* 🎯 3. ENTRENAMIENTOS SUGERIDOS / MISIÓN DEL DÍA (ENVATO / EVOMARE SLIM BANNER) */}
       {currentRoutine && (() => {
-        const workoutThumbnail = (currentRoutine as any).imageUrl || 
-          (currentRoutine.difficulty === 'Advanced'
-            ? 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=600&q=80&auto=format&fit=crop'
-            : currentRoutine.difficulty === 'Intermediate'
-            ? 'https://images.unsplash.com/photo-1517838277536-f5f99be501cd?w=600&q=80&auto=format&fit=crop'
-            : 'https://images.unsplash.com/photo-1574680096145-d05b474e2155?w=600&q=80&auto=format&fit=crop');
+        const workoutThumbnail = getRoutinePhoto(currentRoutine);
 
         return (
           <div className="bg-[#141417] border border-white/10 rounded-2xl p-3.5 sm:p-4 shadow-xl relative overflow-hidden group">

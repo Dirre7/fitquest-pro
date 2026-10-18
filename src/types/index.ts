@@ -86,6 +86,7 @@ export interface NutritionPlanConfig {
     workout: NutritionPlanTargets;
     rest: NutritionPlanTargets;
   };
+  imageUrl?: string;
 }
 
 export interface AvatarFrame {

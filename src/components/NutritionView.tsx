@@ -907,22 +907,33 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
             </div>
           </div>
 
-          {/* 3. ACTIVE NUTRITION PLAN WIDGET (Compact, zero fluff, prominent change plan button) */}
+          {/* 3. ACTIVE NUTRITION PLAN WIDGET (Photographic, compact, responsive, no text overflow) */}
           <div className="bg-[#121214] border border-white/10 rounded-3xl p-4 sm:p-5 shadow-xl relative overflow-hidden flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="flex items-center gap-3.5 min-w-0">
-              <div className="w-12 h-12 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-2xl shrink-0 shadow-inner">
-                {activePlan.badge}
+            <div className="flex items-center gap-3.5 min-w-0 flex-1">
+              {/* Photo thumbnail with emoji overlay */}
+              <div className="relative w-14 h-14 sm:w-16 sm:h-16 rounded-2xl overflow-hidden shrink-0 border border-white/10 shadow-md">
+                <img
+                  src={activePlan.imageUrl || 'https://images.unsplash.com/photo-1540420773420-3366772f4999?w=300&q=80&auto=format&fit=crop'}
+                  alt={activePlan.name}
+                  className="w-full h-full object-cover"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
+                <span className="absolute bottom-1 right-1 text-base leading-none drop-shadow">
+                  {activePlan.icon}
+                </span>
               </div>
-              <div className="min-w-0">
+
+              {/* Title & Plan meta */}
+              <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-[10px] font-mono font-black uppercase px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-400 border border-cyan-500/30">
-                    PLAN ACTIVO
+                  <span className="text-[10px] font-mono font-black uppercase px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-400 border border-cyan-500/30">
+                    {activePlan.badge}
                   </span>
                   <span className="text-xs font-mono font-bold text-neutral-400">
                     Meta: {targetWeight.toFixed(1)} kg
                   </span>
                 </div>
-                <h3 className="font-display font-black text-lg text-white tracking-tight mt-0.5 truncate">
+                <h3 className="font-display font-black text-base sm:text-lg text-white tracking-tight mt-1 truncate">
                   {activePlan.name}
                 </h3>
               </div>
@@ -934,7 +945,7 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
                 safePlayClick();
                 setIsPlanSelectorOpen(true);
               }}
-              className="px-4 py-2.5 rounded-2xl bg-white/5 hover:bg-cyan-500/15 border border-white/10 hover:border-cyan-500/40 text-cyan-400 text-xs font-mono font-bold transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm active:scale-95 shrink-0"
+              className="w-full sm:w-auto px-4 py-2.5 rounded-2xl bg-white/5 hover:bg-cyan-500/15 border border-white/10 hover:border-cyan-500/40 text-cyan-400 text-xs font-mono font-bold transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm active:scale-95 shrink-0"
             >
               <SlidersHorizontal className="w-4 h-4 text-cyan-400" />
               <span>Explorar Planes (5)</span>
@@ -2005,23 +2016,41 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
                         : 'bg-black/40 border-white/10 hover:border-white/20 hover:bg-white/[0.02]'
                     }`}
                   >
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                      <div>
-                        <div className="flex items-center gap-2 flex-wrap mb-1">
-                          <span className="text-base">{plan.badge}</span>
-                          <h4 className="text-sm sm:text-base font-black text-white">
-                            {plan.name}
-                          </h4>
-                          {isActive && (
-                            <span className="text-[10px] font-mono font-black uppercase px-2 py-0.5 rounded-full bg-cyan-500 text-neutral-950 flex items-center gap-1">
-                              <Check className="w-3 h-3 stroke-[3]" />
-                              Activo
-                            </span>
-                          )}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                      <div className="flex items-start sm:items-center gap-3.5 min-w-0 flex-1">
+                        {/* Plan Real Photo Thumbnail */}
+                        <div className="relative w-14 h-14 sm:w-16 sm:h-16 rounded-2xl overflow-hidden shrink-0 border border-white/10 shadow-md">
+                          <img
+                            src={plan.imageUrl || 'https://images.unsplash.com/photo-1540420773420-3366772f4999?w=300&q=80&auto=format&fit=crop'}
+                            alt={plan.name}
+                            className="w-full h-full object-cover"
+                            loading="lazy"
+                          />
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
+                          <span className="absolute bottom-1 right-1 text-base leading-none drop-shadow">
+                            {plan.icon}
+                          </span>
                         </div>
-                        <p className="text-xs text-neutral-400 leading-relaxed max-w-xl">
-                          {plan.description}
-                        </p>
+
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2 flex-wrap mb-1">
+                            <span className="text-[10px] font-mono font-black uppercase px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-400 border border-cyan-500/30">
+                              {plan.badge}
+                            </span>
+                            <h4 className="text-sm sm:text-base font-black text-white">
+                              {plan.name}
+                            </h4>
+                            {isActive && (
+                              <span className="text-[10px] font-mono font-black uppercase px-2 py-0.5 rounded-full bg-cyan-500 text-neutral-950 flex items-center gap-1">
+                                <Check className="w-3 h-3 stroke-[3]" />
+                                Activo
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs text-neutral-400 leading-relaxed line-clamp-2">
+                            {plan.description}
+                          </p>
+                        </div>
                       </div>
 
                       <button

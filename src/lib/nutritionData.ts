@@ -18,6 +18,7 @@ export const NUTRITION_PLANS: NutritionPlanConfig[] = [
     badge: 'DÉFICIT',
     icon: '🔥',
     color: 'from-orange-500 to-rose-600',
+    imageUrl: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=700&q=80&auto=format&fit=crop', // Bowl de ensalada proteica limpia con aguacate y huevo
     description: 'Quema grasa corporal protegiendo la masa muscular magra con alta ingesta proteica y control estratégico de carbohidratos.',
     idealFor: 'Bajar porcentaje graso, reducir perímetro abdominal y definir masa muscular.',
     waterGoalMl: 3200,
@@ -43,6 +44,7 @@ export const NUTRITION_PLANS: NutritionPlanConfig[] = [
     badge: 'RECOMP',
     icon: '⚡',
     color: 'from-cyan-500 to-blue-600',
+    imageUrl: 'https://images.unsplash.com/photo-1540420773420-3366772f4999?w=700&q=80&auto=format&fit=crop', // Salmón braseado con verduras y semillas
     description: 'Pierde grasa y construye masa magra simultáneamente mediante ciclado de carbohidratos entre días de entreno y descanso.',
     idealFor: 'Composición corporal atlética, fuerza progresiva y energía constante.',
     waterGoalMl: 3500,
@@ -66,8 +68,9 @@ export const NUTRITION_PLANS: NutritionPlanConfig[] = [
     name: 'Hipertrofia & Volumen Limpio',
     subtitle: 'Superávit Calórico Controlado',
     badge: 'VOLUMEN',
-    icon: '💥',
+    icon: '💪',
     color: 'from-purple-500 to-indigo-600',
+    imageUrl: 'https://images.unsplash.com/photo-1544025162-d76694265947?w=700&q=80&auto=format&fit=crop', // Carne braseada con arroz y batata
     description: 'Aumenta al máximo la masa muscular y fuerza con abundantes carbohidratos complejos y superávit controlado.',
     idealFor: 'Ganar tamaño muscular, fuerza máxima y peso magro sin grasa excesiva.',
     waterGoalMl: 3500,
@@ -90,9 +93,10 @@ export const NUTRITION_PLANS: NutritionPlanConfig[] = [
     id: 'plan_performance',
     name: 'Rendimiento & Resistencia',
     subtitle: 'Combustible de Alta Intensidad & Running',
-    badge: 'CARDIO & RESISTENCIA',
+    badge: 'CARDIO',
     icon: '🏃',
     color: 'from-emerald-500 to-teal-600',
+    imageUrl: 'https://images.unsplash.com/photo-1511690656952-34342bb7c2f2?w=700&q=80&auto=format&fit=crop', // Bowl energético de avena, frutos rojos y plátano
     description: 'Recarga rápida de glucógeno y recuperación muscular optimizada para corredores, ciclistas y entrenamientos HIIT.',
     idealFor: 'Corredores, pruebas aeróbicas, cross-training y deportes de alta demanda.',
     waterGoalMl: 3800,
@@ -115,9 +119,10 @@ export const NUTRITION_PLANS: NutritionPlanConfig[] = [
     id: 'plan_wellness',
     name: 'Salud & Dieta Mediterránea',
     subtitle: 'Longevidad, Digestión Ligera & Vitalidad',
-    badge: 'SALUD & VITALIDAD',
+    badge: 'SALUD',
     icon: '🌿',
     color: 'from-amber-500 to-emerald-600',
+    imageUrl: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=700&q=80&auto=format&fit=crop', // Ensalada mediterránea gourmet fresca con aceite virgen extra
     description: 'Nutrición balanceada basada en alimentos reales, grasas saludables (AOVE, frutos secos) y saciedad duradera.',
     idealFor: 'Estilo de vida saludable, constancia sin obsesión y digestiones ligeras.',
     waterGoalMl: 3000,
