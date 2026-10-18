@@ -66,5 +66,9 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
+	<key>NSHealthShareUsageDescription</key>
+	<string>FitQuest Pro necesita leer tu frecuencia cardíaca, pasos y calorías desde tu Apple Watch y la app Salud durante tus entrenamientos.</string>
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>FitQuest Pro guardará las calorías quemadas, duración y métricas de tus entrenamientos en la app Salud de Apple.</string>
 </dict>
 </plist>

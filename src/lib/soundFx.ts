@@ -1,3 +1,5 @@
+import { NativeHealthService } from './nativeHealth';
+
 class SoundManager {
   private ctx: AudioContext | null = null;
   private isMuted: boolean = false;
@@ -164,6 +166,10 @@ class SoundManager {
   }
 
   public vibrate(pattern: number | number[]) {
+    // 1. Native iOS Taptic Engine & Android Haptic Feedback
+    NativeHealthService.triggerHaptic(Array.isArray(pattern) ? 'medium' : 'light');
+
+    // 2. Web Vibration API fallback
     if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
       try {
         navigator.vibrate(pattern);
