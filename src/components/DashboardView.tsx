@@ -19,6 +19,7 @@ import {
   Play,
   Layers,
   ChevronDown,
+  ChevronUp,
   UtensilsCrossed,
   Droplet,
   CheckCircle2,
@@ -34,6 +35,9 @@ import {
   WorkoutHistoryEntry,
   Achievement,
   Language,
+  AnyAttributeKey,
+  CoreAttributeKey,
+  SecondaryAttributeKey,
 } from '../types';
 import { translations } from '../lib/i18n';
 import { FitStorage } from '../lib/storage';
@@ -106,11 +110,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   // Active workout selection for "Misión del Día"
   const [selectedRoutineId, setSelectedRoutineId] = useState<string>(() => getRecommendedRoutineId());
-  const [selectedAttrKey, setSelectedAttrKey] = useState<'strength' | 'endurance' | 'agility' | 'discipline' | null>(null);
+  const [selectedAttrKey, setSelectedAttrKey] = useState<AnyAttributeKey | null>(null);
+  const [isAttributesExpanded, setIsAttributesExpanded] = useState<boolean>(false);
 
   const realStreakObj = calculateRealStreak(history, user.shieldUsedDates);
   const effectiveStreak = Math.max(user.stats?.currentStreak || 0, realStreakObj.currentStreak);
-  const attrBreakdown = getAthleteAttributesBreakdown(history, effectiveStreak, user.level, user);
+  const attrBreakdown = getAthleteAttributesBreakdown(history, effectiveStreak, user.level, user, smartwatch);
   const equippedFrameClasses = getEquippedFrameClasses(user);
   const equippedFrameMeta = getFrameById(user.equippedFrame);
 
@@ -524,6 +529,84 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </div>
             <p className="text-[9px] font-mono text-emerald-400 mt-1">+{attrBreakdown.details.discipline.bonusPct}% XP</p>
           </button>
+        </div>
+
+        {/* Desplegable de 10 Atributos Secundarios */}
+        <div className="mt-3 pt-2.5 border-t border-white/5">
+          <button
+            type="button"
+            onClick={() => setIsAttributesExpanded(!isAttributesExpanded)}
+            className="w-full py-2 px-3 rounded-2xl bg-white/[0.03] hover:bg-white/[0.07] border border-white/5 hover:border-cyan-500/30 flex items-center justify-between text-xs font-mono font-bold transition-all text-neutral-300 hover:text-white cursor-pointer group"
+          >
+            <div className="flex items-center gap-2">
+              <span className="text-cyan-400 group-hover:scale-110 transition-transform">⚡</span>
+              <span className="text-xs font-semibold">
+                {isAttributesExpanded ? 'Ocultar Atributos RPG Avanzados' : 'Desplegar Ficha RPG Completa (10 Atributos Avanzados)'}
+              </span>
+            </div>
+            <div className="flex items-center gap-1.5 text-neutral-400">
+              <span className="text-[10px] uppercase font-bold text-cyan-400">
+                {isAttributesExpanded ? 'Plegar' : '10 Atributos'}
+              </span>
+              {isAttributesExpanded ? (
+                <ChevronUp className="w-4 h-4 text-cyan-400" />
+              ) : (
+                <ChevronDown className="w-4 h-4 text-cyan-400" />
+              )}
+            </div>
+          </button>
+
+          {isAttributesExpanded && (
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5 mt-3 pt-1 animate-fadeIn">
+              {(
+                [
+                  { key: 'power', borderHover: 'hover:border-orange-500/40', barColor: 'bg-orange-500', textBadge: 'text-orange-400', bgBadge: 'bg-orange-500/10', color: 'text-orange-400' },
+                  { key: 'vitality', borderHover: 'hover:border-green-500/40', barColor: 'bg-green-500', textBadge: 'text-green-400', bgBadge: 'bg-green-500/10', color: 'text-green-400' },
+                  { key: 'speed', borderHover: 'hover:border-blue-500/40', barColor: 'bg-blue-500', textBadge: 'text-blue-400', bgBadge: 'bg-blue-500/10', color: 'text-blue-400' },
+                  { key: 'focus', borderHover: 'hover:border-violet-500/40', barColor: 'bg-violet-500', textBadge: 'text-violet-400', bgBadge: 'bg-violet-500/10', color: 'text-violet-400' },
+                  { key: 'recovery', borderHover: 'hover:border-teal-500/40', barColor: 'bg-teal-500', textBadge: 'text-teal-400', bgBadge: 'bg-teal-500/10', color: 'text-teal-400' },
+                  { key: 'technique', borderHover: 'hover:border-pink-500/40', barColor: 'bg-pink-500', textBadge: 'text-pink-400', bgBadge: 'bg-pink-500/10', color: 'text-pink-400' },
+                  { key: 'cardioCapacity', borderHover: 'hover:border-rose-500/40', barColor: 'bg-rose-500', textBadge: 'text-rose-400', bgBadge: 'bg-rose-500/10', color: 'text-rose-400' },
+                  { key: 'competitiveness', borderHover: 'hover:border-yellow-500/40', barColor: 'bg-yellow-500', textBadge: 'text-yellow-400', bgBadge: 'bg-yellow-500/10', color: 'text-yellow-400' },
+                  { key: 'anabolism', borderHover: 'hover:border-lime-500/40', barColor: 'bg-lime-500', textBadge: 'text-lime-400', bgBadge: 'bg-lime-500/10', color: 'text-lime-400' },
+                  { key: 'tenacity', borderHover: 'hover:border-red-500/40', barColor: 'bg-red-500', textBadge: 'text-red-500', bgBadge: 'bg-red-500/10', color: 'text-red-500' },
+                ] as const
+              ).map(({ key, borderHover, barColor, textBadge, bgBadge, color }) => {
+                const item = attrBreakdown.details[key];
+                if (!item) return null;
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => setSelectedAttrKey(key)}
+                    className={`bg-white/5 hover:bg-white/[0.08] p-2.5 rounded-2xl border border-white/5 ${borderHover} transition-all text-left cursor-pointer flex flex-col justify-between`}
+                  >
+                    <div className="flex items-center justify-between gap-1">
+                      <span className="text-[10px] font-mono font-bold text-neutral-300 truncate flex items-center gap-1">
+                        <span>{item.icon}</span>
+                        <span className="truncate">{item.name}</span>
+                      </span>
+                      <span className={`text-[9px] font-mono font-black ${textBadge} px-1.5 py-0.2 rounded ${bgBadge}`}>
+                        {item.code}
+                      </span>
+                    </div>
+                    <p className="text-base sm:text-lg font-mono font-black text-white mt-1">
+                      {item.score} <span className="text-[9px] text-neutral-500 font-normal">/99</span>
+                    </p>
+                    <div className="w-full h-1 bg-neutral-900 rounded-full overflow-hidden mt-1">
+                      <div
+                        className={`h-full ${barColor} rounded-full`}
+                        style={{ width: `${(item.score / 99) * 100}%` }}
+                      />
+                    </div>
+                    <p className={`text-[9px] font-mono ${color} mt-1 font-semibold`}>
+                      +{item.bonusPct}% XP
+                    </p>
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
 
@@ -1112,24 +1195,58 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
       {/* Interactive Athlete Attributes Breakdown & XP Bonus Modal */}
       {selectedAttrKey && (() => {
-        const activeAttr = attrBreakdown.details[selectedAttrKey];
-        const attrOrder: Array<'strength' | 'endurance' | 'agility' | 'discipline'> = [
+        const activeAttr = attrBreakdown.details[selectedAttrKey] || attrBreakdown.details.strength;
+        const coreOrder: CoreAttributeKey[] = [
           'strength',
           'endurance',
           'agility',
           'discipline',
         ];
-        const barGradientMap = {
+        const secondaryOrder: SecondaryAttributeKey[] = [
+          'power',
+          'vitality',
+          'speed',
+          'focus',
+          'recovery',
+          'technique',
+          'cardioCapacity',
+          'competitiveness',
+          'anabolism',
+          'tenacity',
+        ];
+
+        const barGradientMap: Record<AnyAttributeKey, string> = {
           strength: 'from-red-500 to-orange-400',
           endurance: 'from-cyan-500 to-blue-400',
           agility: 'from-amber-500 to-yellow-400',
           discipline: 'from-emerald-500 to-teal-400',
+          power: 'from-orange-500 to-amber-400',
+          vitality: 'from-green-500 to-emerald-400',
+          speed: 'from-blue-500 to-indigo-400',
+          focus: 'from-violet-500 to-purple-400',
+          recovery: 'from-teal-500 to-cyan-400',
+          technique: 'from-pink-500 to-rose-400',
+          cardioCapacity: 'from-rose-500 to-red-400',
+          competitiveness: 'from-yellow-500 to-amber-400',
+          anabolism: 'from-lime-500 to-emerald-400',
+          tenacity: 'from-red-600 to-orange-500',
         };
-        const accentTextMap = {
+
+        const accentTextMap: Record<AnyAttributeKey, string> = {
           strength: 'text-red-400',
           endurance: 'text-cyan-400',
           agility: 'text-amber-400',
           discipline: 'text-emerald-400',
+          power: 'text-orange-400',
+          vitality: 'text-green-400',
+          speed: 'text-blue-400',
+          focus: 'text-violet-400',
+          recovery: 'text-teal-400',
+          technique: 'text-pink-400',
+          cardioCapacity: 'text-rose-400',
+          competitiveness: 'text-yellow-400',
+          anabolism: 'text-lime-400',
+          tenacity: 'text-red-500',
         };
 
         return (
@@ -1138,7 +1255,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             onClick={() => setSelectedAttrKey(null)}
           >
             <div
-              className="bg-[#121216] border border-white/10 rounded-3xl max-w-lg w-full p-6 shadow-2xl relative overflow-hidden max-h-[90vh] overflow-y-auto"
+              className="bg-[#121216] border border-white/10 rounded-3xl max-w-xl w-full p-5 sm:p-6 shadow-2xl relative overflow-hidden max-h-[92vh] overflow-y-auto"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Top Overall Rating & Archetype Banner */}
@@ -1179,41 +1296,82 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 </button>
               </div>
 
-              {/* 4-Attribute Selector Tabs */}
-              <div className="grid grid-cols-4 gap-2 my-4">
-                {attrOrder.map((key) => {
-                  const item = attrBreakdown.details[key];
-                  const isSelected = key === selectedAttrKey;
-                  return (
-                    <button
-                      key={key}
-                      type="button"
-                      onClick={() => setSelectedAttrKey(key)}
-                      className={`p-2.5 rounded-2xl border text-center transition-all cursor-pointer ${
-                        isSelected
-                          ? 'bg-white/10 border-cyan-500/50 shadow-[0_0_12px_rgba(6,182,212,0.2)]'
-                          : 'bg-white/[0.03] border-white/5 hover:bg-white/[0.06]'
-                      }`}
-                    >
-                      <span className="text-[10px] font-mono font-bold text-neutral-400 block">
-                        {item.code}
-                      </span>
-                      <span className="text-lg font-mono font-black text-white">
-                        {item.score}
-                      </span>
-                      <span className="text-[9px] font-mono text-cyan-400 block">
-                        +{item.bonusPct}% XP
-                      </span>
-                    </button>
-                  );
-                })}
+              {/* 4 Core Pillars Selector Tabs */}
+              <div className="mt-4 mb-2">
+                <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-neutral-400 block mb-1.5">
+                  PILARES PRINCIPALES
+                </span>
+                <div className="grid grid-cols-4 gap-2">
+                  {coreOrder.map((key) => {
+                    const item = attrBreakdown.details[key];
+                    const isSelected = key === selectedAttrKey;
+                    return (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => setSelectedAttrKey(key)}
+                        className={`p-2 rounded-2xl border text-center transition-all cursor-pointer ${
+                          isSelected
+                            ? 'bg-white/10 border-cyan-500/50 shadow-[0_0_12px_rgba(6,182,212,0.2)]'
+                            : 'bg-white/[0.03] border-white/5 hover:bg-white/[0.06]'
+                        }`}
+                      >
+                        <span className="text-[10px] font-mono font-bold text-neutral-400 block">
+                          {item.code}
+                        </span>
+                        <span className="text-base sm:text-lg font-mono font-black text-white">
+                          {item.score}
+                        </span>
+                        <span className="text-[9px] font-mono text-cyan-400 block">
+                          +{item.bonusPct}% XP
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* 10 Advanced Secondary Attributes Tabs */}
+              <div className="mt-3 mb-4">
+                <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-neutral-400 block mb-1.5">
+                  ATRIBUTOS RPG AVANZADOS (10)
+                </span>
+                <div className="grid grid-cols-5 gap-1.5">
+                  {secondaryOrder.map((key) => {
+                    const item = attrBreakdown.details[key];
+                    if (!item) return null;
+                    const isSelected = key === selectedAttrKey;
+                    return (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => setSelectedAttrKey(key)}
+                        className={`p-1.5 rounded-xl border text-center transition-all cursor-pointer ${
+                          isSelected
+                            ? 'bg-white/15 border-cyan-400 shadow-[0_0_10px_rgba(6,182,212,0.3)]'
+                            : 'bg-white/[0.03] border-white/5 hover:bg-white/[0.06]'
+                        }`}
+                        title={item.name}
+                      >
+                        <span className="text-xs block leading-none">{item.icon}</span>
+                        <span className="text-[9px] font-mono font-black text-white block mt-0.5">
+                          {item.code}
+                        </span>
+                        <span className="text-[10px] font-mono font-bold text-neutral-300 block">
+                          {item.score}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
 
               {/* Active Attribute Detail Card */}
               <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-4">
                 <div className="flex items-center justify-between gap-2">
                   <div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-xl">{activeAttr.icon}</span>
                       <h4 className={`text-lg font-mono font-black ${accentTextMap[selectedAttrKey]}`}>
                         {activeAttr.name} ({activeAttr.code})
                       </h4>
@@ -1233,7 +1391,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   </div>
                 </div>
 
-                {/* Progress Bar (10 to 99) */}
+                {/* Progress Bar (5 to 99) */}
                 <div className="w-full h-2.5 bg-neutral-900 rounded-full overflow-hidden mt-3 border border-white/5">
                   <div
                     className={`h-full bg-gradient-to-r ${barGradientMap[selectedAttrKey]} rounded-full transition-all duration-500`}
@@ -1298,7 +1456,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </div>
 
               {/* Footer Actions */}
-              <div className="mt-5 flex items-center justify-end gap-3">
+              <div className="mt-5 flex items-center justify-end gap-3 flex-wrap">
                 {selectedAttrKey === 'agility' && onOpenSportModal && (
                   <button
                     type="button"
@@ -1311,7 +1469,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     🎾 Registrar Deporte / Reloj
                   </button>
                 )}
-                {selectedAttrKey === 'discipline' && (
+                {(selectedAttrKey === 'discipline' || selectedAttrKey === 'recovery' || selectedAttrKey === 'anabolism') && (
                   <button
                     type="button"
                     onClick={() => {
@@ -1321,6 +1479,18 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     className="px-4 py-2.5 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-300 text-xs font-mono font-bold transition-colors cursor-pointer"
                   >
                     🥗 Ir a Nutrición & Agua
+                  </button>
+                )}
+                {selectedAttrKey === 'competitiveness' && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedAttrKey(null);
+                      onNavigateTab('duels');
+                    }}
+                    className="px-4 py-2.5 rounded-xl bg-yellow-500/20 hover:bg-yellow-500/30 border border-yellow-500/40 text-yellow-300 text-xs font-mono font-bold transition-colors cursor-pointer"
+                  >
+                    ⚔️ Ir a Duelos en Vivo
                   </button>
                 )}
                 <button

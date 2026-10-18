@@ -21,11 +21,37 @@ export interface UserStats {
   totalPrsCount?: number;
 }
 
+export type CoreAttributeKey = 'strength' | 'endurance' | 'agility' | 'discipline';
+
+export type SecondaryAttributeKey =
+  | 'power'
+  | 'vitality'
+  | 'speed'
+  | 'focus'
+  | 'recovery'
+  | 'technique'
+  | 'cardioCapacity'
+  | 'competitiveness'
+  | 'anabolism'
+  | 'tenacity';
+
+export type AnyAttributeKey = CoreAttributeKey | SecondaryAttributeKey;
+
 export interface UserAttributes {
   strength: number; // 1-100
   endurance: number; // 1-100
   agility: number; // 1-100
   discipline: number; // 1-100
+  power?: number;
+  vitality?: number;
+  speed?: number;
+  focus?: number;
+  recovery?: number;
+  technique?: number;
+  cardioCapacity?: number;
+  competitiveness?: number;
+  anabolism?: number;
+  tenacity?: number;
 }
 
 export interface UserProfile {
