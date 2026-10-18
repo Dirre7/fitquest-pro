@@ -119,7 +119,9 @@ export const CloudAndSettingsView: React.FC<CloudAndSettingsViewProps> = ({
 
   // Reset progress handler (Reset to level 1 & empty history while keeping account)
   const handleResetProgressAction = async () => {
-    setIsResettingProgress(true);
+    // Immediately close modal to eliminate freezing or hanging
+    setShowResetProgressModal(false);
+    setIsResettingProgress(false);
     sound.playWarning();
     try {
       if (onResetProgress) {
@@ -127,18 +129,19 @@ export const CloudAndSettingsView: React.FC<CloudAndSettingsViewProps> = ({
       } else {
         await FitStorage.resetUserProgress();
       }
+      setSyncSuccessMsg('¡Progreso reiniciado a Nivel 1 (0 XP)!');
       sound.playLevelUp();
+      setTimeout(() => setSyncSuccessMsg(null), 3500);
     } catch (e) {
       console.error('Reset error:', e);
-    } finally {
-      setShowResetProgressModal(false);
-      setIsResettingProgress(false);
     }
   };
 
   // Delete account and data handler (Apple & GDPR compliance)
   const handleDeleteAccount = async () => {
-    setIsDeletingAccount(true);
+    // Immediately close modal to eliminate freezing or hanging
+    setShowDeleteAccountModal(false);
+    setIsDeletingAccount(false);
     sound.playWarning();
     try {
       if (onDeleteAccount) {
@@ -148,9 +151,6 @@ export const CloudAndSettingsView: React.FC<CloudAndSettingsViewProps> = ({
       }
     } catch (e) {
       console.error('Delete account error:', e);
-    } finally {
-      setShowDeleteAccountModal(false);
-      setIsDeletingAccount(false);
     }
   };
 

@@ -1467,7 +1467,7 @@ export class FitStorage {
       activeSession: null,
     };
 
-    // 1. Reset local storage
+    // 1. Reset local storage immediately
     this.saveUser(freshUser);
     this.saveHistory([]);
     try {
@@ -1476,6 +1476,7 @@ export class FitStorage {
       localStorage.setItem('fitquest_claimed_challenges', JSON.stringify([]));
       localStorage.setItem('fitquest_program_progress', JSON.stringify({}));
       localStorage.removeItem(KEYS.ACTIVE_SESSION);
+      localStorage.removeItem('fitquest_active_routine');
     } catch {}
 
     // Reset challenges in local storage
@@ -1490,22 +1491,30 @@ export class FitStorage {
     const resetAchievements = createFreshAchievements();
     this.saveAchievements(resetAchievements);
 
-    // 2. Clear cloud Firestore if user is authenticated
-    if (currentUser) {
-      try {
-        const userDocRef = doc(db, 'users', currentUser.uid);
-        await setDoc(userDocRef, {
-          ...freshUser,
-          workoutHistory: [],
-          customRoutines: [],
-          programProgress: {},
-          activeSession: null,
-          updatedAt: resetTimestamp,
-          lastResetAt: resetTimestamp,
-        });
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('fitquest_history_updated'));
+    }
 
-        // Fast parallel cleanup of subcollections if existing
+    // 2. Clear cloud Firestore if user is authenticated (with timeout & sanitized payload)
+    if (currentUser) {
+      const cloudResetPromise = async () => {
         try {
+          const userDocRef = doc(db, 'users', currentUser.uid);
+          await setDoc(
+            userDocRef,
+            sanitizeForFirestore({
+              ...freshUser,
+              workoutHistory: [],
+              customRoutines: [],
+              programProgress: {},
+              activeSession: null,
+              updatedAt: resetTimestamp,
+              lastResetAt: resetTimestamp,
+            }),
+            { merge: true }
+          );
+
+          // Fast parallel cleanup of subcollections if existing (non-blocking)
           const historyCol = collection(db, 'users', currentUser.uid, 'history');
           const historySnap = await getDocs(historyCol);
           await Promise.all(
@@ -1513,10 +1522,16 @@ export class FitStorage {
               deleteDoc(doc(db, 'users', currentUser.uid, 'history', docSnap.id)).catch(() => {})
             )
           );
-        } catch {}
-      } catch (err) {
-        console.warn('Cloud reset warning:', err);
-      }
+        } catch (err) {
+          console.warn('Cloud reset warning:', err);
+        }
+      };
+
+      // Ensure execution never hangs on network / offline promises
+      await Promise.race([
+        cloudResetPromise(),
+        new Promise((resolve) => setTimeout(resolve, 2000)),
+      ]).catch(() => {});
     }
 
     return freshUser;
@@ -1524,38 +1539,52 @@ export class FitStorage {
 
   public static async deleteUserAccountAndData(): Promise<boolean> {
     const currentUser = auth.currentUser;
+    const uid = currentUser?.uid;
+
+    // 1. Clear all local storage keys and session immediately
     try {
-      if (currentUser) {
-        // 1. Delete Firestore user document
+      localStorage.clear();
+      sessionStorage.clear();
+    } catch {}
+
+    // 2. Safe background cloud cleanup with timeout
+    if (uid && currentUser) {
+      const cloudCleanupPromise = async () => {
         try {
-          const userDocRef = doc(db, 'users', currentUser.uid);
-          await deleteDoc(userDocRef);
+          // Delete master Firestore doc
+          const userDocRef = doc(db, 'users', uid);
+          await deleteDoc(userDocRef).catch(() => {});
+
+          // Clean up subcollections
+          ['history', 'nutrition', 'weighIns', 'routines'].forEach(async (subCol) => {
+            try {
+              const snap = await getDocs(collection(db, 'users', uid, subCol));
+              snap.docs.forEach((d) => deleteDoc(doc(db, 'users', uid, subCol, d.id)).catch(() => {}));
+            } catch {}
+          });
         } catch (dbErr) {
           console.warn('Firestore doc deletion warning:', dbErr);
         }
-        // 2. Attempt to delete Firebase Auth account if token is fresh
+
+        // Attempt to delete Firebase Auth account if token is fresh, else sign out
         try {
           await deleteUser(currentUser);
         } catch (authErr: any) {
           console.warn('Firebase deleteUser note (e.g. requires recent login):', authErr);
         }
-        // 3. Always sign out cleanly
         try {
           await signOut(auth);
         } catch {}
-      }
-      // 4. Clear all Local Storage keys and device session
-      try {
-        localStorage.clear();
-      } catch {}
-      return true;
-    } catch (err) {
-      console.error('Account deletion general fallback:', err);
-      try {
-        localStorage.clear();
-      } catch {}
-      return false;
+      };
+
+      // Wrap in 2.5s race so it never blocks UI thread
+      await Promise.race([
+        cloudCleanupPromise(),
+        new Promise((resolve) => setTimeout(resolve, 2500)),
+      ]).catch(() => {});
     }
+
+    return true;
   }
 
   public static logWeight(newWeightKg: number, date?: string, currentUser?: UserProfile): UserProfile {

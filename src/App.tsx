@@ -15,7 +15,7 @@ import {
   SaturdayWeighIn,
 } from './types';
 import { FitStorage } from './lib/storage';
-import { createFreshAchievements, defaultChallenges } from './lib/initialData';
+import { createFreshAchievements, createFreshUser, defaultChallenges } from './lib/initialData';
 import { translations } from './lib/i18n';
 import { sound } from './lib/soundFx';
 import { auth, db, onAuthStateChanged, signOut as fbSignOut } from './lib/firebase';
@@ -1347,13 +1347,25 @@ export default function App() {
               setUser(freshUser);
               setHistory([]);
               setActiveSession(null);
+              setActiveRoutine(null);
               setAchievements(createFreshAchievements());
               setChallenges(defaultChallenges.map((c) => ({ ...c, currentProgress: 0, completed: false })));
               sound.playLevelUp();
             }}
             onDeleteAccount={async () => {
-              await FitStorage.deleteUserAccountAndData();
-              await handleSignOut();
+              // 1. Immediately switch off auth and guest mode so user sees AuthScreen instantly
+              setIsAuthenticated(false);
+              setIsGuestMode(false);
+              const guestUser = createFreshUser('guest_' + Date.now(), 'Atleta', '');
+              setUser(guestUser);
+              setHistory([]);
+              setActiveSession(null);
+              setActiveRoutine(null);
+              setAchievements(createFreshAchievements());
+              setChallenges(defaultChallenges);
+              // 2. Perform deletion in background
+              FitStorage.deleteUserAccountAndData().catch(console.warn);
+              fbSignOut(auth).catch(console.warn);
             }}
           />
         )}
