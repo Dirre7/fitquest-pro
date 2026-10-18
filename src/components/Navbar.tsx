@@ -125,7 +125,6 @@ export const Navbar: React.FC<NavbarProps> = ({
     { id: 'nutrition', label: 'Nutrición', icon: UtensilsCrossed },
     { id: 'analytics', label: 'Progreso', icon: BarChart3 },
     { id: 'community', label: 'Comunidad', icon: Trophy },
-    { id: 'settings', label: 'Ajustes', icon: Settings },
   ];
 
   return (
