@@ -536,10 +536,21 @@ function resolveAthleteArchetype(attrs: {
 export function getAthleteAttributesBreakdown(
   history: WorkoutHistoryEntry[],
   currentStreak: number,
-  _userLevel: number = 1,
+  userLevel: number = 1,
   userProfile?: UserProfile
 ): AthleteAttributesBreakdown {
   const safeHistory = Array.isArray(history) ? history : [];
+
+  // Effective athlete level
+  const effectiveLevel = Math.max(1, Number(userProfile?.level || userLevel) || 1);
+
+  // RPG Level Cap Curve:
+  // Level 1: cap ~20 | Level 5: cap ~28 | Level 8: cap ~34 | Level 15: cap ~47 | Level 25: cap ~66 | Level 35+: 99
+  const maxPotentialCap = Math.min(99, Math.round(18 + Math.pow(effectiveLevel, 0.95) * 2.2));
+
+  // Base athlete foundation + Level mastery contribution (+0.45 ptos per level, up to 20 max)
+  const baseAthletePoints = 5;
+  const levelMastery = Math.min(20, Math.round(effectiveLevel * 0.45 * 10) / 10);
 
   // 1. FUERZA (PWR) metrics: Gym volume + Strength/Hypertrophy sessions + Peak session PR
   const totalVolumeKg = safeHistory.reduce((sum, h) => sum + (Number(h.totalVolumeKg) || 0), 0);
@@ -561,12 +572,13 @@ export function getAthleteAttributesBreakdown(
         h.routineTitle?.toLowerCase().includes('hipertrofia'))
   ).length;
 
-  const strengthFromVolume = Math.min(52, Math.round((totalVolumeKg / 2500) * 10) / 10);
-  const strengthFromSessions = Math.min(30, Math.round(strengthSessions * 2.0 * 10) / 10);
-  const strengthFromPeak = maxSessionVolumeKg >= 6000 ? 7 : maxSessionVolumeKg >= 4000 ? 5 : maxSessionVolumeKg >= 2000 ? 3 : maxSessionVolumeKg > 0 ? 1 : 0;
+  const strengthFromVolume = Math.min(45, Math.round((totalVolumeKg / 4000) * 10) / 10);
+  const strengthFromSessions = Math.min(25, Math.round(strengthSessions * 0.6 * 10) / 10);
+  const strengthFromPeak = maxSessionVolumeKg >= 12000 ? 7 : maxSessionVolumeKg >= 8000 ? 5 : maxSessionVolumeKg >= 4000 ? 3 : maxSessionVolumeKg >= 1500 ? 2 : maxSessionVolumeKg > 0 ? 1 : 0;
+  const rawStrength = baseAthletePoints + levelMastery + strengthFromVolume + strengthFromSessions + strengthFromPeak;
   const strengthScore = Math.min(
-    99,
-    Math.max(10, Math.round(10 + strengthFromVolume + strengthFromSessions + strengthFromPeak))
+    maxPotentialCap,
+    Math.max(5, Math.round(rawStrength))
   );
 
   // 2. RESISTENCIA (END) metrics: Total active minutes + Total burned kcal + Cardio distance (km)
@@ -577,12 +589,13 @@ export function getAthleteAttributesBreakdown(
     0
   );
 
-  const enduranceFromMinutes = Math.min(35, Math.round((totalMinutes / 35) * 10) / 10);
-  const enduranceFromCalories = Math.min(32, Math.round((totalCalories / 700) * 10) / 10);
-  const enduranceFromDistance = Math.min(22, Math.round(sanitizedDistanceKm * 1.2 * 10) / 10);
+  const enduranceFromMinutes = Math.min(35, Math.round((totalMinutes / 120) * 10) / 10);
+  const enduranceFromCalories = Math.min(25, Math.round((totalCalories / 2500) * 10) / 10);
+  const enduranceFromDistance = Math.min(20, Math.round((sanitizedDistanceKm / 4.0) * 10) / 10);
+  const rawEndurance = baseAthletePoints + levelMastery + enduranceFromMinutes + enduranceFromCalories + enduranceFromDistance;
   const enduranceScore = Math.min(
-    99,
-    Math.max(10, Math.round(10 + enduranceFromMinutes + enduranceFromCalories + enduranceFromDistance))
+    maxPotentialCap,
+    Math.max(5, Math.round(rawEndurance))
   );
 
   // 3. AGILIDAD (AGI) metrics: Sport matches (Tenis, Pádel, Fútbol, Boxeo...) + Sport minutes + HIIT/Mobility/Calisthenics
@@ -615,12 +628,13 @@ export function getAthleteAttributesBreakdown(
         h.routineTitle?.toLowerCase().includes('cardio'))
   ).length;
 
-  const agilityFromSports = Math.min(45, Math.round(sportSessionsCount * 3.5 * 10) / 10);
-  const agilityFromSportTime = Math.min(24, Math.round((sportMinutes / 40) * 10) / 10);
-  const agilityFromHiit = Math.min(20, Math.round(hiitMobilitySessions * 2.5 * 10) / 10);
+  const agilityFromSports = Math.min(35, Math.round(sportSessionsCount * 1.5 * 10) / 10);
+  const agilityFromSportTime = Math.min(25, Math.round((sportMinutes / 50) * 10) / 10);
+  const agilityFromHiit = Math.min(20, Math.round(hiitMobilitySessions * 1.0 * 10) / 10);
+  const rawAgility = baseAthletePoints + levelMastery + agilityFromSports + agilityFromSportTime + agilityFromHiit;
   const agilityScore = Math.min(
-    99,
-    Math.max(10, Math.round(10 + agilityFromSports + agilityFromSportTime + agilityFromHiit))
+    maxPotentialCap,
+    Math.max(5, Math.round(rawAgility))
   );
 
   // 4. DISCIPLINA (DIS) metrics: Current Streak + Unique training days + Logged Nutrition/Water days + Claimed Weekly Challenges
@@ -657,23 +671,15 @@ export function getAthleteAttributesBreakdown(
   }
 
   const safeStreak = Math.max(0, Number(currentStreak) || 0);
-  const disciplineFromStreak = Math.min(30, Math.round(safeStreak * 2.5 * 10) / 10);
-  const disciplineFromUniqueDays = Math.min(30, Math.round(uniqueWorkoutDays * 1.6 * 10) / 10);
-  const disciplineFromNutrition = Math.min(18, Math.round(nutritionDaysCount * 1.5 * 10) / 10);
-  const disciplineFromChallenges = Math.min(11, Math.round(claimedChallengesCount * 2.5 * 10) / 10);
+  const disciplineFromStreak = Math.min(25, Math.round(safeStreak * 1.0 * 10) / 10);
+  const disciplineFromUniqueDays = Math.min(25, Math.round(uniqueWorkoutDays * 0.6 * 10) / 10);
+  const disciplineFromNutrition = Math.min(18, Math.round(nutritionDaysCount * 0.6 * 10) / 10);
+  const disciplineFromChallenges = Math.min(12, Math.round(claimedChallengesCount * 1.5 * 10) / 10);
 
+  const rawDiscipline = baseAthletePoints + levelMastery + disciplineFromStreak + disciplineFromUniqueDays + disciplineFromNutrition + disciplineFromChallenges;
   const disciplineScore = Math.min(
-    99,
-    Math.max(
-      10,
-      Math.round(
-        10 +
-          disciplineFromStreak +
-          disciplineFromUniqueDays +
-          disciplineFromNutrition +
-          disciplineFromChallenges
-      )
-    )
+    maxPotentialCap,
+    Math.max(5, Math.round(rawDiscipline))
   );
 
   const attributes = {
@@ -715,9 +721,14 @@ export function getAthleteAttributesBreakdown(
         bonusPct: strBonusPct,
         bonusDescription: `+${strBonusPct}% XP extra en rutinas de Pesas e Hipertrofia`,
         summary: 'Mide tu capacidad de carga muscular, tonelaje total levantado y sesiones de fuerza.',
-        howToImprove: 'Completa rutinas de gimnasio registrando series y peso (kg) para sumar tonelaje (+1 pto cada 2.500 kg y +2 ptos por sesión de fuerza).',
+        howToImprove: 'Completa rutinas de gimnasio registrando series y peso (kg) para sumar tonelaje (+1 pto cada 4.000 kg), suma sesiones de fuerza (+0.6 ptos) y bate récords de carga en 1 sesión.',
         sources: [
-          { label: 'Base inicial de Atleta', rawMetric: 'Nivel Base', pointsAdded: 10 },
+          { label: 'Base inicial de Atleta', rawMetric: 'Iniciación', pointsAdded: baseAthletePoints },
+          {
+            label: `Maestría por Rango (Nivel ${effectiveLevel})`,
+            rawMetric: `Nivel ${effectiveLevel}`,
+            pointsAdded: levelMastery,
+          },
           {
             label: 'Tonelaje total levantado',
             rawMetric: `${totalVolumeKg.toLocaleString()} kg`,
@@ -745,9 +756,14 @@ export function getAthleteAttributesBreakdown(
         bonusPct: endBonusPct,
         bonusDescription: `+${endBonusPct}% XP extra en Cardio y entrenos de +45 min`,
         summary: 'Refleja tu motor aeróbico: minutos activos totales, calorías quemadas y kilómetros recorridos.',
-        howToImprove: 'Suma minutos de entrenamiento (+1 pto cada 35 min), quema calorías en sesiones largas (+1 pto cada 700 kcal) o registra distancia en cardio.',
+        howToImprove: 'Acumula minutos de entrenamiento (+1 pto cada 120 min), quema calorías en sesiones largas (+1 pto cada 2.500 kcal) o registra distancia en cardio o running.',
         sources: [
-          { label: 'Base inicial de Atleta', rawMetric: 'Nivel Base', pointsAdded: 10 },
+          { label: 'Base inicial de Atleta', rawMetric: 'Iniciación', pointsAdded: baseAthletePoints },
+          {
+            label: `Maestría por Rango (Nivel ${effectiveLevel})`,
+            rawMetric: `Nivel ${effectiveLevel}`,
+            pointsAdded: levelMastery,
+          },
           {
             label: 'Tiempo activo acumulado',
             rawMetric: `${totalMinutes} min (${(totalMinutes / 60).toFixed(1)} h)`,
@@ -775,9 +791,14 @@ export function getAthleteAttributesBreakdown(
         bonusPct: agiBonusPct,
         bonusDescription: `+${agiBonusPct}% XP extra en Deportes (Tenis, Pádel...) y HIIT`,
         summary: 'Evalúa tu destreza deportiva en cancha, coordinación, sesiones de raqueta/equipo y HIIT.',
-        howToImprove: 'Registra partidos en «Registrar Deporte / Reloj» (+3.5 ptos por partido + tiempo en pista) o completa rutinas de HIIT, Core y Movilidad.',
+        howToImprove: 'Registra partidos en «Registrar Deporte / Reloj» (+1.5 ptos por sesión + tiempo en pista) o completa rutinas de HIIT, Core y Movilidad.',
         sources: [
-          { label: 'Base inicial de Atleta', rawMetric: 'Nivel Base', pointsAdded: 10 },
+          { label: 'Base inicial de Atleta', rawMetric: 'Iniciación', pointsAdded: baseAthletePoints },
+          {
+            label: `Maestría por Rango (Nivel ${effectiveLevel})`,
+            rawMetric: `Nivel ${effectiveLevel}`,
+            pointsAdded: levelMastery,
+          },
           {
             label: 'Partidos y Deportes registrados',
             rawMetric: `${sportSessionsCount} sesiones`,
@@ -805,9 +826,14 @@ export function getAthleteAttributesBreakdown(
         bonusPct: disBonusPct,
         bonusDescription: `+${disBonusPct}% XP extra global manteniendo racha activa (≥2 días)`,
         summary: 'Mide tu adherencia al plan: racha actual, días únicos entrenados, registro nutricional/agua y retos semanales.',
-        howToImprove: 'Mantén tu racha activa (+2.5 ptos/día), registra tus comidas y agua en Nutrición (+1.5 ptos/día) y reclama Retos Semanales.',
+        howToImprove: 'Mantén tu racha activa (+1.0 pto/día), suma días únicos entrenados (+0.6 ptos/día), registra comidas y agua en Nutrición y reclama Retos Semanales.',
         sources: [
-          { label: 'Base inicial de Atleta', rawMetric: 'Nivel Base', pointsAdded: 10 },
+          { label: 'Base inicial de Atleta', rawMetric: 'Iniciación', pointsAdded: baseAthletePoints },
+          {
+            label: `Maestría por Rango (Nivel ${effectiveLevel})`,
+            rawMetric: `Nivel ${effectiveLevel}`,
+            pointsAdded: levelMastery,
+          },
           {
             label: 'Racha activa actual',
             rawMetric: `${safeStreak} días seguidos`,

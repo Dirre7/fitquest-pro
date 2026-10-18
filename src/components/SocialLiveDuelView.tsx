@@ -69,11 +69,14 @@ export const SocialLiveDuelView: React.FC<SocialLiveDuelViewProps> = ({
   const leagueBots = LEAGUE_BOTS[user.league] || LEAGUE_BOTS['Bronze'];
 
   const rivals: RivalCardProfile[] = leagueBots.map((bot, idx) => {
-    // Generate deterministic, realistic attributes based on bot stats
-    const str = Math.min(98, Math.max(15, Math.round(15 + (bot.totalVolumeKg || 10000) / 2800 + bot.level * 1.5)));
-    const end = Math.min(98, Math.max(15, Math.round(15 + (bot.totalDistanceKm || 10) * 1.2 + bot.level * 1.4)));
-    const agi = Math.min(98, Math.max(15, Math.round(18 + (idx % 2 === 0 ? 25 : 12) + bot.level * 1.2)));
-    const dis = Math.min(98, Math.max(15, Math.round(15 + (bot.streakDays || 1) * 2.8 + bot.level * 1.3)));
+    // Generate deterministic, realistic attributes based on bot stats and level
+    const botLevel = Math.max(1, bot.level || 1);
+    const botCap = Math.min(99, Math.round(18 + Math.pow(botLevel, 0.95) * 2.2));
+    const botMastery = Math.min(20, Math.round(botLevel * 0.45 * 10) / 10);
+    const str = Math.min(botCap, Math.max(5, Math.round(5 + botMastery + (bot.totalVolumeKg || 4000) / 4500)));
+    const end = Math.min(botCap, Math.max(5, Math.round(5 + botMastery + (bot.totalDistanceKm || 5) * 0.8)));
+    const agi = Math.min(botCap, Math.max(5, Math.round(5 + botMastery + (idx % 2 === 0 ? 8 : 4))));
+    const dis = Math.min(botCap, Math.max(5, Math.round(5 + botMastery + (bot.streakDays || 1) * 1.2)));
     const ovr = Math.round((str + end + agi + dis) / 4);
 
     let archetypeName = 'Atleta Híbrido';

@@ -1327,7 +1327,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   />
                 </div>
                 <div className="flex justify-between text-[10px] font-mono text-neutral-500 mt-1">
-                  <span>Base 10</span>
+                  <span>Mín 5</span>
                   <span>Plata 25</span>
                   <span>Oro 50</span>
                   <span>Élite 75</span>
