@@ -292,6 +292,13 @@ export const WorkoutCatalogView: React.FC<WorkoutCatalogViewProps> = ({
     { id: 'Mobility', label: t.mobility },
   ];
 
+  const difficulties = [
+    { id: 'all', label: 'Todas' },
+    { id: 'Beginner', label: 'Principiante' },
+    { id: 'Intermediate', label: 'Intermedio' },
+    { id: 'Advanced', label: 'Avanzado' },
+  ];
+
   const filteredRoutines = routines.filter((r) => {
     const matchesCat =
       selectedCategory === 'all'
@@ -299,7 +306,12 @@ export const WorkoutCatalogView: React.FC<WorkoutCatalogViewProps> = ({
         : selectedCategory === 'custom'
         ? Boolean(r.isCustom)
         : r.category === selectedCategory;
-    const matchesDiff = selectedDifficulty === 'all' || r.difficulty === selectedDifficulty;
+    const matchesDiff =
+      selectedDifficulty === 'all'
+        ? true
+        : selectedDifficulty === 'Advanced'
+        ? r.difficulty === 'Advanced' || r.difficulty === 'Elite'
+        : r.difficulty === selectedDifficulty;
     const matchesSearch =
       r.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       r.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -853,6 +865,32 @@ export const WorkoutCatalogView: React.FC<WorkoutCatalogViewProps> = ({
                   {cat.label}
                 </button>
               ))}
+            </div>
+
+            {/* Difficulty Filter Bar (Option 2) */}
+            <div className="pt-2.5 border-t border-white/5 flex items-center gap-2 overflow-x-auto no-scrollbar">
+              <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-neutral-400 shrink-0 flex items-center gap-1">
+                <Target className="w-3 h-3 text-cyan-400" />
+                Dificultad:
+              </span>
+              <div className="flex items-center gap-1.5 shrink-0">
+                {difficulties.map((diff) => {
+                  const isSelected = selectedDifficulty === diff.id;
+                  return (
+                    <button
+                      key={diff.id}
+                      onClick={() => setSelectedDifficulty(diff.id)}
+                      className={`px-2.5 py-1 rounded-xl text-[11px] font-mono font-bold transition-all cursor-pointer ${
+                        isSelected
+                          ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/50 shadow-[0_0_10px_rgba(6,182,212,0.25)]'
+                          : 'bg-white/[0.03] text-neutral-400 hover:text-neutral-200 hover:bg-white/5 border border-white/5'
+                      }`}
+                    >
+                      {diff.label}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </div>
 
