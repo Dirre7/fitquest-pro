@@ -23,7 +23,7 @@ import {
   CheckCircle2,
   Edit2,
 } from 'lucide-react';
-import { WorkoutRoutine, WorkoutProgram, ProgramDay, Exercise, Language, UserProfile } from '../types';
+import { WorkoutRoutine, WorkoutProgram, ProgramDay, Exercise, ExerciseSet, Language, UserProfile } from '../types';
 import { translations } from '../lib/i18n';
 import { sound } from '../lib/soundFx';
 import { FitStorage } from '../lib/storage';
@@ -78,6 +78,7 @@ export const WorkoutCatalogView: React.FC<WorkoutCatalogViewProps> = ({
   const [activeExerciseSelectorTargetDay, setActiveExerciseSelectorTargetDay] = useState<number | null>(null);
   const [expandedRoutineId, setExpandedRoutineId] = useState<string | null>(null);
   const [expandedProgramId, setExpandedProgramId] = useState<string | null>('prog_ppl_3day');
+  const [expandedExerciseId, setExpandedExerciseId] = useState<string | null>(null);
   const [saveToastMessage, setSaveToastMessage] = useState<string | null>(null);
 
   // New / Edit Custom Routine Form State
@@ -1264,39 +1265,160 @@ export const WorkoutCatalogView: React.FC<WorkoutCatalogViewProps> = ({
                   </div>
                 </div>
 
-                <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
-                  {newExercises.map((ex, idx) => (
-                    <div key={ex.id} className="p-3 bg-white/5 rounded-xl border border-white/5 space-y-2">
-                      <div className="flex items-center justify-between gap-2">
-                        <input
-                          type="text"
-                          value={ex.name}
-                          onChange={(e) => {
-                            const updated = [...newExercises];
-                            updated[idx] = { ...updated[idx], name: e.target.value };
-                            setNewExercises(updated);
-                          }}
-                          className="bg-transparent font-bold text-xs text-white border-b border-white/10 focus:border-cyan-500 focus:outline-none flex-1 py-0.5"
-                        />
-                        {newExercises.length > 1 && (
+                <div className="space-y-2.5 max-h-64 overflow-y-auto pr-1">
+                  {newExercises.map((ex, idx) => {
+                    const isExOpen = expandedExerciseId === ex.id;
+                    return (
+                      <div key={ex.id} className="p-3 bg-[#18181b] rounded-2xl border border-white/10 space-y-2.5">
+                        <div className="flex items-center justify-between gap-2">
+                          <input
+                            type="text"
+                            value={ex.name}
+                            onChange={(e) => {
+                              const updated = [...newExercises];
+                              updated[idx] = { ...updated[idx], name: e.target.value };
+                              setNewExercises(updated);
+                            }}
+                            className="bg-transparent font-bold text-xs text-white border-b border-white/10 focus:border-cyan-500 focus:outline-none flex-1 py-0.5"
+                          />
                           <button
                             type="button"
-                            onClick={() => setNewExercises(newExercises.filter((_, i) => i !== idx))}
-                            className="text-neutral-500 hover:text-red-400 cursor-pointer"
+                            onClick={() => setExpandedExerciseId(isExOpen ? null : ex.id)}
+                            className="px-2 py-0.5 rounded-lg bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-400 font-mono text-[10px] font-bold border border-cyan-500/30 flex items-center gap-1 cursor-pointer"
                           >
-                            <Trash2 className="w-3.5 h-3.5" />
+                            <span>{isExOpen ? 'Ocultar Series' : 'Editar Series & Peso'}</span>
+                            {isExOpen ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
                           </button>
+                          {newExercises.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => setNewExercises(newExercises.filter((_, i) => i !== idx))}
+                              className="text-neutral-500 hover:text-red-400 cursor-pointer p-1"
+                              title="Eliminar ejercicio"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
+
+                        {/* Summary chips */}
+                        <div className="flex items-center gap-2 text-[10px] font-mono text-neutral-400 flex-wrap">
+                          <span className="bg-white/5 px-2 py-0.5 rounded text-neutral-300">{ex.muscleGroup}</span>
+                          <span>•</span>
+                          <span className="text-cyan-400 font-bold">{ex.sets.length} series</span>
+                          <span>•</span>
+                          <span>Descanso:</span>
+                          <select
+                            value={ex.restSeconds}
+                            onChange={(e) => {
+                              const updated = [...newExercises];
+                              updated[idx] = { ...updated[idx], restSeconds: Number(e.target.value) };
+                              setNewExercises(updated);
+                            }}
+                            className="bg-neutral-900 border border-white/10 rounded px-1.5 py-0.5 text-[10px] text-white focus:outline-none cursor-pointer"
+                          >
+                            <option value={30}>30s</option>
+                            <option value={45}>45s</option>
+                            <option value={60}>60s</option>
+                            <option value={90}>90s</option>
+                            <option value={120}>120s</option>
+                            <option value={180}>180s</option>
+                          </select>
+                        </div>
+
+                        {/* Detailed Sets & Weights Editor (Collapsible) */}
+                        {isExOpen && (
+                          <div className="pt-2 border-t border-white/5 space-y-2 animate-in fade-in">
+                            <div className="grid grid-cols-12 gap-2 text-[10px] font-mono text-neutral-400 uppercase font-bold px-1">
+                              <span className="col-span-2 text-center">Set</span>
+                              <span className="col-span-5 text-center">Reps</span>
+                              <span className="col-span-4 text-center">Peso (kg)</span>
+                              <span className="col-span-1"></span>
+                            </div>
+
+                            {ex.sets.map((set, sIdx) => (
+                              <div key={set.id} className="grid grid-cols-12 gap-2 items-center bg-white/5 p-1.5 rounded-xl border border-white/5">
+                                <span className="col-span-2 text-center font-mono font-bold text-xs text-cyan-400">
+                                  #{sIdx + 1}
+                                </span>
+                                <div className="col-span-5 flex items-center justify-center gap-1">
+                                  <input
+                                    type="number"
+                                    min="1"
+                                    max="100"
+                                    value={set.targetReps}
+                                    onChange={(e) => {
+                                      const updated = [...newExercises];
+                                      const val = Math.max(1, Number(e.target.value));
+                                      updated[idx].sets[sIdx] = { ...set, targetReps: val, actualReps: val };
+                                      setNewExercises(updated);
+                                    }}
+                                    className="w-full bg-neutral-900 border border-white/10 rounded-lg py-1 px-1.5 text-center font-mono font-bold text-xs text-white focus:border-cyan-400 focus:outline-none"
+                                  />
+                                </div>
+                                <div className="col-span-4 flex items-center justify-center gap-1">
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    step="0.5"
+                                    value={set.targetWeightKg}
+                                    onChange={(e) => {
+                                      const updated = [...newExercises];
+                                      const val = Math.max(0, Number(e.target.value));
+                                      updated[idx].sets[sIdx] = { ...set, targetWeightKg: val, actualWeightKg: val };
+                                      setNewExercises(updated);
+                                    }}
+                                    className="w-full bg-neutral-900 border border-white/10 rounded-lg py-1 px-1.5 text-center font-mono font-bold text-xs text-white focus:border-cyan-400 focus:outline-none"
+                                  />
+                                </div>
+                                <div className="col-span-1 text-center">
+                                  {ex.sets.length > 1 && (
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        const updated = [...newExercises];
+                                        updated[idx].sets = updated[idx].sets.filter((_, i) => i !== sIdx).map((s, newIdx) => ({
+                                          ...s,
+                                          setNumber: newIdx + 1,
+                                        }));
+                                        setNewExercises(updated);
+                                      }}
+                                      className="text-neutral-500 hover:text-red-400 p-0.5 cursor-pointer"
+                                      title="Quitar serie"
+                                    >
+                                      <Trash2 className="w-3 h-3" />
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const updated = [...newExercises];
+                                const lastSet = ex.sets[ex.sets.length - 1];
+                                const newSet: ExerciseSet = {
+                                  id: `set_${Date.now()}_${Math.random()}`,
+                                  setNumber: ex.sets.length + 1,
+                                  targetReps: lastSet ? lastSet.targetReps : 10,
+                                  actualReps: lastSet ? lastSet.actualReps : 10,
+                                  targetWeightKg: lastSet ? lastSet.targetWeightKg : 20,
+                                  actualWeightKg: lastSet ? lastSet.actualWeightKg : 20,
+                                  completed: false,
+                                };
+                                updated[idx].sets.push(newSet);
+                                setNewExercises(updated);
+                              }}
+                              className="w-full py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-cyan-400 font-mono text-[11px] font-bold border border-cyan-500/20 flex items-center justify-center gap-1 cursor-pointer transition-colors"
+                            >
+                              <Plus className="w-3 h-3" /> Añadir Serie
+                            </button>
+                          </div>
                         )}
                       </div>
-                      <div className="flex items-center gap-3 text-[10px] font-mono text-neutral-400">
-                        <span>{ex.muscleGroup}</span>
-                        <span>•</span>
-                        <span>{ex.sets.length} series</span>
-                        <span>•</span>
-                        <span>{ex.restSeconds}s descanso</span>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -1328,9 +1450,9 @@ export const WorkoutCatalogView: React.FC<WorkoutCatalogViewProps> = ({
                 </div>
 
                 {/* Days Configuration Cards */}
-                <div className="space-y-2.5 max-h-56 overflow-y-auto pr-1">
+                <div className="space-y-3 max-h-64 overflow-y-auto pr-1">
                   {programDaysData.map((d, dIdx) => (
-                    <div key={d.dayNumber} className="p-3 bg-[#18181b] rounded-2xl border border-white/10 space-y-2">
+                    <div key={d.dayNumber} className="p-3.5 bg-[#18181b] rounded-2xl border border-white/10 space-y-2.5">
                       <div className="flex items-center justify-between gap-2">
                         <span className="w-5 h-5 rounded bg-cyan-400 text-neutral-950 font-mono font-black text-[10px] flex items-center justify-center shrink-0">
                           {d.dayNumber}
@@ -1356,9 +1478,9 @@ export const WorkoutCatalogView: React.FC<WorkoutCatalogViewProps> = ({
                             setActiveExerciseSelectorTargetDay(d.dayNumber);
                             setShowExerciseSelector(true);
                           }}
-                          className="px-2 py-0.5 rounded-lg bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-300 font-mono text-[10px] font-bold border border-cyan-500/30 shrink-0 cursor-pointer"
+                          className="px-2.5 py-1 rounded-xl bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-300 font-mono text-[10px] font-bold border border-cyan-500/30 shrink-0 cursor-pointer flex items-center gap-1"
                         >
-                          + Ejercicio
+                          <Plus className="w-3 h-3" /> Ejercicio
                         </button>
                       </div>
 
@@ -1374,11 +1496,130 @@ export const WorkoutCatalogView: React.FC<WorkoutCatalogViewProps> = ({
                         className="w-full bg-white/5 px-2.5 py-1 rounded-lg text-[11px] text-neutral-300 placeholder-neutral-500 border border-white/5 focus:outline-none"
                       />
 
-                      <div className="text-[10px] font-mono text-neutral-400 pl-1 flex items-center gap-1.5 flex-wrap">
-                        <span>{d.routine.exercises.length} Ejercicios:</span>
-                        <span className="text-cyan-400">
-                          {d.routine.exercises.map((e) => e.name).join(', ') || 'Sin ejercicios'}
-                        </span>
+                      {/* Program Day Exercises with Sets and Weight Customizer */}
+                      <div className="space-y-2 pt-1 border-t border-white/5">
+                        {d.routine.exercises.length === 0 ? (
+                          <p className="text-[10px] font-mono text-neutral-500 text-center py-1">
+                            Sin ejercicios en este día aún. Pulsa "+ Ejercicio".
+                          </p>
+                        ) : (
+                          d.routine.exercises.map((pEx, pExIdx) => {
+                            const pKey = `p_${d.dayNumber}_${pEx.id}`;
+                            const isPExOpen = expandedExerciseId === pKey;
+                            return (
+                              <div key={pEx.id} className="p-2.5 bg-neutral-900/80 rounded-xl border border-white/5 space-y-2">
+                                <div className="flex items-center justify-between gap-2">
+                                  <span className="font-bold text-xs text-white truncate flex-1">{pEx.name}</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => setExpandedExerciseId(isPExOpen ? null : pKey)}
+                                    className="px-2 py-0.5 rounded bg-white/5 hover:bg-white/10 text-cyan-400 font-mono text-[9px] font-bold border border-white/10 flex items-center gap-1 cursor-pointer"
+                                  >
+                                    <span>{pEx.sets.length}S • {isPExOpen ? 'Cerrar' : 'Series & Kg'}</span>
+                                    {isPExOpen ? <ChevronDown className="w-2.5 h-2.5" /> : <ChevronRight className="w-2.5 h-2.5" />}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const updated = [...programDaysData];
+                                      updated[dIdx].routine.exercises = updated[dIdx].routine.exercises.filter((_, i) => i !== pExIdx);
+                                      setProgramDaysData(updated);
+                                    }}
+                                    className="text-neutral-500 hover:text-red-400 p-0.5 cursor-pointer"
+                                  >
+                                    <Trash2 className="w-3 h-3" />
+                                  </button>
+                                </div>
+
+                                {isPExOpen && (
+                                  <div className="space-y-1.5 pt-1.5 border-t border-white/5 animate-in fade-in">
+                                    {pEx.sets.map((set, sIdx) => (
+                                      <div key={set.id} className="flex items-center gap-2 text-xs font-mono">
+                                        <span className="text-cyan-400 font-bold w-6">S{sIdx + 1}</span>
+                                        <div className="flex-1 flex items-center gap-1 bg-white/5 px-2 py-0.5 rounded border border-white/5">
+                                          <input
+                                            type="number"
+                                            min="1"
+                                            value={set.targetReps}
+                                            onChange={(e) => {
+                                              const updated = [...programDaysData];
+                                              const val = Math.max(1, Number(e.target.value));
+                                              updated[dIdx].routine.exercises[pExIdx].sets[sIdx] = {
+                                                ...set,
+                                                targetReps: val,
+                                                actualReps: val,
+                                              };
+                                              setProgramDaysData(updated);
+                                            }}
+                                            className="w-12 bg-transparent text-center font-bold text-white focus:outline-none"
+                                          />
+                                          <span className="text-[10px] text-neutral-400">reps</span>
+                                        </div>
+                                        <div className="flex-1 flex items-center gap-1 bg-white/5 px-2 py-0.5 rounded border border-white/5">
+                                          <input
+                                            type="number"
+                                            min="0"
+                                            step="0.5"
+                                            value={set.targetWeightKg}
+                                            onChange={(e) => {
+                                              const updated = [...programDaysData];
+                                              const val = Math.max(0, Number(e.target.value));
+                                              updated[dIdx].routine.exercises[pExIdx].sets[sIdx] = {
+                                                ...set,
+                                                targetWeightKg: val,
+                                                actualWeightKg: val,
+                                              };
+                                              setProgramDaysData(updated);
+                                            }}
+                                            className="w-12 bg-transparent text-center font-bold text-white focus:outline-none"
+                                          />
+                                          <span className="text-[10px] text-neutral-400">kg</span>
+                                        </div>
+                                        {pEx.sets.length > 1 && (
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              const updated = [...programDaysData];
+                                              updated[dIdx].routine.exercises[pExIdx].sets = updated[dIdx].routine.exercises[pExIdx].sets
+                                                .filter((_, i) => i !== sIdx)
+                                                .map((s, newI) => ({ ...s, setNumber: newI + 1 }));
+                                              setProgramDaysData(updated);
+                                            }}
+                                            className="text-neutral-500 hover:text-red-400 p-0.5 cursor-pointer"
+                                          >
+                                            <Trash2 className="w-2.5 h-2.5" />
+                                          </button>
+                                        )}
+                                      </div>
+                                    ))}
+
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        const updated = [...programDaysData];
+                                        const setsArr = updated[dIdx].routine.exercises[pExIdx].sets;
+                                        const lastS = setsArr[setsArr.length - 1];
+                                        setsArr.push({
+                                          id: `s_${Date.now()}_${Math.random()}`,
+                                          setNumber: setsArr.length + 1,
+                                          targetReps: lastS ? lastS.targetReps : 10,
+                                          actualReps: lastS ? lastS.actualReps : 10,
+                                          targetWeightKg: lastS ? lastS.targetWeightKg : 20,
+                                          actualWeightKg: lastS ? lastS.actualWeightKg : 20,
+                                          completed: false,
+                                        });
+                                        setProgramDaysData(updated);
+                                      }}
+                                      className="w-full py-1 rounded bg-white/5 hover:bg-white/10 text-cyan-400 text-[10px] font-mono font-bold flex items-center justify-center gap-1 cursor-pointer"
+                                    >
+                                      <Plus className="w-2.5 h-2.5" /> Añadir Serie a este Ejercicio
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })
+                        )}
                       </div>
                     </div>
                   ))}
