@@ -586,74 +586,212 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
         </div>
       )}
 
-      {/* Top Banner: Athlete Identity & Plan Reference */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-neutral-900 via-neutral-900/90 to-neutral-950 border border-white/10 p-4 sm:p-6 shadow-xl">
-        <div className="absolute top-0 right-0 w-80 h-80 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20" />
-        <div className="relative flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2 mb-2 flex-wrap">
-              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 flex items-center gap-1.5">
-                <span>{activePlan.badge}</span>
-                <span>{activePlan.name}</span>
-              </span>
-              <button
-                type="button"
-                onClick={() => {
-                  safePlayClick();
-                  setIsPlanSelectorOpen(true);
-                }}
-                className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-white/10 hover:bg-white/20 text-cyan-300 border border-cyan-500/30 transition-all flex items-center gap-1 cursor-pointer active:scale-95"
-              >
-                <SlidersHorizontal className="w-3 h-3" />
-                <span>Cambiar Plan (5 disponibles)</span>
-              </button>
-            </div>
-            <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight flex items-center gap-2.5">
-              <UtensilsCrossed className="w-7 h-7 text-cyan-400" />
-              Nutrición & Macros
-            </h1>
-            <p className="text-xs sm:text-sm text-neutral-400 mt-1 max-w-2xl leading-relaxed">
-              {activePlan.description} Meta personal: <strong className="text-white">{targetWeight.toFixed(1)} kg</strong>.
-            </p>
-          </div>
+      {/* Compact Top Bar: Subtabs Switcher (Diario vs Control Sábados) */}
+      <div className="flex items-center justify-between gap-3 pb-1 border-b border-white/5">
+        <div className="flex items-center gap-2">
+          <UtensilsCrossed className="w-5 h-5 text-cyan-400" />
+          <h1 className="text-xl sm:text-2xl font-display font-black text-white tracking-tight uppercase">
+            Nutrición
+          </h1>
+        </div>
 
-          {/* Subtabs Switcher */}
-          <div className="flex items-center bg-black/40 border border-white/10 rounded-2xl p-1 shrink-0 self-start md:self-auto">
-            <button
-              onClick={() => {
-                safePlayClick();
-                setActiveSubTab('meals');
-              }}
-              className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
-                activeSubTab === 'meals'
-                  ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-neutral-950 shadow-md'
-                  : 'text-neutral-400 hover:text-white'
-              }`}
-            >
-              <Flame className="w-3.5 h-3.5" />
-              <span>Diario de Comidas</span>
-            </button>
-            <button
-              onClick={() => {
-                safePlayClick();
-                setActiveSubTab('weighin');
-              }}
-              className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
-                activeSubTab === 'weighin'
-                  ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-neutral-950 shadow-md'
-                  : 'text-neutral-400 hover:text-white'
-              }`}
-            >
-              <Scale className="w-3.5 h-3.5" />
-              <span>Control Sábados</span>
-            </button>
-          </div>
+        {/* Subtabs Switcher */}
+        <div className="flex items-center bg-[#121214] border border-white/10 rounded-2xl p-1 shrink-0">
+          <button
+            onClick={() => {
+              safePlayClick();
+              setActiveSubTab('meals');
+            }}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition-all ${
+              activeSubTab === 'meals'
+                ? 'bg-cyan-500 text-neutral-950 shadow-md font-black'
+                : 'text-neutral-400 hover:text-white'
+            }`}
+          >
+            <Flame className="w-3.5 h-3.5" />
+            <span>Diario</span>
+          </button>
+          <button
+            onClick={() => {
+              safePlayClick();
+              setActiveSubTab('weighin');
+            }}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition-all ${
+              activeSubTab === 'weighin'
+                ? 'bg-cyan-500 text-neutral-950 shadow-md font-black'
+                : 'text-neutral-400 hover:text-white'
+            }`}
+          >
+            <Scale className="w-3.5 h-3.5" />
+            <span>Control</span>
+          </button>
         </div>
       </div>
 
       {activeSubTab === 'meals' ? (
         <>
-          {/* 1. WEEKLY CALENDAR DAY STRIP (Matching reference) */}
+          {/* 1. HERO CALORIE BALANCE CARD WITH ARC GAUGE (First Priority: How you are doing today) */}
+          <div className="bg-gradient-to-b from-[#16181D] via-[#121214] to-[#121214] border border-white/10 rounded-3xl p-5 sm:p-6 shadow-2xl relative overflow-hidden">
+            {/* Ambient background glow */}
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-72 h-44 bg-cyan-500/10 blur-3xl pointer-events-none rounded-full" />
+
+            {/* Top Row: Consumidas vs Arc Gauge vs Quemadas */}
+            <div className="grid grid-cols-3 items-center gap-2 relative z-10">
+              {/* Left: Consumidas */}
+              <div className="flex flex-col items-center sm:items-start text-center sm:text-left">
+                <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-neutral-800/80 border border-white/10 flex items-center justify-center text-cyan-400 mb-2 shadow-inner">
+                  <UtensilsCrossed className="w-5 h-5" />
+                </div>
+                <span className="text-[11px] font-mono text-neutral-400 uppercase font-bold tracking-wider">
+                  Consumido
+                </span>
+                <span className="text-xl sm:text-2xl font-mono font-black text-white mt-0.5">
+                  {totals.calories.toLocaleString()}
+                </span>
+                <span className="text-[10px] font-mono text-neutral-400">kcal</span>
+              </div>
+
+              {/* Center: Arc Gauge + Remaining */}
+              <div className="relative flex flex-col items-center justify-center">
+                <div className="relative w-44 sm:w-52 h-36 sm:h-40 flex items-center justify-center">
+                  <svg viewBox="0 0 200 150" className="w-full h-full overflow-visible">
+                    <defs>
+                      <linearGradient id="calArcGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                        <stop offset="0%" stopColor="#06b6d4" />
+                        <stop offset="50%" stopColor="#3b82f6" />
+                        <stop offset="100%" stopColor="#10b981" />
+                      </linearGradient>
+                      <linearGradient id="calExceededArc" x1="0%" y1="0%" x2="100%" y2="0%">
+                        <stop offset="0%" stopColor="#f59e0b" />
+                        <stop offset="100%" stopColor="#ef4444" />
+                      </linearGradient>
+                    </defs>
+                    {/* Track Arc (250 degrees from 145° to 395°) */}
+                    <path
+                      d="M 38.6 128 A 75 75 0 1 1 161.4 128"
+                      fill="none"
+                      stroke="#1f242d"
+                      strokeWidth="14"
+                      strokeLinecap="round"
+                    />
+                    {/* Progress Arc */}
+                    <path
+                      d="M 38.6 128 A 75 75 0 1 1 161.4 128"
+                      fill="none"
+                      stroke={totals.calories > targetKcal ? 'url(#calExceededArc)' : 'url(#calArcGradient)'}
+                      strokeWidth="14"
+                      strokeLinecap="round"
+                      strokeDasharray={327.25}
+                      strokeDashoffset={327.25 - (327.25 * Math.min(100, caloriesPercent)) / 100}
+                      className="transition-all duration-700 ease-out"
+                    />
+                  </svg>
+
+                  {/* Center Numbers */}
+                  <div className="absolute inset-0 flex flex-col items-center justify-center pt-5 pointer-events-none text-center">
+                    <span className="text-[10px] sm:text-[11px] font-mono uppercase tracking-widest text-neutral-400 font-bold">
+                      {totals.calories > targetKcal ? 'Superávit' : 'Restantes'}
+                    </span>
+                    <span className="font-display font-black text-3xl sm:text-4xl lg:text-5xl text-white tracking-tight leading-none my-0.5">
+                      {totals.calories > targetKcal ? `+${(totals.calories - targetKcal).toLocaleString()}` : caloriesRemaining.toLocaleString()}
+                    </span>
+                    <span className="text-[11px] font-mono text-cyan-400 font-extrabold uppercase tracking-wider">
+                      kcal
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Right: Quemadas */}
+              <div className="flex flex-col items-center sm:items-end text-center sm:text-right">
+                <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-orange-500/10 border border-orange-500/20 flex items-center justify-center text-orange-400 mb-2 shadow-inner">
+                  <Flame className="w-5 h-5" />
+                </div>
+                <span className="text-[11px] font-mono text-neutral-400 uppercase font-bold tracking-wider">
+                  Quemadas
+                </span>
+                <span className="text-xl sm:text-2xl font-mono font-black text-orange-400 mt-0.5">
+                  {workoutCaloriesToday.toLocaleString()}
+                </span>
+                <span className="text-[10px] font-mono text-neutral-400">kcal entreno</span>
+              </div>
+            </div>
+
+            {/* Equation Subline */}
+            <div className="mt-2 text-center">
+              <p className="text-[11px] font-mono text-neutral-400">
+                Meta <span className="text-white font-bold">{targetKcal}</span> - Consumidas <span className="text-cyan-400 font-bold">{totals.calories}</span> + Quemadas <span className="text-orange-400 font-bold">{workoutCaloriesToday}</span> = Netas <span className="text-white font-bold">{netCalories}</span> kcal
+              </p>
+            </div>
+
+            {/* Macro Breakdown Pills */}
+            <div className="grid grid-cols-3 gap-2 sm:gap-3 mt-4 pt-4 border-t border-white/5 relative z-10">
+              {/* Proteínas */}
+              <div className="bg-neutral-950/70 border border-white/5 rounded-2xl p-2.5 sm:p-3 flex flex-col justify-between shadow-sm">
+                <div className="flex items-center justify-between text-[11px] font-bold text-neutral-300">
+                  <span className="text-cyan-400 font-mono uppercase tracking-wider text-[10px] sm:text-xs">
+                    Proteínas
+                  </span>
+                  <span className="text-[10px] font-mono text-cyan-400/80">{proteinPercent}%</span>
+                </div>
+                <div className="my-1.5">
+                  <div className="text-xs sm:text-sm font-mono font-black text-white">
+                    {totals.protein} <span className="text-[10px] text-neutral-400 font-normal">/ {targetProt}g</span>
+                  </div>
+                  <div className="w-full h-1.5 bg-neutral-800 rounded-full overflow-hidden mt-1.5">
+                    <div
+                      className="h-full bg-gradient-to-r from-cyan-400 to-blue-500 rounded-full transition-all duration-500"
+                      style={{ width: `${proteinPercent}%` }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Grasas */}
+              <div className="bg-neutral-950/70 border border-white/5 rounded-2xl p-2.5 sm:p-3 flex flex-col justify-between shadow-sm">
+                <div className="flex items-center justify-between text-[11px] font-bold text-neutral-300">
+                  <span className="text-amber-400 font-mono uppercase tracking-wider text-[10px] sm:text-xs">
+                    Grasas
+                  </span>
+                  <span className="text-[10px] font-mono text-amber-400/80">{fatPercent}%</span>
+                </div>
+                <div className="my-1.5">
+                  <div className="text-xs sm:text-sm font-mono font-black text-white">
+                    {totals.fat} <span className="text-[10px] text-neutral-400 font-normal">/ {targetFat}g</span>
+                  </div>
+                  <div className="w-full h-1.5 bg-neutral-800 rounded-full overflow-hidden mt-1.5">
+                    <div
+                      className="h-full bg-gradient-to-r from-amber-400 to-orange-500 rounded-full transition-all duration-500"
+                      style={{ width: `${fatPercent}%` }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Carbohidratos */}
+              <div className="bg-neutral-950/70 border border-white/5 rounded-2xl p-2.5 sm:p-3 flex flex-col justify-between shadow-sm">
+                <div className="flex items-center justify-between text-[11px] font-bold text-neutral-300">
+                  <span className="text-blue-400 font-mono uppercase tracking-wider text-[10px] sm:text-xs">
+                    Carbos
+                  </span>
+                  <span className="text-[10px] font-mono text-blue-400/80">{carbsPercent}%</span>
+                </div>
+                <div className="my-1.5">
+                  <div className="text-xs sm:text-sm font-mono font-black text-white">
+                    {totals.carbs} <span className="text-[10px] text-neutral-400 font-normal">/ {targetCarb}g</span>
+                  </div>
+                  <div className="w-full h-1.5 bg-neutral-800 rounded-full overflow-hidden mt-1.5">
+                    <div
+                      className="h-full bg-gradient-to-r from-blue-400 to-indigo-500 rounded-full transition-all duration-500"
+                      style={{ width: `${carbsPercent}%` }}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* 2. WEEKLY CALENDAR DAY STRIP (Second Priority: Dates & Day Type) */}
           <div className="bg-[#121214] border border-white/10 rounded-3xl p-3 sm:p-4 shadow-xl space-y-3">
             <div className="flex items-center justify-between gap-2 px-1">
               <div className="flex items-center gap-1 sm:gap-2">
@@ -769,165 +907,38 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
             </div>
           </div>
 
-          {/* 2. HERO CALORIE BALANCE CARD WITH ARC GAUGE (Matching reference) */}
-          <div className="bg-gradient-to-b from-[#16181D] via-[#121214] to-[#121214] border border-white/10 rounded-3xl p-5 sm:p-6 shadow-2xl relative overflow-hidden">
-            {/* Ambient background glow */}
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-72 h-44 bg-cyan-500/10 blur-3xl pointer-events-none rounded-full" />
-
-            {/* Top Row: Consumidas vs Arc Gauge vs Quemadas */}
-            <div className="grid grid-cols-3 items-center gap-2 relative z-10">
-              {/* Left: Consumidas */}
-              <div className="flex flex-col items-center sm:items-start text-center sm:text-left">
-                <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-neutral-800/80 border border-white/10 flex items-center justify-center text-cyan-400 mb-2 shadow-inner">
-                  <UtensilsCrossed className="w-5 h-5" />
-                </div>
-                <span className="text-[11px] font-mono text-neutral-400 uppercase font-bold tracking-wider">
-                  Consumido
-                </span>
-                <span className="text-xl sm:text-2xl font-mono font-black text-white mt-0.5">
-                  {totals.calories.toLocaleString()}
-                </span>
-                <span className="text-[10px] font-mono text-neutral-400">kcal</span>
+          {/* 3. ACTIVE NUTRITION PLAN WIDGET (Compact, zero fluff, prominent change plan button) */}
+          <div className="bg-[#121214] border border-white/10 rounded-3xl p-4 sm:p-5 shadow-xl relative overflow-hidden flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-3.5 min-w-0">
+              <div className="w-12 h-12 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-2xl shrink-0 shadow-inner">
+                {activePlan.badge}
               </div>
-
-              {/* Center: Arc Gauge + Remaining */}
-              <div className="relative flex flex-col items-center justify-center">
-                <div className="relative w-44 sm:w-52 h-36 sm:h-40 flex items-center justify-center">
-                  <svg viewBox="0 0 200 150" className="w-full h-full overflow-visible">
-                    <defs>
-                      <linearGradient id="calArcGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                        <stop offset="0%" stopColor="#06b6d4" />
-                        <stop offset="50%" stopColor="#3b82f6" />
-                        <stop offset="100%" stopColor="#10b981" />
-                      </linearGradient>
-                      <linearGradient id="calExceededArc" x1="0%" y1="0%" x2="100%" y2="0%">
-                        <stop offset="0%" stopColor="#f59e0b" />
-                        <stop offset="100%" stopColor="#ef4444" />
-                      </linearGradient>
-                    </defs>
-                    {/* Track Arc (250 degrees from 145° to 395°) */}
-                    <path
-                      d="M 38.6 128 A 75 75 0 1 1 161.4 128"
-                      fill="none"
-                      stroke="#1f242d"
-                      strokeWidth="14"
-                      strokeLinecap="round"
-                    />
-                    {/* Progress Arc */}
-                    <path
-                      d="M 38.6 128 A 75 75 0 1 1 161.4 128"
-                      fill="none"
-                      stroke={totals.calories > targetKcal ? 'url(#calExceededArc)' : 'url(#calArcGradient)'}
-                      strokeWidth="14"
-                      strokeLinecap="round"
-                      strokeDasharray={327.25}
-                      strokeDashoffset={327.25 - (327.25 * Math.min(100, caloriesPercent)) / 100}
-                      className="transition-all duration-700 ease-out"
-                    />
-                  </svg>
-
-                  {/* Center Numbers */}
-                  <div className="absolute inset-0 flex flex-col items-center justify-center pt-5 pointer-events-none text-center">
-                    <span className="text-[10px] sm:text-[11px] font-mono uppercase tracking-widest text-neutral-400 font-bold">
-                      {totals.calories > targetKcal ? 'Superávit' : 'Restantes'}
-                    </span>
-                    <span className="font-display font-black text-3xl sm:text-4xl lg:text-5xl text-white tracking-tight leading-none my-0.5">
-                      {totals.calories > targetKcal ? `+${(totals.calories - targetKcal).toLocaleString()}` : caloriesRemaining.toLocaleString()}
-                    </span>
-                    <span className="text-[11px] font-mono text-cyan-400 font-extrabold uppercase tracking-wider">
-                      kcal
-                    </span>
-                  </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-[10px] font-mono font-black uppercase px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-400 border border-cyan-500/30">
+                    PLAN ACTIVO
+                  </span>
+                  <span className="text-xs font-mono font-bold text-neutral-400">
+                    Meta: {targetWeight.toFixed(1)} kg
+                  </span>
                 </div>
-              </div>
-
-              {/* Right: Quemadas */}
-              <div className="flex flex-col items-center sm:items-end text-center sm:text-right">
-                <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-orange-500/10 border border-orange-500/20 flex items-center justify-center text-orange-400 mb-2 shadow-inner">
-                  <Flame className="w-5 h-5" />
-                </div>
-                <span className="text-[11px] font-mono text-neutral-400 uppercase font-bold tracking-wider">
-                  Quemadas
-                </span>
-                <span className="text-xl sm:text-2xl font-mono font-black text-orange-400 mt-0.5">
-                  {workoutCaloriesToday.toLocaleString()}
-                </span>
-                <span className="text-[10px] font-mono text-neutral-400">kcal entreno</span>
+                <h3 className="font-display font-black text-lg text-white tracking-tight mt-0.5 truncate">
+                  {activePlan.name}
+                </h3>
               </div>
             </div>
 
-            {/* Equation Subline */}
-            <div className="mt-2 text-center">
-              <p className="text-[11px] font-mono text-neutral-400">
-                Meta <span className="text-white font-bold">{targetKcal}</span> - Consumidas <span className="text-cyan-400 font-bold">{totals.calories}</span> + Quemadas <span className="text-orange-400 font-bold">{workoutCaloriesToday}</span> = Netas <span className="text-white font-bold">{netCalories}</span> kcal
-              </p>
-            </div>
-
-            {/* Macro Breakdown Pills (Exact layout from reference) */}
-            <div className="grid grid-cols-3 gap-2 sm:gap-3 mt-4 pt-4 border-t border-white/5 relative z-10">
-              {/* Proteínas */}
-              <div className="bg-neutral-950/70 border border-white/5 rounded-2xl p-2.5 sm:p-3 flex flex-col justify-between shadow-sm">
-                <div className="flex items-center justify-between text-[11px] font-bold text-neutral-300">
-                  <span className="text-cyan-400 font-mono uppercase tracking-wider text-[10px] sm:text-xs">
-                    Proteínas
-                  </span>
-                  <span className="text-[10px] font-mono text-cyan-400/80">{proteinPercent}%</span>
-                </div>
-                <div className="my-1.5">
-                  <div className="text-xs sm:text-sm font-mono font-black text-white">
-                    {totals.protein} <span className="text-[10px] text-neutral-400 font-normal">/ {targetProt}g</span>
-                  </div>
-                  <div className="w-full h-1.5 bg-neutral-800 rounded-full overflow-hidden mt-1.5">
-                    <div
-                      className="h-full bg-gradient-to-r from-cyan-400 to-blue-500 rounded-full transition-all duration-500"
-                      style={{ width: `${proteinPercent}%` }}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Grasas */}
-              <div className="bg-neutral-950/70 border border-white/5 rounded-2xl p-2.5 sm:p-3 flex flex-col justify-between shadow-sm">
-                <div className="flex items-center justify-between text-[11px] font-bold text-neutral-300">
-                  <span className="text-amber-400 font-mono uppercase tracking-wider text-[10px] sm:text-xs">
-                    Grasas
-                  </span>
-                  <span className="text-[10px] font-mono text-amber-400/80">{fatPercent}%</span>
-                </div>
-                <div className="my-1.5">
-                  <div className="text-xs sm:text-sm font-mono font-black text-white">
-                    {totals.fat} <span className="text-[10px] text-neutral-400 font-normal">/ {targetFat}g</span>
-                  </div>
-                  <div className="w-full h-1.5 bg-neutral-800 rounded-full overflow-hidden mt-1.5">
-                    <div
-                      className="h-full bg-gradient-to-r from-amber-400 to-orange-500 rounded-full transition-all duration-500"
-                      style={{ width: `${fatPercent}%` }}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Carbohidratos */}
-              <div className="bg-neutral-950/70 border border-white/5 rounded-2xl p-2.5 sm:p-3 flex flex-col justify-between shadow-sm">
-                <div className="flex items-center justify-between text-[11px] font-bold text-neutral-300">
-                  <span className="text-blue-400 font-mono uppercase tracking-wider text-[10px] sm:text-xs">
-                    Carbos
-                  </span>
-                  <span className="text-[10px] font-mono text-blue-400/80">{carbsPercent}%</span>
-                </div>
-                <div className="my-1.5">
-                  <div className="text-xs sm:text-sm font-mono font-black text-white">
-                    {totals.carbs} <span className="text-[10px] text-neutral-400 font-normal">/ {targetCarb}g</span>
-                  </div>
-                  <div className="w-full h-1.5 bg-neutral-800 rounded-full overflow-hidden mt-1.5">
-                    <div
-                      className="h-full bg-gradient-to-r from-blue-400 to-indigo-500 rounded-full transition-all duration-500"
-                      style={{ width: `${carbsPercent}%` }}
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
+            <button
+              type="button"
+              onClick={() => {
+                safePlayClick();
+                setIsPlanSelectorOpen(true);
+              }}
+              className="px-4 py-2.5 rounded-2xl bg-white/5 hover:bg-cyan-500/15 border border-white/10 hover:border-cyan-500/40 text-cyan-400 text-xs font-mono font-bold transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm active:scale-95 shrink-0"
+            >
+              <SlidersHorizontal className="w-4 h-4 text-cyan-400" />
+              <span>Explorar Planes (5)</span>
+            </button>
           </div>
 
           {/* 3. HYDRATION WIDGET (Litros en Ruta) */}
