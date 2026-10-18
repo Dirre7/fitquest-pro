@@ -24,6 +24,7 @@ import {
   CheckCircle2,
   X,
   Info,
+  Settings,
 } from 'lucide-react';
 import {
   UserProfile,
@@ -265,16 +266,26 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </div>
             </div>
 
-            {/* Streak & Shields Pills */}
-            <div className="flex flex-col sm:flex-row items-end sm:items-center gap-1.5 shrink-0">
-              <div className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-orange-500/10 border border-orange-500/30 text-orange-400 text-xs font-mono font-bold shadow-sm">
+            {/* Streak, Shields & Settings Icon Button */}
+            <div className="flex items-center gap-1.5 shrink-0">
+              <div className="hidden sm:flex items-center gap-1 px-2.5 py-1 rounded-xl bg-orange-500/10 border border-orange-500/30 text-orange-400 text-xs font-mono font-bold shadow-sm">
                 <Flame className="w-3.5 h-3.5 fill-orange-400/20 animate-pulse" />
                 <span>{effectiveStreak}d</span>
               </div>
-              <div className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 text-xs font-mono font-bold shadow-sm">
+              <div className="hidden sm:flex items-center gap-1 px-2.5 py-1 rounded-xl bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 text-xs font-mono font-bold shadow-sm">
                 <Shield className="w-3.5 h-3.5 fill-cyan-400/20" />
                 <span>{user.streakShields ?? 1}/2</span>
               </div>
+              <button
+                id="btn-profile-settings"
+                type="button"
+                onClick={() => onNavigateTab('settings')}
+                className="p-2 sm:p-2.5 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 hover:border-cyan-500/40 text-neutral-400 hover:text-white transition-all shadow-sm group"
+                title="Ajustes y Cuenta"
+                aria-label="Ajustes"
+              >
+                <Settings className="w-4 h-4 sm:w-4 sm:h-4 group-hover:rotate-45 transition-transform duration-300 text-neutral-300 group-hover:text-cyan-400" />
+              </button>
             </div>
           </div>
 

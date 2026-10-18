@@ -1174,10 +1174,13 @@ export default function App() {
         onSignOut={handleSignOut}
       />
 
-      {/* Main Content Container with bottom padding for the floating Liquid Glass dock and iOS Home Indicator */}
+      {/* Main Content Container with safe area padding top and bottom dock padding */}
       <main 
-        style={{ paddingBottom: 'calc(7.5rem + env(safe-area-inset-bottom, 0px))' }}
-        className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6"
+        style={{ 
+          paddingTop: 'calc(0.75rem + env(safe-area-inset-top, 0px))',
+          paddingBottom: 'calc(7.5rem + env(safe-area-inset-bottom, 0px))' 
+        }}
+        className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-6"
       >
         
         {/* Render Tab Views */}
