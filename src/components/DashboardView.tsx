@@ -319,7 +319,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 type="button"
                 onClick={() => onNavigateTab('smartwatch')}
                 className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-2xl border transition-all cursor-pointer ${
-                  smartwatch?.status === 'connected'
+                  smartwatch?.status === 'connected' && (smartwatch.liveHeartRate || 0) > 0
                     ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20'
                     : 'bg-white/5 border-white/10 text-neutral-400 hover:text-white hover:border-cyan-500/40'
                 }`}
@@ -328,9 +328,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               >
                 <Watch className="w-3.5 h-3.5" />
                 <span className="text-[10px] font-mono font-bold uppercase hidden xs:inline">
-                  {smartwatch?.status === 'connected' ? `${smartwatch.liveHeartRate || '--'} bpm` : 'Reloj'}
+                  {smartwatch?.status === 'connected' && (smartwatch.liveHeartRate || 0) > 0 ? `${smartwatch.liveHeartRate} bpm` : 'Reloj'}
                 </span>
-                {smartwatch?.status === 'connected' && (
+                {smartwatch?.status === 'connected' && (smartwatch.liveHeartRate || 0) > 0 && (
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                 )}
               </button>

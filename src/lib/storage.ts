@@ -1038,6 +1038,13 @@ export class FitStorage {
       if (!data) return defaultSmartwatch;
       const parsed = JSON.parse(data);
       if (!parsed || typeof parsed !== 'object') return defaultSmartwatch;
+
+      // Clean up previous simulated mock connections
+      if (parsed.syncSource === 'simulated' || (!parsed.syncSource && parsed.status === 'connected')) {
+        localStorage.removeItem(KEYS.SMARTWATCH);
+        return defaultSmartwatch;
+      }
+
       return {
         ...defaultSmartwatch,
         ...parsed,

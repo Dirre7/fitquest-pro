@@ -16,28 +16,28 @@ export const SleepTrackerCard: React.FC<SleepTrackerCardProps> = ({
   compact = false,
 }) => {
   const isConnected = smartwatch.status === 'connected';
-  const totalMinutes = smartwatch.sleepTotalMinutes || 465; // 7h 45m default
+  const totalMinutes = isConnected ? (smartwatch.sleepTotalMinutes || 0) : 0;
   const targetMinutes = smartwatch.sleepTargetMinutes || 480; // 8h target
   const hours = Math.floor(totalMinutes / 60);
   const minutes = totalMinutes % 60;
   const targetHours = Math.floor(targetMinutes / 60);
 
-  const percent = Math.min(100, Math.round((totalMinutes / targetMinutes) * 100));
+  const percent = totalMinutes > 0 ? Math.min(100, Math.round((totalMinutes / targetMinutes) * 100)) : 0;
 
-  const stages = smartwatch.sleepStages || {
-    deepMinutes: 110,
-    remMinutes: 105,
-    lightMinutes: 215,
-    awakeMinutes: 35,
+  const stages = (isConnected && smartwatch.sleepStages) ? smartwatch.sleepStages : {
+    deepMinutes: 0,
+    remMinutes: 0,
+    lightMinutes: 0,
+    awakeMinutes: 0,
   };
 
-  const deepPct = Math.round((stages.deepMinutes / totalMinutes) * 100);
-  const remPct = Math.round((stages.remMinutes / totalMinutes) * 100);
-  const lightPct = Math.round((stages.lightMinutes / totalMinutes) * 100);
-  const awakePct = Math.round((stages.awakeMinutes / totalMinutes) * 100);
+  const deepPct = totalMinutes > 0 ? Math.round((stages.deepMinutes / totalMinutes) * 100) : 0;
+  const remPct = totalMinutes > 0 ? Math.round((stages.remMinutes / totalMinutes) * 100) : 0;
+  const lightPct = totalMinutes > 0 ? Math.round((stages.lightMinutes / totalMinutes) * 100) : 0;
+  const awakePct = totalMinutes > 0 ? Math.round((stages.awakeMinutes / totalMinutes) * 100) : 0;
 
-  const recoveryScore = smartwatch.recoveryScore || 88;
-  const multiplier = smartwatch.recoveryXpMultiplier || 1.15;
+  const recoveryScore = isConnected ? (smartwatch.recoveryScore || 0) : 0;
+  const multiplier = isConnected ? (smartwatch.recoveryXpMultiplier || 1.0) : 1.0;
   const bonusXpPercent = Math.round((multiplier - 1) * 100);
 
   const formatStageTime = (m: number) => {
@@ -124,14 +124,22 @@ export const SleepTrackerCard: React.FC<SleepTrackerCardProps> = ({
           <div className="flex items-center justify-between mt-1">
             <div>
               <span className="text-2xl sm:text-3xl font-black font-display text-white">
-                {recoveryScore >= 85 ? 'ÓPTIMO' : recoveryScore >= 70 ? 'BUENO' : 'MODERADO'}
+                {isConnected && recoveryScore > 0
+                  ? (recoveryScore >= 85 ? 'ÓPTIMO' : recoveryScore >= 70 ? 'BUENO' : 'MODERADO')
+                  : 'SIN REGISTRO'}
               </span>
               <p className="text-[11px] text-neutral-300 mt-0.5">
-                Pulsaciones reposo: <span className="font-mono font-bold text-cyan-400">{smartwatch.restingHeartRate || 56} bpm</span> • HRV: <span className="font-mono font-bold text-indigo-300">{smartwatch.hrvMs || 62} ms</span>
+                {isConnected && recoveryScore > 0 ? (
+                  <>Pulsaciones reposo: <span className="font-mono font-bold text-cyan-400">{smartwatch.restingHeartRate || '--'} bpm</span> • HRV: <span className="font-mono font-bold text-indigo-300">{smartwatch.hrvMs || '--'} ms</span></>
+                ) : (
+                  <span>Conecta tu reloj para calcular tu recuperación diaria</span>
+                )}
               </p>
             </div>
-            <div className="w-12 h-12 rounded-full border-4 border-indigo-500/30 border-t-cyan-400 flex items-center justify-center font-mono font-black text-xs text-white shadow-[0_0_15px_rgba(6,182,212,0.3)]">
-              {recoveryScore}
+            <div className={`w-12 h-12 rounded-full border-4 flex items-center justify-center font-mono font-black text-xs ${
+              isConnected && recoveryScore > 0 ? 'border-indigo-500/30 border-t-cyan-400 text-white shadow-[0_0_15px_rgba(6,182,212,0.3)]' : 'border-neutral-800 text-neutral-500'
+            }`}>
+              {isConnected && recoveryScore > 0 ? recoveryScore : '--'}
             </div>
           </div>
         </div>
@@ -142,62 +150,70 @@ export const SleepTrackerCard: React.FC<SleepTrackerCardProps> = ({
         <div className="space-y-2 relative z-10">
           <div className="flex items-center justify-between text-[11px] font-mono text-neutral-400">
             <span className="font-bold uppercase tracking-wider">Fases de Sueño Analizadas</span>
-            <span className="text-[10px] text-neutral-500">Sincronizado vía sensor del reloj</span>
+            <span className="text-[10px] text-neutral-500">
+              {totalMinutes > 0 ? 'Sincronizado vía sensor del reloj' : 'Requiere sincronización'}
+            </span>
           </div>
 
-          <div className="w-full h-3.5 rounded-full overflow-hidden flex bg-neutral-900 border border-white/5">
-            <div
-              style={{ width: `${deepPct}%` }}
-              className="bg-cyan-400 transition-all"
-              title={`Sueño Profundo: ${formatStageTime(stages.deepMinutes)} (${deepPct}%)`}
-            />
-            <div
-              style={{ width: `${remPct}%` }}
-              className="bg-purple-500 transition-all"
-              title={`Sueño REM: ${formatStageTime(stages.remMinutes)} (${remPct}%)`}
-            />
-            <div
-              style={{ width: `${lightPct}%` }}
-              className="bg-blue-600 transition-all"
-              title={`Sueño Ligero: ${formatStageTime(stages.lightMinutes)} (${lightPct}%)`}
-            />
-            <div
-              style={{ width: `${awakePct}%` }}
-              className="bg-neutral-600 transition-all"
-              title={`Despierto: ${formatStageTime(stages.awakeMinutes)} (${awakePct}%)`}
-            />
-          </div>
+          {totalMinutes > 0 ? (
+            <div className="w-full h-3.5 rounded-full overflow-hidden flex bg-neutral-900 border border-white/5">
+              <div
+                style={{ width: `${deepPct}%` }}
+                className="bg-cyan-400 transition-all"
+                title={`Sueño Profundo: ${formatStageTime(stages.deepMinutes)} (${deepPct}%)`}
+              />
+              <div
+                style={{ width: `${remPct}%` }}
+                className="bg-purple-500 transition-all"
+                title={`Sueño REM: ${formatStageTime(stages.remMinutes)} (${remPct}%)`}
+              />
+              <div
+                style={{ width: `${lightPct}%` }}
+                className="bg-blue-600 transition-all"
+                title={`Sueño Ligero: ${formatStageTime(stages.lightMinutes)} (${lightPct}%)`}
+              />
+              <div
+                style={{ width: `${awakePct}%` }}
+                className="bg-neutral-600 transition-all"
+                title={`Despierto: ${formatStageTime(stages.awakeMinutes)} (${awakePct}%)`}
+              />
+            </div>
+          ) : (
+            <div className="w-full h-3.5 rounded-full bg-neutral-900/60 border border-white/5 flex items-center justify-center">
+              <span className="text-[9px] font-mono text-neutral-500 uppercase tracking-wider">Sin fases analizadas (0h)</span>
+            </div>
+          )}
 
           {/* Legend */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1 text-[11px] font-mono">
             <div className="flex items-center gap-1.5 text-neutral-300">
-              <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 shrink-0" />
-              <span>Profundo: <strong className="text-white">{formatStageTime(stages.deepMinutes)}</strong></span>
+              <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 shrink-0 opacity-80" />
+              <span>Profundo: <strong className="text-white">{totalMinutes > 0 ? formatStageTime(stages.deepMinutes) : '--'}</strong></span>
             </div>
             <div className="flex items-center gap-1.5 text-neutral-300">
-              <span className="w-2.5 h-2.5 rounded-full bg-purple-500 shrink-0" />
-              <span>REM: <strong className="text-white">{formatStageTime(stages.remMinutes)}</strong></span>
+              <span className="w-2.5 h-2.5 rounded-full bg-purple-500 shrink-0 opacity-80" />
+              <span>REM: <strong className="text-white">{totalMinutes > 0 ? formatStageTime(stages.remMinutes) : '--'}</strong></span>
             </div>
             <div className="flex items-center gap-1.5 text-neutral-300">
-              <span className="w-2.5 h-2.5 rounded-full bg-blue-600 shrink-0" />
-              <span>Ligero: <strong className="text-white">{formatStageTime(stages.lightMinutes)}</strong></span>
+              <span className="w-2.5 h-2.5 rounded-full bg-blue-600 shrink-0 opacity-80" />
+              <span>Ligero: <strong className="text-white">{totalMinutes > 0 ? formatStageTime(stages.lightMinutes) : '--'}</strong></span>
             </div>
             <div className="flex items-center gap-1.5 text-neutral-300">
-              <span className="w-2.5 h-2.5 rounded-full bg-neutral-600 shrink-0" />
-              <span>Despierto: <strong className="text-white">{formatStageTime(stages.awakeMinutes)}</strong></span>
+              <span className="w-2.5 h-2.5 rounded-full bg-neutral-600 shrink-0 opacity-80" />
+              <span>Despierto: <strong className="text-white">{totalMinutes > 0 ? formatStageTime(stages.awakeMinutes) : '--'}</strong></span>
             </div>
           </div>
         </div>
       )}
 
       {/* Active Recovery XP Banner */}
-      <div className="mt-4 pt-3 border-t border-white/5 flex items-center justify-between text-xs font-mono relative z-10">
+      <div className="mt-4 pt-3 border-t border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-xs font-mono relative z-10">
         <div className="flex items-center gap-2 text-cyan-300 font-bold">
-          <Zap className="w-4 h-4 text-cyan-400 fill-cyan-400/20" />
+          <Zap className={`w-4 h-4 text-cyan-400 ${bonusXpPercent > 0 ? 'fill-cyan-400/20' : 'opacity-40'}`} />
           <span>Multiplicador de Descanso: +{bonusXpPercent}% XP hoy</span>
         </div>
         <span className="text-[10px] text-neutral-400">
-          Aplicado automáticamente a tus rutinas
+          {bonusXpPercent > 0 ? 'Aplicado automáticamente a tus rutinas' : 'Vincula tu smartwatch para activar bonos'}
         </span>
       </div>
     </div>

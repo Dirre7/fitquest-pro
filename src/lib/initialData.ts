@@ -1076,29 +1076,22 @@ export const defaultSmartwatch: SmartwatchDevice = {
   name: 'Sensor de Pulso / Smartwatch',
   brand: 'WebBluetooth',
   status: 'disconnected',
-  batteryLevel: 100,
+  batteryLevel: 0,
   liveHeartRate: 0,
-  restingHeartRate: 58,
-  hrvMs: 62,
+  restingHeartRate: 0,
+  hrvMs: 0,
   activeZone: 'Rest',
   stepsToday: 0,
   stepsTarget: 10000,
   activeCaloriesToday: 0,
-  calorieSyncMode: 'smartwatch',
-  vo2max: 46.5,
+  calorieSyncMode: 'manual',
+  vo2max: 0,
   lastSyncTime: 'Sin vincular',
-  sleepTotalMinutes: 465, // 7h 45m
-  sleepTargetMinutes: 480, // 8h
-  sleepScore: 88,
-  sleepStages: {
-    deepMinutes: 110,  // 1h 50m
-    remMinutes: 105,   // 1h 45m
-    lightMinutes: 215, // 3h 35m
-    awakeMinutes: 35,  // 35m
-  },
-  recoveryScore: 88,
-  recoveryXpMultiplier: 1.15,
-  syncSource: 'simulated',
+  sleepTotalMinutes: 0,
+  sleepTargetMinutes: 480,
+  sleepScore: 0,
+  recoveryScore: 0,
+  recoveryXpMultiplier: 1.0,
 };
 
 export const defaultPushReminders: PushReminder[] = [

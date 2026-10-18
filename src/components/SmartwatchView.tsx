@@ -18,6 +18,7 @@ import {
   ArrowLeft,
   X,
 } from 'lucide-react';
+import { Capacitor } from '@capacitor/core';
 import { SmartwatchDevice, Language } from '../types';
 import { translations } from '../lib/i18n';
 import { sound } from '../lib/soundFx';
@@ -45,41 +46,20 @@ export const SmartwatchView: React.FC<SmartwatchViewProps> = ({
   const [isPairing, setIsPairing] = useState<boolean>(false);
   const [selectedBrand, setSelectedBrand] = useState<SmartwatchDevice['brand']>(smartwatch?.brand || 'Apple Watch');
   const [liveTelemetryHistory, setLiveTelemetryHistory] = useState<number[]>([
-    132, 134, 136, 138, 140, 139, 138, 142, 145, 143, 140, 138
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
   ]);
-
-  // Real-time pulse telemetry stream simulation when connected
-  useEffect(() => {
-    if (smartwatch?.status !== 'connected') return;
-
-    const stream = setInterval(() => {
-      const delta = Math.floor(Math.random() * 5) - 2;
-      const currentBpm = smartwatch?.liveHeartRate || 135;
-      const nextBpm = Math.max(90, Math.min(185, currentBpm + delta));
-
-      let zone: SmartwatchDevice['activeZone'] = 'Rest';
-      if (nextBpm >= 171) zone = 'Peak';
-      else if (nextBpm >= 151) zone = 'Cardio';
-      else if (nextBpm >= 131) zone = 'FatBurn';
-      else if (nextBpm >= 110) zone = 'WarmUp';
-
-      onUpdateDevice({
-        ...smartwatch,
-        liveHeartRate: nextBpm,
-        activeZone: zone,
-        stepsToday: (smartwatch?.stepsToday || 8000) + (Math.random() > 0.6 ? 2 : 0),
-        activeCaloriesToday: Math.max(smartwatch.activeCaloriesToday || 450, (smartwatch.activeCaloriesToday || 450) + (Math.random() > 0.7 ? 1 : 0)),
-        lastSyncTime: 'En vivo (hace 1s)',
-      });
-
-      setLiveTelemetryHistory((prev) => [...prev.slice(1), nextBpm]);
-    }, 1800);
-
-    return () => clearInterval(stream);
-  }, [smartwatch, onUpdateDevice]);
 
   // Sync with Apple Health / Google Health Connect
   const handleSyncHealthPlatform = async (brand: SmartwatchDevice['brand']) => {
+    // If running in browser (Vercel / web), notify that HealthKit / Health Connect require the native mobile app
+    if (!Capacitor.isNativePlatform()) {
+      sound.playWarning();
+      alert(
+        `Para sincronizar datos reales con ${brand} (HealthKit / Health Connect), abre FitQuest Pro desde la App instalada en tu móvil (Android / iOS).\n\nEn un navegador web (Vercel), Apple y Google bloquean el acceso a las APIs de salud por motivos de privacidad.\n\nSi dispones de un pulsómetro o sensor con Bluetooth, puedes vincularlo directamente con el botón 'Sensor BLE'.`
+      );
+      return;
+    }
+
     setIsPairing(true);
     sound.playBeep(800, 100);
 
@@ -166,7 +146,19 @@ export const SmartwatchView: React.FC<SmartwatchViewProps> = ({
       ...smartwatch,
       status: 'disconnected',
       liveHeartRate: 0,
-      lastSyncTime: 'Desconectado',
+      restingHeartRate: 0,
+      hrvMs: 0,
+      stepsToday: 0,
+      activeCaloriesToday: 0,
+      calorieSyncMode: 'manual',
+      vo2max: 0,
+      sleepTotalMinutes: 0,
+      sleepScore: 0,
+      recoveryScore: 0,
+      recoveryXpMultiplier: 1.0,
+      sleepStages: undefined,
+      lastSyncTime: 'Sin vincular',
+      syncSource: undefined,
     });
   };
 
@@ -319,18 +311,22 @@ export const SmartwatchView: React.FC<SmartwatchViewProps> = ({
                 </span>
               </div>
               <p className="text-xs text-neutral-400 mt-0.5">
-                Última sincronización: {smartwatch?.lastSyncTime || 'Reciente'} • Batería: {smartwatch?.batteryLevel ?? 90}% • Origen: {smartwatch.syncSource === 'healthkit' ? 'Apple HealthKit' : smartwatch.syncSource === 'health_connect' ? 'Google Health Connect' : 'Telemetría Directa'}
+                {smartwatch?.status === 'connected'
+                  ? `Última sincronización: ${smartwatch?.lastSyncTime || 'Reciente'} • Batería: ${smartwatch?.batteryLevel ?? 0}% • Origen: ${smartwatch.syncSource === 'healthkit' ? 'Apple HealthKit' : smartwatch.syncSource === 'health_connect' ? 'Google Health Connect' : 'Sensor BLE'}`
+                  : 'Sin reloj vinculado • Conecta tu Apple Watch, WearOS o sensor Bluetooth para activar métricas'}
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <Battery className="w-5 h-5 text-emerald-400" />
-            <div className="w-24 h-2.5 bg-neutral-800 rounded-full overflow-hidden border border-neutral-700">
-              <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${smartwatch?.batteryLevel ?? 90}%` }} />
+          {smartwatch?.status === 'connected' && (
+            <div className="flex items-center gap-2">
+              <Battery className="w-5 h-5 text-emerald-400" />
+              <div className="w-24 h-2.5 bg-neutral-800 rounded-full overflow-hidden border border-neutral-700">
+                <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${smartwatch?.batteryLevel ?? 90}%` }} />
+              </div>
+              <span className="font-mono text-xs font-bold text-neutral-300">{smartwatch?.batteryLevel ?? 90}%</span>
             </div>
-            <span className="font-mono text-xs font-bold text-neutral-300">{smartwatch?.batteryLevel ?? 90}%</span>
-          </div>
+          )}
         </div>
 
         {/* Live Metrics Grid (6 Advanced Cards) */}
@@ -356,9 +352,12 @@ export const SmartwatchView: React.FC<SmartwatchViewProps> = ({
               <span>FC Reposo</span>
             </div>
             <p className="font-mono font-black text-2xl text-white">
-              {smartwatch.restingHeartRate || 56} <span className="text-xs text-neutral-400 font-sans">bpm</span>
+              {smartwatch.status === 'connected' && smartwatch.restingHeartRate > 0 ? smartwatch.restingHeartRate : '--'}{' '}
+              <span className="text-xs text-neutral-400 font-sans">bpm</span>
             </p>
-            <span className="text-[10px] text-emerald-400 font-bold">Excelente</span>
+            <span className={`text-[10px] font-bold ${smartwatch.status === 'connected' ? 'text-emerald-400' : 'text-neutral-500'}`}>
+              {smartwatch.status === 'connected' ? 'Excelente' : 'Sin vincular'}
+            </span>
           </div>
 
           {/* Active Calories Burned */}
@@ -368,9 +367,12 @@ export const SmartwatchView: React.FC<SmartwatchViewProps> = ({
               <span>Kcal Activas</span>
             </div>
             <p className="font-mono font-black text-2xl text-white">
-              {smartwatch.activeCaloriesToday || 520} <span className="text-xs text-neutral-400 font-sans">kcal</span>
+              {smartwatch.status === 'connected' ? (smartwatch.activeCaloriesToday || 0) : 0}{' '}
+              <span className="text-xs text-neutral-400 font-sans">kcal</span>
             </p>
-            <span className="text-[10px] text-orange-400 font-bold">Vía sensor óptico</span>
+            <span className={`text-[10px] font-bold ${smartwatch.status === 'connected' ? 'text-orange-400' : 'text-neutral-500'}`}>
+              {smartwatch.status === 'connected' ? 'Vía sensor óptico' : 'Modo manual'}
+            </span>
           </div>
 
           {/* HRV */}
@@ -380,9 +382,12 @@ export const SmartwatchView: React.FC<SmartwatchViewProps> = ({
               <span>{t.hrv}</span>
             </div>
             <p className="font-mono font-black text-2xl text-white">
-              {smartwatch.hrvMs} <span className="text-xs text-neutral-400 font-sans">ms</span>
+              {smartwatch.status === 'connected' && smartwatch.hrvMs > 0 ? smartwatch.hrvMs : '--'}{' '}
+              <span className="text-xs text-neutral-400 font-sans">ms</span>
             </p>
-            <span className="text-[10px] text-cyan-400 font-bold">Recuperación Óptima</span>
+            <span className={`text-[10px] font-bold ${smartwatch.status === 'connected' ? 'text-cyan-400' : 'text-neutral-500'}`}>
+              {smartwatch.status === 'connected' ? 'Recuperación Óptima' : 'Sin datos'}
+            </span>
           </div>
 
           {/* VO2 Max */}
@@ -392,9 +397,11 @@ export const SmartwatchView: React.FC<SmartwatchViewProps> = ({
               <span>{t.vo2max}</span>
             </div>
             <p className="font-mono font-black text-2xl text-white">
-              {smartwatch.vo2max}
+              {smartwatch.status === 'connected' && smartwatch.vo2max > 0 ? smartwatch.vo2max : '--'}
             </p>
-            <span className="text-[10px] text-teal-400 font-bold">Nivel Superior</span>
+            <span className={`text-[10px] font-bold ${smartwatch.status === 'connected' ? 'text-teal-400' : 'text-neutral-500'}`}>
+              {smartwatch.status === 'connected' ? 'Nivel Superior' : 'Sin datos'}
+            </span>
           </div>
 
           {/* Daily Steps */}
@@ -404,9 +411,11 @@ export const SmartwatchView: React.FC<SmartwatchViewProps> = ({
               <span>{t.dailySteps}</span>
             </div>
             <p className="font-mono font-black text-2xl text-white">
-              {smartwatch.stepsToday.toLocaleString()}
+              {(smartwatch.status === 'connected' ? (smartwatch.stepsToday || 0) : 0).toLocaleString()}
             </p>
-            <span className="text-[10px] text-amber-400 font-bold">Meta: 10,000</span>
+            <span className={`text-[10px] font-bold ${smartwatch.status === 'connected' ? 'text-amber-400' : 'text-neutral-500'}`}>
+              {smartwatch.status === 'connected' ? 'Meta: 10,000' : 'Reloj apagado'}
+            </span>
           </div>
         </div>
 
@@ -414,15 +423,23 @@ export const SmartwatchView: React.FC<SmartwatchViewProps> = ({
         <div className="bg-neutral-950/80 border border-neutral-800 rounded-2xl p-4">
           <div className="flex items-center justify-between mb-3 text-xs font-bold text-neutral-400">
             <span>Electro-Telemetría Cardíaca en Tiempo Real</span>
-            <span className="text-cyan-400 font-mono">Frecuencia Activa</span>
+            <span className={`font-mono ${smartwatch.status === 'connected' ? 'text-cyan-400' : 'text-neutral-500'}`}>
+              {smartwatch.status === 'connected' ? 'Frecuencia Activa' : 'Sensor Inactivo'}
+            </span>
           </div>
           <div className="flex items-end gap-1.5 h-16 w-full">
             {liveTelemetryHistory.map((val, idx) => {
-              const heightPercent = Math.min(100, Math.max(20, Math.round(((val - 80) / 110) * 100)));
+              const heightPercent = smartwatch.status === 'connected' && val > 0 
+                ? Math.min(100, Math.max(20, Math.round(((val - 80) / 110) * 100)))
+                : 8;
               return (
                 <div
                   key={idx}
-                  className="flex-1 bg-gradient-to-t from-cyan-600 to-blue-400 rounded-t-md transition-all duration-300 shadow-sm shadow-cyan-500/20"
+                  className={`flex-1 rounded-t-md transition-all duration-300 ${
+                    smartwatch.status === 'connected' && val > 0
+                      ? 'bg-gradient-to-t from-cyan-600 to-blue-400 shadow-sm shadow-cyan-500/20'
+                      : 'bg-neutral-800/40'
+                  }`}
                   style={{ height: `${heightPercent}%` }}
                 />
               );
