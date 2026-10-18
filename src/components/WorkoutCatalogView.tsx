@@ -284,12 +284,12 @@ export const WorkoutCatalogView: React.FC<WorkoutCatalogViewProps> = ({
       {/* ===================== VIEW 1: MULTI-DAY PROGRAMS ===================== */}
       {catalogTab === 'programs' && (
         <div className="space-y-6">
-          {/* 🌟 ACTIVE PROGRAM HERO WIDGET (If user has started a program) */}
+          {/* 🌟 ACTIVE PROGRAM HERO WIDGET (Only shown if user actually started a program and has completed >= 1 day but < all days) */}
           {(() => {
             const activeProg = programs.find((p) => {
               const comp = programProgress[p.id] || 0;
               return comp > 0 && comp < p.days.length;
-            }) || (programs[0] && (programProgress[programs[0].id] || 0) < programs[0].days.length ? programs[0] : null);
+            });
 
             if (!activeProg) return null;
             const completedDays = programProgress[activeProg.id] || 0;
@@ -334,8 +334,8 @@ export const WorkoutCatalogView: React.FC<WorkoutCatalogViewProps> = ({
                     </div>
                   </div>
 
-                  {/* Direct Launch Button */}
-                  <div className="flex flex-col sm:flex-row lg:flex-col items-stretch sm:items-center lg:items-end justify-center gap-2 shrink-0">
+                  {/* Actions: Direct Launch & Cancel/Abandon Program */}
+                  <div className="flex flex-col sm:flex-row lg:flex-col items-stretch sm:items-center lg:items-end justify-center gap-2.5 shrink-0">
                     <button
                       id={`btn-continue-active-program-${activeProg.id}`}
                       onClick={() => handleStartProgramDay(activeProg.id, nextDay)}
@@ -344,9 +344,16 @@ export const WorkoutCatalogView: React.FC<WorkoutCatalogViewProps> = ({
                       <Play className="w-4 h-4 fill-current" />
                       <span>Continuar: Día {nextDay.dayNumber}</span>
                     </button>
-                    <span className="text-[10px] font-mono text-neutral-400 text-center lg:text-right">
-                      +{nextDay.routine.xpReward} XP al completar
-                    </span>
+                    
+                    <button
+                      id={`btn-cancel-active-program-${activeProg.id}`}
+                      onClick={() => handleResetProgramCycle(activeProg.id)}
+                      className="px-3.5 py-1.5 rounded-xl bg-white/5 hover:bg-red-500/15 border border-white/10 hover:border-red-500/30 text-neutral-400 hover:text-red-400 font-mono text-[11px] transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                      title="Dejar o anular programa activo"
+                    >
+                      <RotateCcw className="w-3 h-3" />
+                      <span>Desactivar / Reiniciar</span>
+                    </button>
                   </div>
                 </div>
               </div>
@@ -390,7 +397,7 @@ export const WorkoutCatalogView: React.FC<WorkoutCatalogViewProps> = ({
                       </p>
                     </div>
 
-                    {/* XP Reward & Days Progress Badge */}
+                    {/* XP Reward & Days Progress Badge + Reset option */}
                     {(() => {
                       const totalSessionsXp = program.days.reduce(
                         (sum, d) => sum + (d.routine?.xpReward || 300),
@@ -398,14 +405,24 @@ export const WorkoutCatalogView: React.FC<WorkoutCatalogViewProps> = ({
                       );
                       const totalCycleXp = totalSessionsXp + (program.xpReward || 300);
                       return (
-                        <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-1.5 shrink-0">
+                        <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-2 shrink-0">
                           <span className="text-xs font-mono font-black text-yellow-400 bg-yellow-500/10 px-3 py-1 rounded-xl border border-yellow-500/20 shadow">
                             +{totalCycleXp} XP Total Ciclo ({totalSessionsXp} XP días + {program.xpReward} Bono)
                           </span>
-                          <div className="text-right">
+                          <div className="flex items-center gap-2 text-right">
                             <span className="text-[11px] font-mono font-bold text-neutral-400">
                               {currentCompletedDays} de {program.days.length} Días ({percent}%)
                             </span>
+                            {currentCompletedDays > 0 && !isProgramFinished && (
+                              <button
+                                onClick={() => handleResetProgramCycle(program.id)}
+                                className="px-2 py-0.5 rounded-lg bg-white/5 hover:bg-red-500/15 border border-white/10 hover:border-red-500/30 text-neutral-400 hover:text-red-400 font-mono text-[10px] transition-colors flex items-center gap-1 cursor-pointer"
+                                title="Reiniciar progreso de este programa"
+                              >
+                                <RotateCcw className="w-2.5 h-2.5" />
+                                <span>Reiniciar</span>
+                              </button>
+                            )}
                           </div>
                         </div>
                       );
