@@ -874,6 +874,111 @@ export function calculateAthleteAttributes(
 }
 
 /**
+ * Resolves attributes breakdown for any athlete displayed on the leaderboard,
+ * supporting both the active current user (based on actual history) and community athletes/bots.
+ */
+export function getLeaderboardAthleteAttributes(
+  athlete: LeaderboardUser,
+  user: UserProfile,
+  history: WorkoutHistoryEntry[] = []
+): AthleteAttributesBreakdown {
+  if (athlete.isCurrentUser || athlete.userId === user.id) {
+    const realStreakObj = calculateRealStreak(history, user.shieldUsedDates);
+    const effectiveStreak = Math.max(user.stats?.currentStreak || 0, realStreakObj.currentStreak);
+    return getAthleteAttributesBreakdown(history, effectiveStreak, user.level, user);
+  }
+
+  // Deterministic calculation for community athletes/bots
+  const botLevel = Math.max(1, athlete.level || 1);
+  const botCap = Math.min(99, Math.round(18 + Math.pow(botLevel, 0.95) * 2.2));
+
+  // Seed derived from user ID characters
+  const charSum = (athlete.userId || '').split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
+  const seed = (charSum + botLevel) * 17;
+
+  // Weight by athlete properties if present
+  const volBonus = Math.min(15, Math.round((Number(athlete.totalVolumeKg || 0) / 10000) * 1.5));
+  const distBonus = Math.min(15, Math.round((Number(athlete.totalDistanceKm || 0) / 10) * 1.2));
+  const streakBonus = Math.min(15, Math.round((Number(athlete.streakDays || 0) / 3) * 1.2));
+
+  const str = Math.min(botCap, Math.max(8, Math.round(12 + ((seed * 7) % 18) + botLevel * 1.3 + volBonus)));
+  const end = Math.min(botCap, Math.max(8, Math.round(12 + ((seed * 11) % 18) + botLevel * 1.2 + distBonus)));
+  const agi = Math.min(botCap, Math.max(6, Math.round(10 + ((seed * 13) % 16) + botLevel * 1.0 + (distBonus > 5 ? 4 : 0))));
+  const dis = Math.min(botCap, Math.max(10, Math.round(14 + ((seed * 5) % 18) + botLevel * 1.4 + streakBonus)));
+
+  const attributes = { strength: str, endurance: end, agility: agi, discipline: dis };
+  const overall = Math.round((str + end + agi + dis) / 4);
+  const overallTier = getAttributeTierInfo(overall);
+  const archetype = resolveAthleteArchetype(attributes);
+
+  const strTier = getAttributeTierInfo(str);
+  const endTier = getAttributeTierInfo(end);
+  const agiTier = getAttributeTierInfo(agi);
+  const disTier = getAttributeTierInfo(dis);
+
+  return {
+    attributes,
+    overall,
+    overallTierLabel: overallTier.tierLabel,
+    archetype,
+    details: {
+      strength: {
+        key: 'strength',
+        name: 'FUERZA',
+        code: 'PWR',
+        score: str,
+        tierLabel: strTier.tierLabel,
+        tierColorClass: strTier.tierColorClass,
+        bonusPct: Math.floor(str / 10) * 2,
+        bonusDescription: `+${Math.floor(str / 10) * 2}% XP en cargas de fuerza`,
+        summary: 'Poder de carga y tonelaje acumulado.',
+        howToImprove: 'Levanta más peso y entrena sesiones de hipertrofia.',
+        sources: [{ label: 'Nivel y Tonelaje', rawMetric: `${athlete.totalVolumeKg || 0} kg`, pointsAdded: str }],
+      },
+      endurance: {
+        key: 'endurance',
+        name: 'RESISTENCIA',
+        code: 'END',
+        score: end,
+        tierLabel: endTier.tierLabel,
+        tierColorClass: endTier.tierColorClass,
+        bonusPct: Math.floor(end / 10) * 2,
+        bonusDescription: `+${Math.floor(end / 10) * 2}% XP en cardio y fondo`,
+        summary: 'Capacidad pulmonar y resistencia cardiovascular.',
+        howToImprove: 'Suma minutos de carrera y cardio continuo.',
+        sources: [{ label: 'Kilómetros y Gasto', rawMetric: `${athlete.totalDistanceKm || 0} km`, pointsAdded: end }],
+      },
+      agility: {
+        key: 'agility',
+        name: 'AGILIDAD',
+        code: 'AGI',
+        score: agi,
+        tierLabel: agiTier.tierLabel,
+        tierColorClass: agiTier.tierColorClass,
+        bonusPct: Math.floor(agi / 10) * 2,
+        bonusDescription: `+${Math.floor(agi / 10) * 2}% XP en deportes y HIIT`,
+        summary: 'Velocidad de reacción, movilidad y deportes.',
+        howToImprove: 'Practica deportes de pista y rutinas HIIT.',
+        sources: [{ label: 'Deportes y Movilidad', rawMetric: 'Actividades', pointsAdded: agi }],
+      },
+      discipline: {
+        key: 'discipline',
+        name: 'DISCIPLINA',
+        code: 'DIS',
+        score: dis,
+        tierLabel: disTier.tierLabel,
+        tierColorClass: disTier.tierColorClass,
+        bonusPct: Math.floor(dis / 10) * 2,
+        bonusDescription: `+${Math.floor(dis / 10) * 2}% XP en constancia diaria`,
+        summary: 'Días consecutivos de entrenamiento y adherencia.',
+        howToImprove: 'Mantén activa la racha diaria.',
+        sources: [{ label: 'Racha y Misiones', rawMetric: `${athlete.streakDays} días`, pointsAdded: dis }],
+      },
+    },
+  };
+}
+
+/**
  * Calculates passive XP bonus earned on a workout/sport entry from the athlete's attributes.
  */
 export function calculateAttributeXpBonus(

@@ -35,7 +35,8 @@ import {
   calculateUserWeeklyXp, 
   LEAGUE_HIERARCHY, 
   LEAGUE_BOTS,
-  WeeklyCountdown 
+  WeeklyCountdown,
+  getLeaderboardAthleteAttributes 
 } from '../lib/leagueEngine';
 import { getEquippedFrameClasses, getFrameById } from '../lib/cosmeticFrames';
 
@@ -757,6 +758,102 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
                 </div>
               )}
             </div>
+
+            {/* Athlete RPG Attributes & Media OVR */}
+            {(() => {
+              const athleteAttr = getLeaderboardAthleteAttributes(selectedAthlete, user, history);
+              return (
+                <div className="bg-neutral-950/90 border border-white/10 rounded-2xl p-3.5 space-y-3 relative z-10 shadow-lg">
+                  {/* Archetype & Overall Media Header */}
+                  <div className="flex items-center justify-between border-b border-white/5 pb-2.5">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="text-xl shrink-0">{athleteAttr.archetype.icon}</span>
+                      <div className="min-w-0">
+                        <span className="text-[10px] font-mono uppercase text-neutral-400 block font-bold">Arquetipo</span>
+                        <p className="text-xs font-bold text-white truncate">{athleteAttr.archetype.name}</p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-white/5 text-neutral-300 border border-white/10">
+                        {athleteAttr.overallTierLabel}
+                      </span>
+                      <div className="px-2.5 py-1 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 text-neutral-950 font-mono font-black text-xs flex items-center gap-1 shadow-md shadow-cyan-500/20">
+                        <span>MEDIA</span>
+                        <span className="text-sm">{athleteAttr.overall}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 4 Attributes Bars */}
+                  <div className="grid grid-cols-2 gap-2.5 pt-0.5">
+                    {/* Fuerza (PWR) */}
+                    <div className="bg-black/40 border border-white/5 rounded-xl p-2 space-y-1">
+                      <div className="flex items-center justify-between text-[11px] font-mono">
+                        <span className="text-red-400 font-bold flex items-center gap-1">
+                          <span>💥</span> <span>FUERZA</span>
+                        </span>
+                        <span className="font-black text-white">{athleteAttr.attributes.strength}<span className="text-[9px] text-neutral-500 font-normal">/99</span></span>
+                      </div>
+                      <div className="w-full bg-neutral-800 rounded-full h-1.5 overflow-hidden">
+                        <div
+                          className="bg-red-500 h-full rounded-full transition-all duration-500"
+                          style={{ width: `${Math.min(100, Math.round((athleteAttr.attributes.strength / 99) * 100))}%` }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Resistencia (END) */}
+                    <div className="bg-black/40 border border-white/5 rounded-xl p-2 space-y-1">
+                      <div className="flex items-center justify-between text-[11px] font-mono">
+                        <span className="text-cyan-400 font-bold flex items-center gap-1">
+                          <span>💧</span> <span>RESISTENCIA</span>
+                        </span>
+                        <span className="font-black text-white">{athleteAttr.attributes.endurance}<span className="text-[9px] text-neutral-500 font-normal">/99</span></span>
+                      </div>
+                      <div className="w-full bg-neutral-800 rounded-full h-1.5 overflow-hidden">
+                        <div
+                          className="bg-cyan-500 h-full rounded-full transition-all duration-500"
+                          style={{ width: `${Math.min(100, Math.round((athleteAttr.attributes.endurance / 99) * 100))}%` }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Agilidad (AGI) */}
+                    <div className="bg-black/40 border border-white/5 rounded-xl p-2 space-y-1">
+                      <div className="flex items-center justify-between text-[11px] font-mono">
+                        <span className="text-amber-400 font-bold flex items-center gap-1">
+                          <span>⚡</span> <span>AGILIDAD</span>
+                        </span>
+                        <span className="font-black text-white">{athleteAttr.attributes.agility}<span className="text-[9px] text-neutral-500 font-normal">/99</span></span>
+                      </div>
+                      <div className="w-full bg-neutral-800 rounded-full h-1.5 overflow-hidden">
+                        <div
+                          className="bg-amber-500 h-full rounded-full transition-all duration-500"
+                          style={{ width: `${Math.min(100, Math.round((athleteAttr.attributes.agility / 99) * 100))}%` }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Disciplina (DIS) */}
+                    <div className="bg-black/40 border border-white/5 rounded-xl p-2 space-y-1">
+                      <div className="flex items-center justify-between text-[11px] font-mono">
+                        <span className="text-emerald-400 font-bold flex items-center gap-1">
+                          <span>🛡️</span> <span>DISCIPLINA</span>
+                        </span>
+                        <span className="font-black text-white">{athleteAttr.attributes.discipline}<span className="text-[9px] text-neutral-500 font-normal">/99</span></span>
+                      </div>
+                      <div className="w-full bg-neutral-800 rounded-full h-1.5 overflow-hidden">
+                        <div
+                          className="bg-emerald-500 h-full rounded-full transition-all duration-500"
+                          style={{ width: `${Math.min(100, Math.round((athleteAttr.attributes.discipline / 99) * 100))}%` }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* 4-Card KPI Grid */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 relative z-10">
