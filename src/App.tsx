@@ -1155,6 +1155,17 @@ export default function App() {
   const handleUpdateSmartwatch = (device: SmartwatchDevice) => {
     FitStorage.saveSmartwatch(device);
     setSmartwatch(device);
+
+    const allAchievements = FitStorage.getAchievements();
+    const updatedAchievements = evaluateAllAchievements(
+      user,
+      history,
+      allAchievements,
+      routines.filter((r) => r.isCustom).length,
+      (user.claimedChallenges || []).length
+    );
+    FitStorage.saveAchievements(updatedAchievements);
+    setAchievements(updatedAchievements);
   };
 
   // Reload state after json backup restored
@@ -1286,6 +1297,7 @@ export default function App() {
           <NutritionView
             user={user}
             history={history}
+            smartwatch={smartwatch}
             lang={lang}
             onUpdateUser={(updated) => setUser(updated)}
             onGrantXp={(amount, _reason) => {

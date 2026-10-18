@@ -4,6 +4,7 @@ const config: CapacitorConfig = {
   appId: 'com.fitquest.pro',
   appName: 'FitQuest Pro',
   webDir: 'dist',
+  backgroundColor: '#09090b',
   server: {
     androidScheme: 'https'
   }

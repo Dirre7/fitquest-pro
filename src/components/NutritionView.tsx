@@ -26,6 +26,7 @@ import {
   Coffee,
   Apple,
   Moon,
+  Watch,
 } from 'lucide-react';
 import {
   UserProfile,
@@ -37,6 +38,7 @@ import {
   SaturdayWeighIn,
   WorkoutHistoryEntry,
   NutritionPlanConfig,
+  SmartwatchDevice,
 } from '../types';
 import { FitStorage } from '../lib/storage';
 import {
@@ -52,6 +54,7 @@ interface NutritionViewProps {
   user: UserProfile;
   lang: Language;
   history?: WorkoutHistoryEntry[];
+  smartwatch?: SmartwatchDevice;
   onUpdateUser?: (updated: UserProfile) => void;
   onGrantXp?: (amount: number, reason: string) => void;
 }
@@ -60,6 +63,7 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
   user,
   lang,
   history = [],
+  smartwatch,
   onUpdateUser,
   onGrantXp,
 }) => {
@@ -198,7 +202,24 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
       .reduce((sum, h) => sum + (Number(h.calories) || 0), 0);
   }, [history, selectedDate]);
 
-  const netCalories = totals.calories - workoutCaloriesToday;
+  // Smartwatch Active Calories Burn integration
+  const isSmartwatchBurn =
+    selectedDate === todayStr &&
+    smartwatch?.status === 'connected' &&
+    smartwatch.calorieSyncMode !== 'manual' &&
+    (smartwatch.activeCaloriesToday ?? 0) > 0;
+
+  const burnedCaloriesToday = useMemo(() => {
+    if (isSmartwatchBurn && smartwatch) {
+      if (smartwatch.calorieSyncMode === 'combined') {
+        return Math.max(smartwatch.activeCaloriesToday || 0, workoutCaloriesToday);
+      }
+      return smartwatch.activeCaloriesToday || workoutCaloriesToday;
+    }
+    return workoutCaloriesToday;
+  }, [isSmartwatchBurn, smartwatch, workoutCaloriesToday]);
+
+  const netCalories = totals.calories - burnedCaloriesToday;
 
   const caloriesRemaining = Math.max(0, targetKcal - totals.calories);
   const caloriesPercent = Math.min(100, Math.round((totals.calories / targetKcal) * 100));
@@ -723,20 +744,30 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
                 <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-orange-500/10 border border-orange-500/20 flex items-center justify-center text-orange-400 mb-2 shadow-inner">
                   <Flame className="w-5 h-5" />
                 </div>
-                <span className="text-[11px] font-mono text-neutral-400 uppercase font-bold tracking-wider">
-                  Quemadas
-                </span>
+                <div className="flex items-center gap-1">
+                  <span className="text-[11px] font-mono text-neutral-400 uppercase font-bold tracking-wider">
+                    Quemadas
+                  </span>
+                  {isSmartwatchBurn && (
+                    <span className="text-[9px] font-mono px-1 py-0.2 rounded bg-orange-500/15 text-orange-400 border border-orange-500/30 flex items-center gap-0.5">
+                      <Watch className="w-2.5 h-2.5" />
+                      <span>Reloj</span>
+                    </span>
+                  )}
+                </div>
                 <span className="text-xl sm:text-2xl font-mono font-black text-orange-400 mt-0.5">
-                  {workoutCaloriesToday.toLocaleString()}
+                  {burnedCaloriesToday.toLocaleString()}
                 </span>
-                <span className="text-[10px] font-mono text-neutral-400">kcal entreno</span>
+                <span className="text-[10px] font-mono text-neutral-400">
+                  {isSmartwatchBurn ? 'sensor reloj' : 'kcal entreno'}
+                </span>
               </div>
             </div>
 
             {/* Equation Subline */}
             <div className="mt-2 text-center">
               <p className="text-[11px] font-mono text-neutral-400">
-                Meta <span className="text-white font-bold">{targetKcal}</span> - Consumidas <span className="text-cyan-400 font-bold">{totals.calories}</span> + Quemadas <span className="text-orange-400 font-bold">{workoutCaloriesToday}</span> = Netas <span className="text-white font-bold">{netCalories}</span> kcal
+                Meta <span className="text-white font-bold">{targetKcal}</span> - Consumidas <span className="text-cyan-400 font-bold">{totals.calories}</span> + Quemadas <span className="text-orange-400 font-bold">{burnedCaloriesToday}</span> {isSmartwatchBurn ? '(⌚ Reloj)' : ''} = Netas <span className="text-white font-bold">{netCalories}</span> kcal
               </p>
             </div>
 

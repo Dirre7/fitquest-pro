@@ -271,6 +271,13 @@ export interface WorkoutHistoryEntry {
   sportIcon?: string;
 }
 
+export interface SleepStages {
+  deepMinutes: number;   // Sueño profundo
+  remMinutes: number;    // Sueño REM
+  lightMinutes: number;  // Sueño ligero
+  awakeMinutes: number;  // Despierto
+}
+
 export interface SmartwatchDevice {
   id: string;
   name: string;
@@ -278,11 +285,23 @@ export interface SmartwatchDevice {
   status: 'connected' | 'disconnected' | 'pairing';
   batteryLevel: number;
   liveHeartRate: number;
-  hrvMs: number; // Heart Rate Variability
+  restingHeartRate?: number; // Pulsaciones en reposo (bpm)
+  hrvMs: number; // Heart Rate Variability (ms)
   activeZone: 'Rest' | 'WarmUp' | 'FatBurn' | 'Cardio' | 'Peak';
   stepsToday: number;
+  stepsTarget?: number; // Objetivo diario de pasos (ej. 10.000)
+  activeCaloriesToday?: number; // Calorías activas medidas por sensores del reloj
+  calorieSyncMode?: 'smartwatch' | 'manual'; // Usar Kcal del reloj o manual
   vo2max: number;
   lastSyncTime: string;
+  // Métricas avanzadas de Sueño y Recuperación
+  sleepTotalMinutes?: number; // Horas totales de sueño en minutos (ej. 465 = 7h 45m)
+  sleepTargetMinutes?: number; // Meta de sueño (ej. 480 = 8h)
+  sleepScore?: number; // Puntuación de calidad de sueño (0-100)
+  sleepStages?: SleepStages;
+  recoveryScore?: number; // Puntuación de recuperación física RPG (0-100)
+  recoveryXpMultiplier?: number; // Bonus de XP por recuperación (ej. 1.15 = +15% XP)
+  syncSource?: 'healthkit' | 'health_connect' | 'bluetooth' | 'simulated';
 }
 
 export interface CommunityChallenge {

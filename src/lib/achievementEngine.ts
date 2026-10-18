@@ -970,6 +970,58 @@ export const allInitialAchievements: Achievement[] = [
     rewardTitle: 'Bio-Sincronizado',
   },
   {
+    id: 'ach_sleep_master',
+    title: 'Maestro del Sueño (+7.5h)',
+    description: 'Sincroniza una noche de sueño reparador de 7h 30m o más con tu smartwatch.',
+    icon: 'Moon',
+    category: 'consistency',
+    tier: 'Silver',
+    currentProgress: 0,
+    maxProgress: 1,
+    unlocked: false,
+    xpReward: 350,
+    rewardTitle: 'Rey del Sueño',
+  },
+  {
+    id: 'ach_watch_burn',
+    title: 'Horno Metabólico (500 Kcal)',
+    description: 'Quema 500 Kcal activas en un día medidas directamente por el sensor de tu reloj.',
+    icon: 'Flame',
+    category: 'consistency',
+    tier: 'Silver',
+    currentProgress: 0,
+    maxProgress: 1,
+    unlocked: false,
+    xpReward: 400,
+    rewardTitle: 'Termogénico',
+  },
+  {
+    id: 'ach_watch_steps',
+    title: 'Caminante de Élite (10K Pasos)',
+    description: 'Alcanza el hito de 10.000 pasos en un solo día con tu smartwatch.',
+    icon: 'Activity',
+    category: 'consistency',
+    tier: 'Silver',
+    currentProgress: 0,
+    maxProgress: 10000,
+    unlocked: false,
+    xpReward: 300,
+    rewardTitle: 'Titán de los Pasos',
+  },
+  {
+    id: 'ach_recovery_titan',
+    title: 'Recuperación Titán (85%+ Score)',
+    description: 'Logra un Score de Recuperación RPG del 85% o más tras un descanso óptimo.',
+    icon: 'Sparkles',
+    category: 'consistency',
+    tier: 'Gold',
+    currentProgress: 0,
+    maxProgress: 85,
+    unlocked: false,
+    xpReward: 450,
+    rewardTitle: 'Mente y Cuerpo Titán',
+  },
+  {
     id: 'ach_met_heart_peak',
     title: 'Pulso de Dragón (170+ BPM)',
     description: 'Registra un pico cardíaco de 170+ BPM durante un entreno activo.',
@@ -1788,6 +1840,30 @@ export function evaluateAllAchievements(
       case 'ach_met_smartwatch_10':
         progress = Math.min(10, smartwatchWorkouts);
         break;
+      case 'ach_sleep_master': {
+        const watchRaw = typeof localStorage !== 'undefined' ? localStorage.getItem('fitquest_smartwatch') : null;
+        const watch = watchRaw ? JSON.parse(watchRaw) : null;
+        progress = (watch?.sleepTotalMinutes || 0) >= 450 ? 1 : 0;
+        break;
+      }
+      case 'ach_watch_burn': {
+        const watchRaw = typeof localStorage !== 'undefined' ? localStorage.getItem('fitquest_smartwatch') : null;
+        const watch = watchRaw ? JSON.parse(watchRaw) : null;
+        progress = (watch?.activeCaloriesToday || 0) >= 500 ? 1 : 0;
+        break;
+      }
+      case 'ach_watch_steps': {
+        const watchRaw = typeof localStorage !== 'undefined' ? localStorage.getItem('fitquest_smartwatch') : null;
+        const watch = watchRaw ? JSON.parse(watchRaw) : null;
+        progress = Math.min(10000, watch?.stepsToday || 0);
+        break;
+      }
+      case 'ach_recovery_titan': {
+        const watchRaw = typeof localStorage !== 'undefined' ? localStorage.getItem('fitquest_smartwatch') : null;
+        const watch = watchRaw ? JSON.parse(watchRaw) : null;
+        progress = Math.min(85, watch?.recoveryScore || 0);
+        break;
+      }
       case 'ach_met_heart_peak':
         progress = maxBpmRecorded >= 170 ? 1 : 0;
         break;

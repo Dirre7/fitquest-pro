@@ -1078,11 +1078,27 @@ export const defaultSmartwatch: SmartwatchDevice = {
   status: 'disconnected',
   batteryLevel: 100,
   liveHeartRate: 0,
-  hrvMs: 0,
+  restingHeartRate: 58,
+  hrvMs: 62,
   activeZone: 'Rest',
   stepsToday: 0,
-  vo2max: 0,
+  stepsTarget: 10000,
+  activeCaloriesToday: 0,
+  calorieSyncMode: 'smartwatch',
+  vo2max: 46.5,
   lastSyncTime: 'Sin vincular',
+  sleepTotalMinutes: 465, // 7h 45m
+  sleepTargetMinutes: 480, // 8h
+  sleepScore: 88,
+  sleepStages: {
+    deepMinutes: 110,  // 1h 50m
+    remMinutes: 105,   // 1h 45m
+    lightMinutes: 215, // 3h 35m
+    awakeMinutes: 35,  // 35m
+  },
+  recoveryScore: 88,
+  recoveryXpMultiplier: 1.15,
+  syncSource: 'simulated',
 };
 
 export const defaultPushReminders: PushReminder[] = [

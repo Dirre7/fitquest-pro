@@ -27,6 +27,7 @@ import {
   Info,
   Settings,
 } from 'lucide-react';
+import { SleepTrackerCard } from './SleepTrackerCard';
 import {
   UserProfile,
   WorkoutRoutine,
@@ -132,7 +133,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const workoutsToday = (history || []).filter((h) => h.date && h.date.startsWith(todayIsoPrefix));
   const trainedToday = workoutsToday.length > 0;
   const todayVolumeKg = workoutsToday.reduce((sum, w) => sum + (Number(w.totalVolumeKg) || 0), 0);
-  const todayCalories = workoutsToday.reduce((sum, w) => sum + (Number(w.calories) || 0), 0);
+  const todayWorkoutCalories = workoutsToday.reduce((sum, w) => sum + (Number(w.calories) || 0), 0);
+  const isSmartwatchBurn = smartwatch?.status === 'connected' && smartwatch.calorieSyncMode !== 'manual' && (smartwatch.activeCaloriesToday ?? 0) > 0;
+  const todayCalories = isSmartwatchBurn
+    ? (smartwatch.calorieSyncMode === 'combined'
+        ? Math.max(smartwatch.activeCaloriesToday || 0, todayWorkoutCalories)
+        : (smartwatch.activeCaloriesToday || todayWorkoutCalories))
+    : todayWorkoutCalories;
   const todayMinutes = workoutsToday.reduce((sum, w) => sum + (Number(w.durationMinutes) || 0), 0);
   const todayDistanceKm = workoutsToday.reduce((sum, w) => sum + (Number(w.totalDistanceKm) || 0), 0);
   
@@ -308,6 +315,25 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 <Shield className="w-3.5 h-3.5 fill-cyan-400/20" />
                 <span>{user.streakShields ?? 1}/2</span>
               </div>
+              <button
+                type="button"
+                onClick={() => onNavigateTab('smartwatch')}
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-2xl border transition-all cursor-pointer ${
+                  smartwatch?.status === 'connected'
+                    ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20'
+                    : 'bg-white/5 border-white/10 text-neutral-400 hover:text-white hover:border-cyan-500/40'
+                }`}
+                title="Conectar Reloj Inteligente (Apple Watch / Android Wear)"
+                aria-label="Reloj Inteligente"
+              >
+                <Watch className="w-3.5 h-3.5" />
+                <span className="text-[10px] font-mono font-bold uppercase hidden xs:inline">
+                  {smartwatch?.status === 'connected' ? `${smartwatch.liveHeartRate || '--'} bpm` : 'Reloj'}
+                </span>
+                {smartwatch?.status === 'connected' && (
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                )}
+              </button>
               <button
                 id="btn-profile-settings"
                 type="button"
@@ -629,9 +655,20 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
 
         {/* Calorías */}
-        <div className="bg-[#141417] border border-white/10 hover:border-orange-500/40 rounded-2xl p-3.5 flex items-center justify-between shadow-lg transition-all">
+        <div 
+          onClick={() => onNavigateTab('smartwatch')}
+          className="bg-[#141417] border border-white/10 hover:border-orange-500/40 rounded-2xl p-3.5 flex items-center justify-between shadow-lg transition-all cursor-pointer"
+        >
           <div>
-            <p className="text-[10px] font-mono uppercase text-neutral-400 font-bold">Calorías Quemadas</p>
+            <div className="flex items-center gap-1.5">
+              <p className="text-[10px] font-mono uppercase text-neutral-400 font-bold">Calorías Quemadas</p>
+              {isSmartwatchBurn && (
+                <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-orange-500/15 text-orange-400 border border-orange-500/30 flex items-center gap-0.5">
+                  <Watch className="w-2.5 h-2.5" />
+                  <span>Reloj</span>
+                </span>
+              )}
+            </div>
             <p className="text-lg font-mono font-black text-white mt-0.5">
               {todayCalories.toLocaleString()} <span className="text-xs text-orange-400 font-normal">Kcal</span>
             </p>
@@ -675,6 +712,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
         </div>
       </div>
+
+      {/* 💤 SUEÑO & RECUPERACIÓN RPG (APPLE WATCH / GOOGLE HEALTH CONNECT) */}
+      <SleepTrackerCard
+        smartwatch={smartwatch}
+        lang={lang}
+        onSyncRequest={() => onNavigateTab('smartwatch')}
+      />
 
       {/* ⚔️ BENTO: RETO SEMANAL & CLASIFICACIÓN (2 WIDGETS) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">

@@ -11,6 +11,11 @@ public class MainActivity extends BridgeActivity {
         super.onCreate(savedInstanceState);
 
         try {
+            // Set native dark background to eliminate white compositor tearing/ghosting during scroll
+            int darkBg = android.graphics.Color.parseColor("#09090b");
+            this.bridge.getWebView().setBackgroundColor(darkBg);
+            getWindow().getDecorView().setBackgroundColor(darkBg);
+
             // Enable DOM storage, database, and cookies in WebView for reliable Firebase Auth
             WebSettings settings = this.bridge.getWebView().getSettings();
             settings.setDomStorageEnabled(true);

@@ -11,5 +11,7 @@ coverage/
 .npm-cache/
 android/.gradle/
 android/app/build/
+android/.idea/
+.idea/
 ios/App/Pods/
 
