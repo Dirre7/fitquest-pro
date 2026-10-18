@@ -503,8 +503,8 @@ export const WorkoutCatalogView: React.FC<WorkoutCatalogViewProps> = ({
 
       {/* ===================== VIEW 1: MULTI-DAY PROGRAMS ===================== */}
       {catalogTab === 'programs' && (
-        <div className="space-y-6">
-          {/* 🌟 ACTIVE PROGRAM HERO WIDGET (Only shown if user actually started a program and has completed >= 1 day but < all days) */}
+        <div className="space-y-4">
+          {/* 🌟 ACTIVE PROGRAM BANNER (Slim & Compact) */}
           {(() => {
             const activeProg = programs.find((p) => {
               const comp = programProgress[p.id] || 0;
@@ -517,239 +517,205 @@ export const WorkoutCatalogView: React.FC<WorkoutCatalogViewProps> = ({
             const progressPct = Math.min(100, Math.round((completedDays / activeProg.days.length) * 100));
 
             return (
-              <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-cyan-950/40 via-neutral-900/90 to-blue-950/30 border border-cyan-500/40 p-5 sm:p-6 shadow-[0_0_35px_rgba(6,182,212,0.15)]">
-                <div className="absolute top-0 right-0 w-80 h-80 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
-
-                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5 relative z-10">
-                  <div className="space-y-2 max-w-xl">
+              <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-cyan-950/70 via-neutral-900/90 to-neutral-900 border border-cyan-500/30 p-3 sm:p-4 shadow-lg flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-10 h-10 rounded-xl bg-cyan-500/20 text-cyan-400 flex items-center justify-center shrink-0 border border-cyan-500/30 shadow-[0_0_15px_rgba(6,182,212,0.2)]">
+                    <Flame className="w-5 h-5 fill-current animate-pulse" />
+                  </div>
+                  <div className="min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-[10px] font-mono font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-cyan-400 text-neutral-950 shadow-[0_0_12px_rgba(6,182,212,0.5)] flex items-center gap-1">
-                        <Flame className="w-3 h-3 fill-current" />
-                        PROGRAMA ACTIVO
+                      <span className="text-[10px] font-mono font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-cyan-400 text-neutral-950 shadow-sm">
+                        ACTIVO
                       </span>
-                      <span className="text-[10px] font-mono font-bold text-cyan-300 px-2 py-0.5 rounded-full bg-cyan-500/15 border border-cyan-500/30">
-                        Día {completedDays + 1} de {activeProg.days.length}
+                      <span className="font-display font-bold text-sm text-white truncate">
+                        {activeProg.title}
+                      </span>
+                      <span className="text-[11px] font-mono text-cyan-300">
+                        • Día {completedDays + 1} de {activeProg.days.length} ({progressPct}%)
                       </span>
                     </div>
-
-                    <h3 className="font-display font-black text-xl sm:text-2xl text-white tracking-tight">
-                      {activeProg.title}
-                    </h3>
-                    <p className="text-xs sm:text-sm text-neutral-300 leading-relaxed">
-                      Siguiente sesión sugerida: <strong className="text-white">{nextDay.title}</strong> — {nextDay.focus}
+                    <p className="text-xs text-neutral-400 truncate mt-0.5">
+                      Siguiente: <strong className="text-neutral-200">{nextDay.title}</strong> — {nextDay.focus}
                     </p>
-
-                    {/* Progress Bar & Percentage */}
-                    <div className="pt-2">
-                      <div className="flex items-center justify-between text-[11px] font-mono text-neutral-400 mb-1.5">
-                        <span className="text-cyan-400 font-bold">{progressPct}% completado</span>
-                        <span>{completedDays}/{activeProg.days.length} días superados</span>
-                      </div>
-                      <div className="h-2 bg-neutral-950 rounded-full overflow-hidden border border-white/10 p-0.5">
-                        <div
-                          className="h-full bg-gradient-to-r from-cyan-400 via-blue-500 to-indigo-500 rounded-full transition-all duration-700 shadow-[0_0_10px_rgba(6,182,212,0.6)]"
-                          style={{ width: `${Math.max(4, progressPct)}%` }}
-                        />
-                      </div>
-                    </div>
                   </div>
+                </div>
 
-                  {/* Actions: Direct Launch & Cancel/Abandon Program */}
-                  <div className="flex flex-col sm:flex-row lg:flex-col items-stretch sm:items-center lg:items-end justify-center gap-2.5 shrink-0">
-                    <button
-                      id={`btn-continue-active-program-${activeProg.id}`}
-                      onClick={() => handleStartProgramDay(activeProg.id, nextDay)}
-                      className="px-6 py-3.5 rounded-2xl bg-gradient-to-r from-cyan-400 via-cyan-300 to-blue-500 hover:from-cyan-300 hover:to-blue-400 text-neutral-950 font-display font-black text-sm uppercase tracking-wider flex items-center justify-center gap-2 shadow-[0_0_25px_rgba(6,182,212,0.4)] transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
-                    >
-                      <Play className="w-4 h-4 fill-current" />
-                      <span>Continuar: Día {nextDay.dayNumber}</span>
-                    </button>
-                    
-                    <button
-                      id={`btn-cancel-active-program-${activeProg.id}`}
-                      onClick={() => handleResetProgramCycle(activeProg.id)}
-                      className="px-3.5 py-1.5 rounded-xl bg-white/5 hover:bg-red-500/15 border border-white/10 hover:border-red-500/30 text-neutral-400 hover:text-red-400 font-mono text-[11px] transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
-                      title="Dejar o anular programa activo"
-                    >
-                      <RotateCcw className="w-3 h-3" />
-                      <span>Desactivar / Reiniciar</span>
-                    </button>
-                  </div>
+                <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                  <button
+                    id={`btn-continue-active-program-${activeProg.id}`}
+                    onClick={() => handleStartProgramDay(activeProg.id, nextDay)}
+                    className="px-4 py-2 rounded-xl bg-gradient-to-r from-cyan-400 to-blue-500 hover:from-cyan-300 hover:to-blue-400 text-neutral-950 font-display font-black text-xs uppercase tracking-wider flex items-center gap-1.5 shadow-md shadow-cyan-500/20 cursor-pointer transition-transform hover:scale-[1.02] active:scale-[0.98]"
+                  >
+                    <Play className="w-3.5 h-3.5 fill-current" />
+                    <span>Día {nextDay.dayNumber}</span>
+                  </button>
+                  <button
+                    id={`btn-cancel-active-program-${activeProg.id}`}
+                    onClick={() => handleResetProgramCycle(activeProg.id)}
+                    className="p-2 rounded-xl bg-white/5 hover:bg-red-500/20 text-neutral-400 hover:text-red-400 border border-white/5 transition-colors cursor-pointer"
+                    title="Reiniciar o pausar programa activo"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
+                  </button>
                 </div>
               </div>
             );
           })()}
 
-          {/* All Programs List */}
-          <div className="grid grid-cols-1 gap-6">
+          {/* All Programs List (Compact Horizontal Cards with Checklist Drawer) */}
+          <div className="grid grid-cols-1 gap-3">
             {programs.map((program) => {
               const currentCompletedDays = programProgress[program.id] || 0;
               const isExpanded = expandedProgramId === program.id;
               const percent = Math.min(100, Math.round((currentCompletedDays / program.days.length) * 100));
               const isProgramFinished = currentCompletedDays >= program.days.length;
+              const nextDay = program.days.find((d) => d.dayNumber === currentCompletedDays + 1) || program.days[0];
+
+              const totalSessionsXp = program.days.reduce(
+                (sum, d) => sum + (d.routine?.xpReward || 300),
+                0
+              );
+              const totalCycleXp = totalSessionsXp + (program.xpReward || 300);
 
               return (
                 <div
                   key={program.id}
-                  className="bg-[#121214] border border-white/10 hover:border-cyan-500/40 rounded-3xl p-5 sm:p-7 shadow-2xl transition-all relative overflow-hidden"
+                  className={`bg-[#121214] border rounded-2xl p-3.5 sm:p-4 transition-all shadow-md ${
+                    isExpanded ? 'border-cyan-500/40 ring-1 ring-cyan-500/20' : 'border-white/5 hover:border-white/15'
+                  }`}
                 >
-                  <div className="absolute top-0 right-0 w-64 h-64 bg-cyan-500/5 blur-3xl pointer-events-none" />
-
-                  {/* Header row */}
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-white/5 relative z-10">
-                    <div>
-                      <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-                        {program.isCustom && (
-                          <span className="text-[10px] font-mono font-black uppercase px-2.5 py-0.5 rounded-full bg-purple-500 text-white shadow-[0_0_10px_rgba(168,85,247,0.4)]">
-                            PERSONALIZADO
-                          </span>
-                        )}
-                        <span className="text-[10px] font-mono font-black uppercase px-2.5 py-0.5 rounded-full bg-cyan-500/20 text-cyan-400 border border-cyan-500/30">
-                          {program.daysPerWeek} DÍAS / SEMANA
-                        </span>
-                        <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-white/5 text-neutral-300 border border-white/10 uppercase">
-                          {program.difficulty}
-                        </span>
-                        <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-white/5 text-neutral-400 border border-white/5">
-                          {program.category}
-                        </span>
-                        {program.isCustom && (
-                          confirmDeleteProgramId === program.id ? (
-                            <div className="flex items-center gap-1 ml-auto">
-                              <button
-                                onClick={() => handleDeleteCustomProgram(program.id)}
-                                className="px-2 py-0.5 rounded bg-red-500 text-neutral-950 font-mono font-black text-[10px] hover:bg-red-400 cursor-pointer"
-                              >
-                                Confirmar Borrar
-                              </button>
-                              <button
-                                onClick={() => setConfirmDeleteProgramId(null)}
-                                className="px-2 py-0.5 rounded bg-white/10 text-white font-mono text-[10px] cursor-pointer"
-                              >
-                                Cancelar
-                              </button>
-                            </div>
-                          ) : (
-                            <button
-                              onClick={() => setConfirmDeleteProgramId(program.id)}
-                              className="p-1 rounded-lg bg-white/5 hover:bg-red-500/20 text-neutral-400 hover:text-red-400 border border-white/10 text-[10px] font-mono flex items-center gap-1 transition-colors ml-auto cursor-pointer"
-                              title="Eliminar este plan personalizado"
-                            >
-                              <Trash2 className="w-3 h-3" />
-                              <span>Borrar</span>
-                            </button>
-                          )
-                        )}
+                  {/* Compact Header Row */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      {/* Left Icon Badge */}
+                      <div className="w-10 h-10 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 flex items-center justify-center shrink-0">
+                        <Calendar className="w-5 h-5" />
                       </div>
-                      <h3 className="font-display font-black text-xl sm:text-2xl text-white">
-                        {program.title}
-                      </h3>
-                      <p className="text-xs sm:text-sm text-neutral-300 mt-1 max-w-2xl leading-relaxed">
-                        {program.description}
-                      </p>
-                    </div>
 
-                    {/* XP Reward & Days Progress Badge + Reset option */}
-                    {(() => {
-                      const totalSessionsXp = program.days.reduce(
-                        (sum, d) => sum + (d.routine?.xpReward || 300),
-                        0
-                      );
-                      const totalCycleXp = totalSessionsXp + (program.xpReward || 300);
-                      return (
-                        <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-2 shrink-0">
-                          <span className="text-xs font-mono font-black text-yellow-400 bg-yellow-500/10 px-3 py-1 rounded-xl border border-yellow-500/20 shadow">
-                            +{totalCycleXp} XP Total Ciclo ({totalSessionsXp} XP días + {program.xpReward} Bono)
-                          </span>
-                          <div className="flex items-center gap-2 text-right">
-                            <span className="text-[11px] font-mono font-bold text-neutral-400">
-                              {currentCompletedDays} de {program.days.length} Días ({percent}%)
+                      {/* Main Info */}
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5 mb-1 flex-wrap">
+                          {program.isCustom && (
+                            <span className="text-[9px] font-mono font-black uppercase px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                              PERSONALIZADO
                             </span>
-                            {currentCompletedDays > 0 && !isProgramFinished && (
-                              <button
-                                onClick={() => handleResetProgramCycle(program.id)}
-                                className="px-2 py-0.5 rounded-lg bg-white/5 hover:bg-red-500/15 border border-white/10 hover:border-red-500/30 text-neutral-400 hover:text-red-400 font-mono text-[10px] transition-colors flex items-center gap-1 cursor-pointer"
-                                title="Reiniciar progreso de este programa"
-                              >
-                                <RotateCcw className="w-2.5 h-2.5" />
-                                <span>Reiniciar</span>
-                              </button>
-                            )}
+                          )}
+                          <span className="text-[9px] font-mono font-bold px-2 py-0.5 rounded-full bg-cyan-500/15 text-cyan-300 border border-cyan-500/30">
+                            {program.daysPerWeek} DÍAS/SEM
+                          </span>
+                          <span className="text-[9px] font-mono text-neutral-400 bg-white/5 border border-white/5 px-2 py-0.5 rounded-full uppercase">
+                            {program.difficulty}
+                          </span>
+                          <span className="text-[9px] font-mono font-bold text-yellow-400 bg-yellow-500/10 border border-yellow-500/20 px-2 py-0.5 rounded-full">
+                            +{totalCycleXp} XP
+                          </span>
+                        </div>
+
+                        <h3 className="font-display font-black text-sm sm:text-base text-white truncate">
+                          {program.title}
+                        </h3>
+
+                        {/* Progress status line */}
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="text-[11px] font-mono text-neutral-400">
+                            {currentCompletedDays}/{program.days.length} Días ({percent}%)
+                          </span>
+                          <div className="w-20 sm:w-28 h-1.5 bg-neutral-800 rounded-full overflow-hidden">
+                            <div
+                              className={`h-full rounded-full transition-all duration-500 ${
+                                isProgramFinished ? 'bg-emerald-400' : 'bg-cyan-400'
+                              }`}
+                              style={{ width: `${percent}%` }}
+                            />
                           </div>
                         </div>
-                      );
-                    })()}
-                  </div>
-
-                  {/* Visual Timeline Roadmap Strip */}
-                  <div className="my-5 relative z-10">
-                    <div className="flex items-center justify-between gap-1 overflow-x-auto pb-2 scrollbar-none">
-                      {program.days.map((d, idx) => {
-                        const isDone = currentCompletedDays >= d.dayNumber;
-                        const isCurr = currentCompletedDays + 1 === d.dayNumber;
-                        const isLast = idx === program.days.length - 1;
-
-                        return (
-                          <div key={d.dayNumber} className="flex items-center flex-1 min-w-[70px]">
-                            {/* Step Node */}
-                            <div className="flex flex-col items-center gap-1 w-full text-center">
-                              <div
-                                className={`w-8 h-8 rounded-full flex items-center justify-center font-mono font-black text-xs transition-all ${
-                                  isDone
-                                    ? 'bg-emerald-500 text-neutral-950 shadow-[0_0_12px_rgba(16,185,129,0.4)]'
-                                    : isCurr
-                                    ? 'bg-cyan-400 text-neutral-950 ring-4 ring-cyan-500/30 shadow-[0_0_15px_rgba(6,182,212,0.6)] animate-pulse'
-                                    : 'bg-white/5 text-neutral-500 border border-white/10'
-                                }`}
-                              >
-                                {isDone ? '✓' : isCurr ? d.dayNumber : <Lock className="w-3 h-3 text-neutral-500" />}
-                              </div>
-                              <span
-                                className={`text-[10px] font-mono truncate max-w-[80px] ${
-                                  isDone
-                                    ? 'text-emerald-400 font-bold'
-                                    : isCurr
-                                    ? 'text-cyan-400 font-bold'
-                                    : 'text-neutral-500'
-                                }`}
-                              >
-                                D{d.dayNumber}
-                              </span>
-                            </div>
-
-                            {/* Connecting Line */}
-                            {!isLast && (
-                              <div
-                                className={`h-1 flex-1 mx-1 rounded-full transition-all ${
-                                  isDone
-                                    ? 'bg-emerald-500/80 shadow-[0_0_8px_rgba(16,185,129,0.3)]'
-                                    : 'bg-white/10'
-                                }`}
-                              />
-                            )}
-                          </div>
-                        );
-                      })}
+                      </div>
                     </div>
-                  </div>
 
-                  {/* Program Days Grid */}
-                  <div className="space-y-3 relative z-10">
-                    <div className="flex items-center justify-between">
-                      <h4 className="font-mono font-bold text-xs uppercase tracking-wider text-neutral-400">
-                        Calendario Detallado de Sesiones:
-                      </h4>
+                    {/* Right Action Buttons */}
+                    <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                      {/* Delete Custom Program */}
+                      {program.isCustom && (
+                        confirmDeleteProgramId === program.id ? (
+                          <div className="flex items-center gap-1">
+                            <button
+                              onClick={() => handleDeleteCustomProgram(program.id)}
+                              className="px-2 py-1 rounded bg-red-500 text-neutral-950 font-mono font-black text-[10px] hover:bg-red-400 cursor-pointer"
+                            >
+                              Borrar
+                            </button>
+                            <button
+                              onClick={() => setConfirmDeleteProgramId(null)}
+                              className="px-2 py-1 rounded bg-white/10 text-white font-mono text-[10px] cursor-pointer"
+                            >
+                              No
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => setConfirmDeleteProgramId(program.id)}
+                            className="p-2 rounded-xl bg-white/5 hover:bg-red-500/20 text-neutral-400 hover:text-red-400 border border-white/5 transition-colors cursor-pointer"
+                            title="Eliminar este plan personalizado"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )
+                      )}
+
+                      {/* Reset Button (only if partially progressed) */}
+                      {currentCompletedDays > 0 && !isProgramFinished && (
+                        <button
+                          onClick={() => handleResetProgramCycle(program.id)}
+                          className="p-2 rounded-xl bg-white/5 hover:bg-red-500/15 border border-white/5 text-neutral-400 hover:text-red-400 transition-colors cursor-pointer"
+                          title="Reiniciar progreso de este programa"
+                        >
+                          <RotateCcw className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+
+                      {/* Primary Play / Status Button */}
+                      {isProgramFinished ? (
+                        <button
+                          onClick={() => handleResetProgramCycle(program.id)}
+                          className="px-3 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-mono font-black text-xs flex items-center gap-1.5 shadow cursor-pointer transition-transform hover:scale-105 active:scale-95"
+                        >
+                          <RotateCcw className="w-3 h-3" />
+                          <span>Reiniciar Ciclo</span>
+                        </button>
+                      ) : (
+                        <button
+                          id={`btn-start-prog-${program.id}-day-${nextDay.dayNumber}`}
+                          onClick={() => handleStartProgramDay(program.id, nextDay)}
+                          className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-cyan-400 to-blue-500 hover:from-cyan-300 hover:to-blue-400 text-neutral-950 font-display font-black text-xs uppercase tracking-wider flex items-center gap-1.5 shadow-sm cursor-pointer transition-transform hover:scale-105 active:scale-95"
+                        >
+                          <Play className="w-3.5 h-3.5 fill-current" />
+                          <span>Día {nextDay.dayNumber}</span>
+                        </button>
+                      )}
+
+                      {/* Expand / Collapse Chevron Button */}
                       <button
                         onClick={() => setExpandedProgramId(isExpanded ? null : program.id)}
-                        className="text-xs font-mono text-cyan-400 hover:text-cyan-300 flex items-center gap-1 font-bold"
+                        className={`p-2 rounded-xl border transition-colors cursor-pointer ${
+                          isExpanded
+                            ? 'bg-cyan-500/10 border-cyan-500/30 text-cyan-400'
+                            : 'bg-white/5 hover:bg-white/10 border-white/5 text-neutral-400 hover:text-white'
+                        }`}
+                        title={isExpanded ? 'Contraer sesiones' : 'Ver desglose de días'}
                       >
-                        <span>{isExpanded ? 'Contraer Sesiones' : 'Ver Todas las Sesiones'}</span>
-                        {isExpanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+                        {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
                       </button>
                     </div>
+                  </div>
 
-                    {isExpanded && (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1 animate-in fade-in">
+                  {/* Expandable Checklist Drawer for Program Days */}
+                  {isExpanded && (
+                    <div className="mt-3 pt-3 border-t border-white/5 space-y-2 animate-in fade-in duration-200">
+                      <p className="text-xs text-neutral-400 mb-2 leading-relaxed">
+                        {program.description}
+                      </p>
+
+                      <div className="space-y-1.5">
                         {program.days.map((day) => {
                           const isCompleted = currentCompletedDays >= day.dayNumber;
                           const isNext = currentCompletedDays + 1 === day.dayNumber;
@@ -758,80 +724,66 @@ export const WorkoutCatalogView: React.FC<WorkoutCatalogViewProps> = ({
                           return (
                             <div
                               key={day.dayNumber}
-                              className={`p-4 rounded-2xl border transition-all flex flex-col justify-between gap-3 ${
+                              className={`p-2.5 rounded-xl border flex items-center justify-between gap-3 transition-colors ${
                                 isCompleted
-                                  ? 'bg-emerald-950/20 border-emerald-500/40 text-emerald-100'
+                                  ? 'bg-emerald-950/20 border-emerald-500/25 text-neutral-300'
                                   : isNext
-                                  ? 'bg-cyan-500/[0.06] border-cyan-500/60 ring-1 ring-cyan-500/30 shadow-[0_0_20px_rgba(6,182,212,0.15)]'
-                                  : 'bg-white/[0.02] border-white/5 text-neutral-500 opacity-60'
+                                  ? 'bg-cyan-500/10 border-cyan-500/40 text-white shadow-[0_0_15px_rgba(6,182,212,0.08)]'
+                                  : 'bg-white/[0.02] border-white/5 text-neutral-400 opacity-60'
                               }`}
                             >
-                              <div>
-                                <div className="flex items-center justify-between gap-2 mb-1.5">
-                                  <div className="flex items-center gap-2">
-                                    <span
-                                      className={`w-6 h-6 rounded-lg font-mono font-bold text-xs flex items-center justify-center ${
-                                        isCompleted
-                                          ? 'bg-emerald-500 text-neutral-950'
-                                          : isNext
-                                          ? 'bg-cyan-500 text-neutral-950 font-black'
-                                          : 'bg-white/10 text-neutral-500'
-                                      }`}
-                                    >
-                                      {isLocked ? <Lock className="w-3 h-3" /> : day.dayNumber}
+                              <div className="flex items-center gap-2.5 min-w-0">
+                                <span
+                                  className={`w-6 h-6 rounded-lg font-mono font-bold text-xs flex items-center justify-center shrink-0 ${
+                                    isCompleted
+                                      ? 'bg-emerald-500 text-neutral-950'
+                                      : isNext
+                                      ? 'bg-cyan-400 text-neutral-950 font-black'
+                                      : 'bg-white/10 text-neutral-500'
+                                  }`}
+                                >
+                                  {isCompleted ? '✓' : isLocked ? <Lock className="w-3 h-3" /> : day.dayNumber}
+                                </span>
+
+                                <div className="min-w-0">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <span className="font-display font-bold text-xs sm:text-sm text-white truncate">
+                                      Día {day.dayNumber}: {day.title}
                                     </span>
-                                    <h5 className={`font-display font-bold text-sm ${isLocked ? 'text-neutral-400' : 'text-white'}`}>
-                                      {day.title}
-                                    </h5>
+                                    {isNext && (
+                                      <span className="text-[9px] font-mono font-bold text-cyan-300 px-1.5 py-0.2 rounded bg-cyan-500/20 border border-cyan-500/40 shrink-0">
+                                        SIGUIENTE
+                                      </span>
+                                    )}
+                                    {isCompleted && (
+                                      <span className="text-[9px] font-mono font-bold text-emerald-400 px-1.5 py-0.2 rounded bg-emerald-500/15 border border-emerald-500/30 shrink-0">
+                                        HECHO
+                                      </span>
+                                    )}
                                   </div>
-                                  {isCompleted && (
-                                    <span className="text-[10px] font-mono font-bold text-emerald-400 px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20">
-                                      ✓ COMPLETADO
-                                    </span>
-                                  )}
-                                  {isNext && (
-                                    <span className="text-[10px] font-mono font-bold text-cyan-300 px-2 py-0.5 rounded bg-cyan-500/20 border border-cyan-500/40 animate-pulse">
-                                      ⚡ SIGUIENTE
-                                    </span>
-                                  )}
-                                  {isLocked && (
-                                    <span className="text-[10px] font-mono font-bold text-neutral-500 px-2 py-0.5 rounded bg-white/5 border border-white/5 flex items-center gap-1">
-                                      <Lock className="w-2.5 h-2.5" /> BLOQUEADO
-                                    </span>
-                                  )}
+                                  <p className="text-[11px] text-neutral-400 truncate">
+                                    {day.focus} • {day.routine.exercises.length} ejer. • ~{day.routine.durationMinutes} min • +{day.routine.xpReward} XP
+                                  </p>
                                 </div>
-                                <p className="text-xs text-neutral-400 ml-8">
-                                  {day.focus}
-                                </p>
-                                <p className="text-[11px] font-mono text-neutral-500 ml-8 mt-1">
-                                  {isLocked
-                                    ? `Completa el Día ${day.dayNumber - 1} para desbloquear`
-                                    : `${day.routine.exercises.length} Ejercicios • ~${day.routine.durationMinutes} min • +${day.routine.xpReward} XP`}
-                                </p>
                               </div>
 
-                              <div className="flex items-center justify-end pt-2 border-t border-white/5">
+                              <div className="shrink-0">
                                 {isLocked ? (
-                                  <button
-                                    disabled
-                                    className="px-4 py-2 rounded-xl text-xs font-mono font-bold flex items-center gap-1.5 bg-white/5 text-neutral-500 border border-white/5 cursor-not-allowed opacity-50"
-                                    title={`Bloqueado hasta completar el Día ${day.dayNumber - 1}`}
-                                  >
-                                    <Lock className="w-3.5 h-3.5" />
-                                    <span>Bloqueado</span>
-                                  </button>
+                                  <span className="text-[10px] font-mono text-neutral-500 px-2 py-1 rounded bg-white/5 border border-white/5 flex items-center gap-1">
+                                    <Lock className="w-2.5 h-2.5" /> Bloqueado
+                                  </span>
                                 ) : (
                                   <button
                                     id={`btn-start-prog-${program.id}-day-${day.dayNumber}`}
                                     onClick={() => handleStartProgramDay(program.id, day)}
-                                    className={`px-4 py-2 rounded-xl text-xs font-mono font-bold flex items-center gap-1.5 transition-all hover:scale-105 active:scale-95 ${
+                                    className={`px-3 py-1 rounded-lg text-xs font-mono font-bold flex items-center gap-1.5 transition-transform hover:scale-105 active:scale-95 cursor-pointer ${
                                       isNext
-                                        ? 'bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-neutral-950 shadow-lg shadow-cyan-500/30'
-                                        : 'bg-white/5 hover:bg-white/10 text-white border border-white/10'
+                                        ? 'bg-gradient-to-r from-cyan-400 to-blue-500 text-neutral-950 shadow-md shadow-cyan-500/20'
+                                        : 'bg-white/5 hover:bg-white/10 text-neutral-200 border border-white/10'
                                     }`}
                                   >
-                                    <Play className="w-3.5 h-3.5 fill-current" />
-                                    <span>{isCompleted ? '↺ Repetir Sesión' : 'Iniciar Sesión'}</span>
+                                    <Play className="w-3 h-3 fill-current" />
+                                    <span>{isCompleted ? 'Repetir' : 'Iniciar'}</span>
                                   </button>
                                 )}
                               </div>
@@ -839,30 +791,30 @@ export const WorkoutCatalogView: React.FC<WorkoutCatalogViewProps> = ({
                           );
                         })}
                       </div>
-                    )}
 
-                    {/* Program Completed Banner & Cycle Restart */}
-                    {isProgramFinished && (
-                      <div className="mt-3 p-4 bg-emerald-500/10 border border-emerald-500/30 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3 animate-in zoom-in-95">
-                        <div className="flex items-center gap-3 text-center sm:text-left">
-                          <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0 shadow-[0_0_12px_rgba(16,185,129,0.3)]">
-                            <CheckCircle2 className="w-5 h-5" />
+                      {/* Completed Cycle Celebration Banner */}
+                      {isProgramFinished && (
+                        <div className="mt-2.5 p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl flex flex-col sm:flex-row items-center justify-between gap-2.5 animate-in zoom-in-95">
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-7 h-7 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
+                              <CheckCircle2 className="w-4 h-4" />
+                            </div>
+                            <div>
+                              <h5 className="font-display font-bold text-white text-xs">¡Ciclo Semanal Completado! (+{program.xpReward} XP Bono Final)</h5>
+                              <p className="text-[11px] text-neutral-400">Has superado todas las sesiones del plan. Reinicia el ciclo para la próxima semana.</p>
+                            </div>
                           </div>
-                          <div>
-                            <h5 className="font-display font-bold text-white text-sm">¡Ciclo Semanal Completado! (+{program.xpReward} XP Bono Final)</h5>
-                            <p className="text-xs text-neutral-400">Has superado todas las sesiones del plan y recibido el bono final. Reinicia el ciclo para la próxima semana.</p>
-                          </div>
+                          <button
+                            onClick={() => handleResetProgramCycle(program.id)}
+                            className="px-3 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black font-mono font-black text-xs flex items-center gap-1.5 shadow shrink-0 cursor-pointer transition-transform hover:scale-105"
+                          >
+                            <RotateCcw className="w-3 h-3" />
+                            <span>Reiniciar Ciclo</span>
+                          </button>
                         </div>
-                        <button
-                          onClick={() => handleResetProgramCycle(program.id)}
-                          className="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-mono font-black text-xs flex items-center gap-1.5 shadow-lg shadow-emerald-500/20 shrink-0 transition-transform hover:scale-105"
-                        >
-                          <RotateCcw className="w-3.5 h-3.5" />
-                          <span>Reiniciar Ciclo</span>
-                        </button>
-                      </div>
-                    )}
-                  </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               );
             })}
