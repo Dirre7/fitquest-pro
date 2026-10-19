@@ -1,4 +1,4 @@
-import { BossRaid, BossContribution, UserProfile } from '../types';
+import { BossRaid, BossContribution, UserProfile, WorkoutHistoryEntry } from '../types';
 
 const BOSS_STORAGE_KEY = 'fitquest_monthly_boss_raid';
 const BOSS_CONTRIBUTIONS_KEY = 'fitquest_monthly_boss_contributions';
@@ -104,7 +104,10 @@ export function saveActiveBossRaid(boss: BossRaid): void {
 /**
  * Retrieves community contributions for this raid
  */
-export function getBossContributions(user?: UserProfile): BossContribution[] {
+export function getBossContributions(
+  user?: UserProfile,
+  history?: WorkoutHistoryEntry[]
+): BossContribution[] {
   const monthKey = getCurrentMonthKey();
   const defaultSquad: BossContribution[] = [
     {
@@ -144,31 +147,70 @@ export function getBossContributions(user?: UserProfile): BossContribution[] {
     },
   ];
 
+  let squad = [...defaultSquad];
+
   try {
     const raw = localStorage.getItem(`${BOSS_CONTRIBUTIONS_KEY}_${monthKey}`);
     if (raw) {
       const saved = JSON.parse(raw) as BossContribution[];
       if (Array.isArray(saved) && saved.length > 0) {
-        return saved.sort((a, b) => b.damageKg - a.damageKg);
+        squad = saved;
       }
     }
   } catch (e) {
     console.warn('Error reading boss contributions:', e);
   }
 
-  // If user provided, add user initial record if not present
+  // Calculate real monthly user contribution from workout history
   if (user) {
-    const userContrib: BossContribution = {
-      userId: user.id || 'current_user',
-      userName: user.name || 'Tú',
-      userAvatar: user.avatar,
-      damageKg: Math.min(15000, user.stats?.totalVolumeKg || 0),
-      attacksCount: Math.min(6, user.stats?.totalWorkouts || 1),
-    };
-    defaultSquad.push(userContrib);
+    let realDamage = 0;
+    let realAttacks = 0;
+
+    if (Array.isArray(history) && history.length > 0) {
+      const thisMonthHistory = history.filter((h) => {
+        if (!h?.date) return false;
+        return h.date.startsWith(monthKey);
+      });
+      realAttacks = thisMonthHistory.length;
+      realDamage = thisMonthHistory.reduce(
+        (sum, h) => sum + (h.totalVolumeKg || 0) + Math.round((h.totalDistanceKm || 0) * 100),
+        0
+      );
+    } else {
+      realAttacks = user.stats?.totalWorkouts || 0;
+      realDamage = user.stats?.totalVolumeKg || 0;
+    }
+
+    const existingIdx = squad.findIndex((c) => c.userId === user.id || c.userName === user.name);
+    if (existingIdx >= 0) {
+      squad[existingIdx] = {
+        ...squad[existingIdx],
+        userId: user.id || squad[existingIdx].userId,
+        userName: user.name || squad[existingIdx].userName,
+        userAvatar: user.avatar || squad[existingIdx].userAvatar,
+        damageKg: Math.max(squad[existingIdx].damageKg || 0, realDamage),
+        attacksCount: Math.max(squad[existingIdx].attacksCount || 0, realAttacks),
+      };
+    } else {
+      squad.push({
+        userId: user.id || 'current_user',
+        userName: user.name || 'Tú',
+        userAvatar: user.avatar,
+        damageKg: realDamage,
+        attacksCount: realAttacks,
+      });
+    }
+
+    // Persist combined squad to localStorage
+    try {
+      localStorage.setItem(
+        `${BOSS_CONTRIBUTIONS_KEY}_${monthKey}`,
+        JSON.stringify(squad.sort((a, b) => b.damageKg - a.damageKg))
+      );
+    } catch {}
   }
 
-  return defaultSquad.sort((a, b) => b.damageKg - a.damageKg);
+  return squad.sort((a, b) => b.damageKg - a.damageKg);
 }
 
 /**

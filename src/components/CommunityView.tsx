@@ -176,6 +176,7 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
       {subTab === 'raid' && (
         <MonthlyBossRaidView
           user={user}
+          history={history}
           lang={lang}
           onNavigateRoutines={onNavigateRoutines}
         />

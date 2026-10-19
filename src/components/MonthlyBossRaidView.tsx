@@ -12,45 +12,63 @@ import {
   ChevronRight,
   CheckCircle2,
 } from 'lucide-react';
-import { UserProfile, Language } from '../types';
+import { UserProfile, Language, WorkoutHistoryEntry } from '../types';
 import {
   getActiveBossRaid,
   getBossContributions,
   getCurrentMonthName,
+  getCurrentMonthKey,
 } from '../lib/bossRaidEngine';
 import { sound } from '../lib/soundFx';
 
 interface MonthlyBossRaidViewProps {
   user: UserProfile;
+  history?: WorkoutHistoryEntry[];
   lang: Language;
   onNavigateRoutines?: () => void;
 }
 
 export const MonthlyBossRaidView: React.FC<MonthlyBossRaidViewProps> = ({
   user,
+  history = [],
   onNavigateRoutines,
 }) => {
   const [boss, setBoss] = useState(getActiveBossRaid());
-  const [squad, setSquad] = useState(getBossContributions(user));
+  const [squad, setSquad] = useState(getBossContributions(user, history));
 
   useEffect(() => {
     const handleBossUpdate = () => {
       setBoss(getActiveBossRaid());
-      setSquad(getBossContributions(user));
+      setSquad(getBossContributions(user, history));
     };
 
     window.addEventListener('fitquest_boss_updated', handleBossUpdate);
     return () => window.removeEventListener('fitquest_boss_updated', handleBossUpdate);
-  }, [user]);
+  }, [user, history]);
+
+  // Recalculate if history or user changes
+  useEffect(() => {
+    setSquad(getBossContributions(user, history));
+  }, [user, history]);
 
   const progressPct = Math.min(100, Math.round((boss.currentDamageKg / boss.maxHpKg) * 100));
   const remainingHpKg = Math.max(0, boss.maxHpKg - boss.currentDamageKg);
   const remainingHpPct = Math.max(0, 100 - progressPct);
   const isDefeated = boss.status === 'defeated' || remainingHpKg === 0;
 
-  // Find user's contribution
+  // Real monthly workouts from user history for the active calendar month
+  const currentMonthKey = getCurrentMonthKey();
+  const monthWorkouts = (history || []).filter((h) => h?.date && h.date.startsWith(currentMonthKey));
+  const calculatedMonthAttacks = monthWorkouts.length;
+  const calculatedMonthDamage = monthWorkouts.reduce(
+    (sum, h) => sum + (h.totalVolumeKg || 0) + Math.round((h.totalDistanceKm || 0) * 100),
+    0
+  );
+
+  // Find user's contribution in squad
   const userEntry = squad.find((c) => c.userId === user.id || c.userName === user.name);
-  const userDamage = userEntry ? userEntry.damageKg : 0;
+  const userDamage = Math.max(userEntry ? userEntry.damageKg : 0, calculatedMonthDamage);
+  const userAttacks = Math.max(userEntry ? userEntry.attacksCount : 0, calculatedMonthAttacks);
   const userRank = userEntry ? squad.indexOf(userEntry) + 1 : squad.length;
   const userPct = Math.min(100, ((userDamage / Math.max(1, boss.maxHpKg)) * 100)).toFixed(1);
 
@@ -191,7 +209,7 @@ export const MonthlyBossRaidView: React.FC<MonthlyBossRaidViewProps> = ({
 
           <div className="text-right">
             <span className="text-xs font-mono font-bold text-white block">
-              {userEntry?.attacksCount || 0} ataques
+              {userAttacks} ataques
             </span>
             <span className="text-[10px] text-neutral-400 font-mono">sesiones sumadas</span>
           </div>
@@ -202,6 +220,8 @@ export const MonthlyBossRaidView: React.FC<MonthlyBossRaidViewProps> = ({
           {squad.slice(0, 5).map((member, idx) => {
             const isMe = member.userId === user.id || member.userName === user.name;
             const rankIcon = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `#${idx + 1}`;
+            const damage = isMe ? userDamage : member.damageKg;
+            const attacks = isMe ? userAttacks : member.attacksCount;
 
             return (
               <div
@@ -227,14 +247,14 @@ export const MonthlyBossRaidView: React.FC<MonthlyBossRaidViewProps> = ({
                       {isMe && <span className="text-[9px] font-mono bg-cyan-400 text-neutral-950 px-1.5 py-0.2 rounded font-black">TÚ</span>}
                     </p>
                     <p className="text-[10px] font-mono text-neutral-400">
-                      {member.attacksCount} entrenamientos completados
+                      {attacks} entrenamientos completados
                     </p>
                   </div>
                 </div>
 
                 <div className="text-right">
                   <p className="text-xs font-mono font-bold text-rose-400">
-                    {member.damageKg.toLocaleString()} kg
+                    {damage.toLocaleString()} kg
                   </p>
                   <p className="text-[10px] font-mono text-neutral-500">
                     {((member.damageKg / Math.max(1, boss.maxHpKg)) * 100).toFixed(1)}% HP
