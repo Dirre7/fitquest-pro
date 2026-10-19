@@ -96,20 +96,79 @@ export class HealthIntegrationService {
       syncSource = 'bluetooth';
     }
 
-    // Dynamic steps and active calories
-    const stepsToday = Math.max(currentDevice.stepsToday || 0, Math.floor(6500 + Math.random() * 4200));
-    const activeCaloriesToday = Math.max(currentDevice.activeCaloriesToday || 0, Math.floor(420 + Math.random() * 260));
-    const restingHeartRate = 54 + Math.floor(Math.random() * 6); // 54 - 60 bpm
-    const liveHeartRate = 125 + Math.floor(Math.random() * 25);
-    const hrvMs = 58 + Math.floor(Math.random() * 16);
+    // Default values if no sensor data is present
+    let stepsToday = currentDevice.stepsToday || 0;
+    let activeCaloriesToday = currentDevice.activeCaloriesToday || 0;
+    let restingHeartRate = currentDevice.restingHeartRate || 0;
+    let liveHeartRate = currentDevice.liveHeartRate || 0;
+    let hrvMs = currentDevice.hrvMs || 0;
+    let sleepTotalMinutes = currentDevice.sleepTotalMinutes || 0;
 
-    // Sleep metrics (7h 30m - 8h 15m)
-    const sleepTotalMinutes = 450 + Math.floor(Math.random() * 45);
-    const { sleepScore, stages, recoveryScore, recoveryXpMultiplier } = this.calculateSleepMetrics(
-      sleepTotalMinutes,
-      restingHeartRate,
-      hrvMs
-    );
+    // In Native environment (iOS / Android), attempt to read actual native platform metrics
+    if (isNative) {
+      try {
+        const { CapacitorHealthData } = await import('@felix-health/capacitor-health-data');
+        if (CapacitorHealthData) {
+          const startDate = new Date();
+          startDate.setHours(0, 0, 0, 0);
+          const endDate = new Date();
+
+          // Try querying steps
+          try {
+            const stepsRes = await CapacitorHealthData.queryAggregate({
+              startDate: startDate.toISOString(),
+              endDate: endDate.toISOString(),
+              dataType: 'steps',
+            });
+            if (stepsRes && typeof stepsRes.value === 'number') {
+              stepsToday = Math.round(stepsRes.value);
+            }
+          } catch (stepErr) {
+            console.warn('Native steps query notice:', stepErr);
+          }
+
+          // Try querying active calories
+          try {
+            const calRes = await CapacitorHealthData.queryAggregate({
+              startDate: startDate.toISOString(),
+              endDate: endDate.toISOString(),
+              dataType: 'calories',
+            });
+            if (calRes && typeof calRes.value === 'number') {
+              activeCaloriesToday = Math.round(calRes.value);
+            }
+          } catch (calErr) {
+            console.warn('Native calories query notice:', calErr);
+          }
+
+          // Try querying heart rate
+          try {
+            const hrRes = await CapacitorHealthData.queryAggregate({
+              startDate: startDate.toISOString(),
+              endDate: endDate.toISOString(),
+              dataType: 'heart_rate',
+            });
+            if (hrRes && typeof hrRes.value === 'number') {
+              restingHeartRate = Math.round(hrRes.value);
+            }
+          } catch (hrErr) {
+            console.warn('Native heart rate query notice:', hrErr);
+          }
+        }
+      } catch (nativeErr) {
+        console.warn('Native health data access warning:', nativeErr);
+      }
+    }
+
+    // Sleep metrics (only calculated if actual sleep minutes exist)
+    const sleepMetrics = sleepTotalMinutes > 0
+      ? this.calculateSleepMetrics(sleepTotalMinutes, restingHeartRate || 60, hrvMs || 55)
+      : {
+          sleepScore: 0,
+          stages: { deepMinutes: 0, remMinutes: 0, lightMinutes: 0, awakeMinutes: 0 },
+          recoveryScore: 0,
+          recoveryXpMultiplier: 1.0,
+        };
 
     const nowStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
@@ -117,26 +176,26 @@ export class HealthIntegrationService {
       ...currentDevice,
       name: currentDevice.name.includes('Simulación') 
         ? `${activeBrand} (Conectado)` 
-        : currentDevice.name || `${activeBrand} Ultra`,
+        : currentDevice.name || `${activeBrand}`,
       brand: activeBrand,
       status: 'connected',
-      batteryLevel: Math.max(20, Math.min(100, currentDevice.batteryLevel || 88)),
+      batteryLevel: currentDevice.batteryLevel || 100,
       liveHeartRate,
       restingHeartRate,
       hrvMs,
-      activeZone: liveHeartRate >= 150 ? 'Cardio' : 'FatBurn',
+      activeZone: liveHeartRate >= 150 ? 'Cardio' : (liveHeartRate >= 120 ? 'FatBurn' : 'Rest'),
       stepsToday,
       stepsTarget: currentDevice.stepsTarget || 10000,
       activeCaloriesToday,
       calorieSyncMode: currentDevice.calorieSyncMode || 'smartwatch',
-      vo2max: currentDevice.vo2max || 48.5,
+      vo2max: currentDevice.vo2max || 0,
       lastSyncTime: `Hoy a las ${nowStr}`,
       sleepTotalMinutes,
       sleepTargetMinutes: 480,
-      sleepScore,
-      sleepStages: stages,
-      recoveryScore,
-      recoveryXpMultiplier,
+      sleepScore: sleepMetrics.sleepScore,
+      sleepStages: sleepMetrics.stages,
+      recoveryScore: sleepMetrics.recoveryScore,
+      recoveryXpMultiplier: sleepMetrics.recoveryXpMultiplier,
       syncSource,
     };
 

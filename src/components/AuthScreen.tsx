@@ -132,8 +132,10 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ lang, onSuccess, onConti
       }
     } catch (err: any) {
       console.error('Google auth error', err);
-      if (err.code !== 'auth/popup-closed-by-user') {
-        setError('No se pudo completar el inicio de sesión con Google.');
+      if (err.code === 'auth/popup-blocked' || err.code === 'auth/cancelled-popup-request' || err.message?.includes('popup')) {
+        setError('El sistema WebView de la app bloqueó la ventana de Google. Por favor, inicia sesión con tu Email y Contraseña.');
+      } else if (err.code !== 'auth/popup-closed-by-user') {
+        setError(`Error de Google (${err.code || 'fallo'}). Usa tu Email y Contraseña.`);
       }
     } finally {
       setLoading(false);

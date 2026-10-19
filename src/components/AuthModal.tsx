@@ -123,8 +123,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, lang, onS
       }
     } catch (err: any) {
       console.error('Google auth error', err);
-      if (err.code !== 'auth/popup-closed-by-user') {
-        setError('No se pudo completar el inicio con Google.');
+      if (err.code === 'auth/popup-blocked' || err.code === 'auth/cancelled-popup-request' || err.message?.includes('popup')) {
+        setError('El sistema WebView de la app bloqueó la ventana de Google. Por favor, inicia sesión con tu Email y Contraseña.');
+      } else if (err.code !== 'auth/popup-closed-by-user') {
+        setError(`Error de Google (${err.code || 'fallo'}). Usa tu Email y Contraseña.`);
       }
     } finally {
       setLoading(false);
