@@ -395,9 +395,13 @@ export default function App() {
             if (Array.isArray((data as any).customRoutines)) {
               try {
                 const cloudCustom = (data as any).customRoutines as WorkoutRoutine[];
+                const deletedRoutineIds = FitStorage.getDeletedRoutineIds();
                 const currentRoutines = FitStorage.getRoutines();
                 const defaultsOnly = currentRoutines.filter((r) => !r.isCustom);
-                const mergedRoutines = [...defaultsOnly, ...cloudCustom.map((r) => ({ ...r, isCustom: true }))];
+                const filteredCloudCustom = cloudCustom
+                  .filter((r) => r && r.id && !deletedRoutineIds.has(r.id))
+                  .map((r) => ({ ...r, isCustom: true }));
+                const mergedRoutines = [...defaultsOnly, ...filteredCloudCustom];
                 if (JSON.stringify(mergedRoutines) !== JSON.stringify(currentRoutines)) {
                   localStorage.setItem('fitquest_routines', JSON.stringify(mergedRoutines));
                   setRoutines(mergedRoutines);

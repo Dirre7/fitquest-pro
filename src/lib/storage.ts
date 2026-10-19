@@ -40,6 +40,7 @@ const KEYS = {
   REMINDERS: 'fitquest_reminders',
   HISTORY: 'fitquest_history',
   DELETED_HISTORY_IDS: 'fitquest_deleted_history_ids',
+  DELETED_ROUTINE_IDS: 'fitquest_deleted_routine_ids',
   THEME: 'fitquest_theme',
   LANG: 'fitquest_lang',
   SOUND: 'fitquest_sound_enabled',
@@ -75,6 +76,23 @@ export class FitStorage {
       const current = this.getDeletedHistoryIds();
       current.add(id);
       localStorage.setItem(KEYS.DELETED_HISTORY_IDS, JSON.stringify(Array.from(current)));
+    } catch {}
+  }
+
+  public static getDeletedRoutineIds(): Set<string> {
+    try {
+      const raw = localStorage.getItem(KEYS.DELETED_ROUTINE_IDS);
+      return new Set(raw ? JSON.parse(raw) : []);
+    } catch {
+      return new Set();
+    }
+  }
+
+  public static markRoutineIdDeleted(id: string) {
+    try {
+      const current = this.getDeletedRoutineIds();
+      current.add(id);
+      localStorage.setItem(KEYS.DELETED_ROUTINE_IDS, JSON.stringify(Array.from(current)));
     } catch {}
   }
 
@@ -671,12 +689,17 @@ export class FitStorage {
 
       // 3. Merge Custom Routines from Cloud + Local
       const customRoutinesMap = new Map<string, WorkoutRoutine>();
+      const deletedRoutineIds = this.getDeletedRoutineIds();
       if (!isCloudResetActive) {
-        this.getRoutines().filter((r) => r.isCustom).forEach((r) => customRoutinesMap.set(r.id, r));
+        this.getRoutines()
+          .filter((r) => r.isCustom && !deletedRoutineIds.has(r.id))
+          .forEach((r) => customRoutinesMap.set(r.id, r));
       }
       if (Array.isArray(cloudData.customRoutines)) {
         (cloudData.customRoutines as WorkoutRoutine[]).forEach((r) => {
-          if (r && r.id) customRoutinesMap.set(r.id, { ...r, isCustom: true });
+          if (r && r.id && !deletedRoutineIds.has(r.id)) {
+            customRoutinesMap.set(r.id, { ...r, isCustom: true });
+          }
         });
       }
       routinesList = [...defaultRoutines, ...Array.from(customRoutinesMap.values())];
@@ -791,9 +814,23 @@ export class FitStorage {
   }
 
   public static deleteCustomRoutine(routineId: string): WorkoutRoutine[] {
-    const updated = this.getRoutines().filter((r) => !(r.isCustom && r.id === routineId));
-    this.saveRoutines(updated);
-    return updated;
+    try {
+      this.markRoutineIdDeleted(routineId);
+      const updated = this.getRoutines().filter((r) => !(r.isCustom && r.id === routineId));
+      this.saveRoutines(updated);
+
+      const uid = auth.currentUser?.uid;
+      if (uid) {
+        // Also remove from routines subcollection if it existed there
+        deleteDoc(doc(db, 'users', uid, 'routines', routineId)).catch((err) => {
+          console.warn('Subcollection routine delete notice:', err);
+        });
+      }
+      return updated;
+    } catch (e) {
+      console.error('Error deleting custom routine:', e);
+      return this.getRoutines();
+    }
   }
 
   public static getPrograms(): WorkoutProgram[] {
