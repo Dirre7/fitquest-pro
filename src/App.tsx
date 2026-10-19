@@ -26,6 +26,7 @@ import {
   checkAndApplyStreakShield,
   calculateAthleteAttributes,
   calculateAttributeXpBonus,
+  LeagueEvaluationResult,
 } from './lib/leagueEngine';
 import { attackBossRaid } from './lib/bossRaidEngine';
 import { evaluateAllAchievements } from './lib/achievementEngine';
@@ -54,6 +55,7 @@ import { SportActivityModal } from './components/SportActivityModal';
 import { LevelRoadmapModal } from './components/LevelRoadmapModal';
 import { LevelUpCelebrationModal } from './components/LevelUpCelebrationModal';
 import { OnboardingModal } from './components/OnboardingModal';
+import { LeagueCelebrationModal } from './components/LeagueCelebrationModal';
 
 // Helper para identificar este dispositivo y forzar la exclusión mutua (Móvil vs Tablet)
 function getDeviceSessionId(): string {
@@ -109,6 +111,7 @@ export default function App() {
   // Level Progression Roadmap & Epic Level Up Celebration
   const [levelRoadmapModalOpen, setLevelRoadmapModalOpen] = useState<boolean>(false);
   const [levelUpModalOpen, setLevelUpModalOpen] = useState<boolean>(false);
+  const [leagueEvaluationModal, setLeagueEvaluationModal] = useState<LeagueEvaluationResult | null>(null);
   const [onboardingModalOpen, setOnboardingModalOpen] = useState<boolean>(false);
   const [celebrationLevel, setCelebrationLevel] = useState<number>(user.level || 1);
 
@@ -270,6 +273,9 @@ export default function App() {
         const shieldResult = checkAndApplyStreakShield(cloudData.user, cloudData.history);
         const userToEvaluate = shieldResult.updatedUser;
         const evaluated = evaluateWeeklyLeagueReset(userToEvaluate, cloudData.history);
+        if (evaluated.result && evaluated.result.hasEvaluated) {
+          setLeagueEvaluationModal(evaluated.result);
+        }
         const realStreak = calculateRealStreak(cloudData.history, userToEvaluate.shieldUsedDates);
         const dynamicAttributes = calculateAthleteAttributes(
           cloudData.history,
@@ -298,6 +304,14 @@ export default function App() {
           (cloudData.routines || []).filter((r) => r.isCustom).length
         );
         setUser(syncedUser);
+        FitStorage.saveUser(syncedUser);
+        if (
+          syncedUser.league !== cloudData.user.league ||
+          syncedUser.xp !== cloudData.user.xp ||
+          syncedUser.lastLeagueEvaluatedWeek !== cloudData.user.lastLeagueEvaluatedWeek
+        ) {
+          FitStorage.syncUserToCloud(syncedUser);
+        }
         setHistory(cloudData.history);
         setAchievements(evaluatedAch);
         setChallenges(cloudData.challenges);
@@ -654,6 +668,9 @@ export default function App() {
         const shieldResult = checkAndApplyStreakShield(localUser, localHistory);
         const userToEvaluate = shieldResult.updatedUser;
         const evaluated = evaluateWeeklyLeagueReset(userToEvaluate, localHistory);
+        if (evaluated.result && evaluated.result.hasEvaluated) {
+          setLeagueEvaluationModal(evaluated.result);
+        }
         const realStreak = calculateRealStreak(localHistory, userToEvaluate.shieldUsedDates);
         const dynamicAttributes = calculateAthleteAttributes(localHistory, realStreak.currentStreak);
         const syncedLocalUser: UserProfile = {
@@ -1551,6 +1568,15 @@ export default function App() {
           newLevel={celebrationLevel}
           onClose={() => setLevelUpModalOpen(false)}
           onEquipTitle={handleEquipTitle}
+        />
+      )}
+
+      {/* Weekly League Reset & Promotion Celebration Modal */}
+      {leagueEvaluationModal && (
+        <LeagueCelebrationModal
+          result={leagueEvaluationModal}
+          onClose={() => setLeagueEvaluationModal(null)}
+          lang={lang}
         />
       )}
 

@@ -94,6 +94,7 @@ export interface UserProfile {
   equippedFrame?: string; // ID of the equipped cosmetic avatar frame
   activeNutritionPlanId?: string; // ID of active nutrition plan (e.g. 'plan_recomp', 'plan_fat_loss')
   lastCelebratedLevel?: number; // Highest level for which the celebration modal was shown
+  lastLeagueEvaluatedWeek?: string; // ISO week string of last evaluated league reset e.g. '2026-W43'
 }
 
 export interface NutritionPlanTargets {

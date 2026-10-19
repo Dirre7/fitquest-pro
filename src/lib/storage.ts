@@ -179,6 +179,7 @@ export class FitStorage {
           name: user.name,
           avatar: user.avatar,
           league: user.league || 'Bronze',
+          lastLeagueEvaluatedWeek: user.lastLeagueEvaluatedWeek || '',
           equippedFrame: user.equippedFrame || 'frame_default',
           bio: user.bio || '',
           following: user.following || [],
@@ -321,6 +322,7 @@ export class FitStorage {
           unlockedBadges: mergedBadges,
           activeNutritionPlanId: cloudData.activeNutritionPlanId !== undefined ? cloudData.activeNutritionPlanId : (isDifferentUser ? 'none' : (existingLocalUser.activeNutritionPlanId || 'none')),
           lastResetAt: cloudResetAt || (isCloudResetActive ? new Date().toISOString() : (isDifferentUser ? undefined : existingLocalUser.lastResetAt)),
+          lastLeagueEvaluatedWeek: cloudData.lastLeagueEvaluatedWeek || (isDifferentUser ? undefined : existingLocalUser.lastLeagueEvaluatedWeek),
         };
         try {
           localStorage.setItem('fitquest_claimed_challenges', JSON.stringify(mergedClaimed));

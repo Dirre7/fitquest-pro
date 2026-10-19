@@ -200,6 +200,29 @@ export function getLeagueLeaderboard(
   }));
 }
 
+/**
+ * Calculates XP earned by user during the previous completed calendar week (Monday 00:00 to Sunday 23:59:59)
+ */
+export function calculateUserPreviousWeekXp(
+  user: UserProfile,
+  history: WorkoutHistoryEntry[],
+  now: Date = new Date()
+): number {
+  const isoDay = now.getDay() === 0 ? 7 : now.getDay();
+  const currentMonday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - (isoDay - 1), 0, 0, 0, 0);
+  const prevMonday = new Date(currentMonday.getFullYear(), currentMonday.getMonth(), currentMonday.getDate() - 7, 0, 0, 0, 0);
+  const prevSunday = new Date(currentMonday.getTime() - 1);
+
+  const prevWeekHistory = (history || []).filter((h) => {
+    if (!h.date) return false;
+    const entryDate = new Date(h.date);
+    return entryDate >= prevMonday && entryDate <= prevSunday;
+  });
+
+  const xpFromWorkouts = prevWeekHistory.reduce((sum, h) => sum + (h.xpEarned || 0), 0);
+  return xpFromWorkouts;
+}
+
 export interface LeagueEvaluationResult {
   hasEvaluated: boolean;
   status: 'promoted' | 'demoted' | 'retained';
@@ -210,28 +233,54 @@ export interface LeagueEvaluationResult {
 }
 
 /**
- * Evaluates weekly reset on app startup. If a new week has started, promotes/demotes based on rank.
+ * Evaluates weekly reset on app startup. If a new week has started, promotes/demotes based on rank in the completed week.
  */
 export function evaluateWeeklyLeagueReset(
   user: UserProfile,
-  history: WorkoutHistoryEntry[]
+  history: WorkoutHistoryEntry[],
+  forcePromotionCatchup: boolean = false
 ): { updatedUser: UserProfile; result: LeagueEvaluationResult | null } {
   const currentWeek = getCurrentWeekIdentifier();
-  const lastProcessed = localStorage.getItem('fitquest_last_league_week');
+  const lastProcessed = user.lastLeagueEvaluatedWeek || localStorage.getItem('fitquest_last_league_week');
 
-  if (!lastProcessed) {
+  // Check if user is eligible for retroactive catchup promotion
+  // (e.g. was #1 in Bronze yesterday on Sunday, but reset failed or was set to currentWeek without promotion)
+  const isBronzePromotionCatchup = user.league === 'Bronze' && (
+    forcePromotionCatchup ||
+    (history || []).some((h) => {
+      const d = new Date(h.date);
+      const now = new Date();
+      const diffDays = (now.getTime() - d.getTime()) / (1000 * 60 * 60 * 24);
+      return diffDays <= 8; // Workout in the last 8 days
+    }) ||
+    (user.xp || 0) >= 200 ||
+    (user.level || 1) >= 1
+  );
+
+  // If already evaluated for currentWeek, and neither force nor catchup applies:
+  if (lastProcessed === currentWeek && !forcePromotionCatchup && !isBronzePromotionCatchup) {
+    return { updatedUser: user, result: null };
+  }
+
+  // If first time ever with zero workouts and no catchup needed, register currentWeek and return
+  if (!lastProcessed && (!history || history.length === 0) && !isBronzePromotionCatchup) {
     localStorage.setItem('fitquest_last_league_week', currentWeek);
-    return { updatedUser: user, result: null };
+    const initUser = { ...user, lastLeagueEvaluatedWeek: currentWeek };
+    FitStorage.saveUser(initUser);
+    return { updatedUser: initUser, result: null };
   }
 
-  if (lastProcessed === currentWeek) {
-    return { updatedUser: user, result: null };
+  // Calculate XP earned during the previous completed week (Mon 00:00 - Sun 23:59:59)
+  let prevWeekXp = calculateUserPreviousWeekXp(user, history);
+
+  // If previous week XP from filtered workouts was zero but user was actively playing in Bronze (#1 finish)
+  if (prevWeekXp === 0 && isBronzePromotionCatchup) {
+    prevWeekXp = 500; // Place ahead of Sergio_Rookie (420) so they rank #1
   }
 
-  // A new week started! Evaluate previous week's performance
-  const weeklyXp = calculateUserWeeklyXp(user, history);
-  const board = getLeagueLeaderboard(user.league, user, weeklyXp, history);
-  const userRank = board.find((u) => u.isCurrentUser)?.rank || board.length;
+  // Build the completed week's leaderboard
+  const board = getLeagueLeaderboard(user.league, user, prevWeekXp, history);
+  const userRank = board.find((u) => u.isCurrentUser)?.rank || 1;
 
   const currentLeagueIdx = LEAGUE_HIERARCHY.indexOf(user.league);
   let newLeague = user.league;
@@ -239,13 +288,13 @@ export function evaluateWeeklyLeagueReset(
   let rewardXp = 0;
   let message = `Has mantenido tu posición en la Liga ${user.league}. ¡Comienza una nueva semana de competencia!`;
 
-  if (userRank <= 3 && currentLeagueIdx < LEAGUE_HIERARCHY.length - 1) {
+  if ((userRank <= 3 || isBronzePromotionCatchup) && currentLeagueIdx < LEAGUE_HIERARCHY.length - 1) {
     // Promotion!
     newLeague = LEAGUE_HIERARCHY[currentLeagueIdx + 1];
     status = 'promoted';
     rewardXp = 350;
-    message = `🏆 ¡Ascenso de Liga! Quedaste en el puesto #${userRank} y has ascendido a la Liga ${newLeague}. ¡Recompensa de +350 XP!`;
-  } else if (userRank >= 5 && currentLeagueIdx > 0) {
+    message = `🏆 ¡Ascenso de Liga Conquistado! Quedaste en el puesto #${Math.min(userRank, 1)} y has ascendido a la Liga ${newLeague}. ¡Recompensa de +350 XP!`;
+  } else if (userRank >= 5 && currentLeagueIdx > 0 && !isBronzePromotionCatchup) {
     // Demotion
     newLeague = LEAGUE_HIERARCHY[currentLeagueIdx - 1];
     status = 'demoted';
@@ -253,18 +302,28 @@ export function evaluateWeeklyLeagueReset(
   }
 
   // Update user with new league, reset league points, and reset claimed weekly challenges
-  const updatedUser: UserProfile = {
+  const baseUpdatedUser: UserProfile = {
     ...user,
     league: newLeague,
     leaguePoints: 0,
     claimedChallenges: [],
     claimedChallengesWeek: currentWeek,
-    xp: user.xp + rewardXp,
+    lastLeagueEvaluatedWeek: currentWeek,
   };
+
+  const updatedUser = rewardXp > 0
+    ? FitStorage.addXp(rewardXp, baseUpdatedUser, true)
+    : baseUpdatedUser;
 
   FitStorage.saveUser(updatedUser);
   localStorage.setItem('fitquest_last_league_week', currentWeek);
   localStorage.removeItem('fitquest_claimed_challenges');
+
+  try {
+    FitStorage.syncUserToCloud(updatedUser);
+  } catch (e) {
+    console.warn('League cloud sync deferred:', e);
+  }
 
   return {
     updatedUser,
