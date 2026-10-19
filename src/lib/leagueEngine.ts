@@ -245,7 +245,7 @@ export function evaluateWeeklyLeagueReset(
 
   const email = (currentUserEmail || '').toLowerCase();
   const name = (user.name || '').toLowerCase();
-  const isRuevas = email.includes('ruevas') || name.includes('ruevas');
+  const isRyevas = email.includes('ryevas') || email.includes('ruevas') || name.includes('ryevas') || name.includes('ruevas');
   const isRtavernes = email.includes('tavernes') || name.includes('tavernes');
 
   // If rtavernes was inadvertently set to Silver without qualifying: revert back to Bronze
@@ -273,8 +273,8 @@ export function evaluateWeeklyLeagueReset(
     };
   }
 
-  // If ruevas finished #1 in Bronze yesterday and hasn't been promoted to Silver yet:
-  if (isRuevas && user.league === 'Bronze') {
+  // If ryevas finished #1 in Bronze yesterday and hasn't been promoted to Silver yet:
+  if (isRyevas && user.league === 'Bronze') {
     const promotedUser = FitStorage.addXp(350, {
       ...user,
       league: 'Silver',

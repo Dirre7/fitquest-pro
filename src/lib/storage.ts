@@ -315,10 +315,10 @@ export class FitStorage {
           league: (() => {
             const rawLeague = cloudData.league || defaults.league || 'Bronze';
             const userIdentifier = (email || displayName || cloudData.name || '').toLowerCase();
-            if (userIdentifier.includes('tavernes') && rawLeague === 'Silver') {
+            if (userIdentifier.includes('tavernes')) {
               return 'Bronze';
             }
-            if (userIdentifier.includes('ruevas') && rawLeague === 'Bronze') {
+            if ((userIdentifier.includes('ryevas') || userIdentifier.includes('ruevas')) && rawLeague === 'Bronze') {
               return 'Silver';
             }
             return rawLeague;
@@ -979,7 +979,9 @@ export class FitStorage {
 
       const athletes: LeaderboardUser[] = [];
       const now = new Date();
-      const oneWeekAgoMs = now.getTime() - 7 * 24 * 60 * 60 * 1000;
+      const isoDay = now.getDay() === 0 ? 7 : now.getDay();
+      const currentMonday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - (isoDay - 1), 0, 0, 0, 0);
+      const currentMondayMs = currentMonday.getTime();
 
       snap.forEach((docSnap) => {
         // Exclude current authenticated athlete (handled with fresh local state)
@@ -988,22 +990,27 @@ export class FitStorage {
         const data = docSnap.data();
         if (!data || typeof data !== 'object') return;
 
-        const athleteLeague = (data.league || 'Bronze') as any;
+        // Resolve correct league for specific community users
+        const nameOrEmail = (data.name || '' + docSnap.id).toLowerCase();
+        let athleteLeague: any = (data.league || 'Bronze') as any;
+        if (nameOrEmail.includes('tavernes')) {
+          athleteLeague = 'Bronze';
+        } else if (nameOrEmail.includes('ryevas') || nameOrEmail.includes('ruevas')) {
+          athleteLeague = 'Silver';
+        }
+
         if (targetLeague && athleteLeague !== targetLeague) return;
 
         const historyList: any[] = Array.isArray(data.workoutHistory) ? data.workoutHistory : [];
         const thisWeekWorkouts = historyList.filter((h) => {
           if (!h?.date) return false;
           const d = new Date(h.date).getTime();
-          return !isNaN(d) && d >= oneWeekAgoMs;
+          return !isNaN(d) && d >= currentMondayMs;
         });
 
+        // Strictly calculate workouts completed in the current calendar week starting Monday 00:00
         const weeklyXpFromWorkouts = thisWeekWorkouts.reduce((sum, h) => sum + (Number(h.xpEarned) || 0), 0);
-        const weeklyXp = Math.max(
-          Number(data.leaguePoints) || 0,
-          weeklyXpFromWorkouts,
-          Math.min(Number(data.xp) || 0, Math.round((Number(data.xp) || 500) * 0.2))
-        );
+        const weeklyXp = Math.max(Number(data.leaguePoints) || 0, weeklyXpFromWorkouts);
 
         const totalVol = data.stats?.totalVolumeKg ?? historyList.reduce((s, h) => s + (Number(h.totalVolumeKg) || 0), 0);
         const totalDist = data.stats?.totalDistanceKm ?? historyList.reduce((s, h) => s + (Number(h.totalDistanceKm) || 0), 0);
