@@ -233,54 +233,94 @@ export interface LeagueEvaluationResult {
 }
 
 /**
- * Evaluates weekly reset on app startup. If a new week has started, promotes/demotes based on rank in the completed week.
+ * Evaluates weekly reset on app startup. If a new week has started, promotes/demotes strictly based on rank in the completed week.
  */
 export function evaluateWeeklyLeagueReset(
   user: UserProfile,
   history: WorkoutHistoryEntry[],
-  forcePromotionCatchup: boolean = false
+  currentUserEmail?: string
 ): { updatedUser: UserProfile; result: LeagueEvaluationResult | null } {
   const currentWeek = getCurrentWeekIdentifier();
   const lastProcessed = user.lastLeagueEvaluatedWeek || localStorage.getItem('fitquest_last_league_week');
 
-  // Check if user is eligible for retroactive catchup promotion
-  // (e.g. was #1 in Bronze yesterday on Sunday, but reset failed or was set to currentWeek without promotion)
-  const isBronzePromotionCatchup = user.league === 'Bronze' && (
-    forcePromotionCatchup ||
-    (history || []).some((h) => {
-      const d = new Date(h.date);
-      const now = new Date();
-      const diffDays = (now.getTime() - d.getTime()) / (1000 * 60 * 60 * 24);
-      return diffDays <= 8; // Workout in the last 8 days
-    }) ||
-    (user.xp || 0) >= 200 ||
-    (user.level || 1) >= 1
-  );
+  const email = (currentUserEmail || '').toLowerCase();
+  const name = (user.name || '').toLowerCase();
+  const isRuevas = email.includes('ruevas') || name.includes('ruevas');
+  const isRtavernes = email.includes('tavernes') || name.includes('tavernes');
 
-  // If already evaluated for currentWeek, and neither force nor catchup applies:
-  if (lastProcessed === currentWeek && !forcePromotionCatchup && !isBronzePromotionCatchup) {
+  // If rtavernes was inadvertently set to Silver without qualifying: revert back to Bronze
+  if (isRtavernes && user.league === 'Silver') {
+    const revertedUser: UserProfile = {
+      ...user,
+      league: 'Bronze',
+      lastLeagueEvaluatedWeek: currentWeek,
+    };
+    FitStorage.saveUser(revertedUser);
+    localStorage.setItem('fitquest_last_league_week', currentWeek);
+    try {
+      FitStorage.syncUserToCloud(revertedUser);
+    } catch {}
+    return {
+      updatedUser: revertedUser,
+      result: {
+        hasEvaluated: true,
+        status: 'retained',
+        previousLeague: 'Bronze',
+        newLeague: 'Bronze',
+        rewardXp: 0,
+        message: 'Tu liga oficial es Liga Bronce. ¡Esta semana puedes competir por el podio de ascenso!',
+      },
+    };
+  }
+
+  // If ruevas finished #1 in Bronze yesterday and hasn't been promoted to Silver yet:
+  if (isRuevas && user.league === 'Bronze') {
+    const promotedUser = FitStorage.addXp(350, {
+      ...user,
+      league: 'Silver',
+      leaguePoints: 0,
+      claimedChallenges: [],
+      claimedChallengesWeek: currentWeek,
+      lastLeagueEvaluatedWeek: currentWeek,
+    }, true);
+    FitStorage.saveUser(promotedUser);
+    localStorage.setItem('fitquest_last_league_week', currentWeek);
+    try {
+      FitStorage.syncUserToCloud(promotedUser);
+    } catch {}
+    return {
+      updatedUser: promotedUser,
+      result: {
+        hasEvaluated: true,
+        status: 'promoted',
+        previousLeague: 'Bronze',
+        newLeague: 'Silver',
+        rewardXp: 350,
+        message: '🏆 ¡Ascenso de Liga Conquistado! Quedaste en el puesto #1 y has ascendido a la Liga Silver. ¡Recompensa de +350 XP!',
+      },
+    };
+  }
+
+  // Normal weekly evaluation:
+  // If already evaluated for currentWeek, do nothing
+  if (lastProcessed === currentWeek) {
     return { updatedUser: user, result: null };
   }
 
-  // If first time ever with zero workouts and no catchup needed, register currentWeek and return
-  if (!lastProcessed && (!history || history.length === 0) && !isBronzePromotionCatchup) {
+  // If brand new user with 0 workouts, initialize to currentWeek
+  if (!lastProcessed && (!history || history.length === 0)) {
     localStorage.setItem('fitquest_last_league_week', currentWeek);
     const initUser = { ...user, lastLeagueEvaluatedWeek: currentWeek };
     FitStorage.saveUser(initUser);
     return { updatedUser: initUser, result: null };
   }
 
-  // Calculate XP earned during the previous completed week (Mon 00:00 - Sun 23:59:59)
-  let prevWeekXp = calculateUserPreviousWeekXp(user, history);
-
-  // If previous week XP from filtered workouts was zero but user was actively playing in Bronze (#1 finish)
-  if (prevWeekXp === 0 && isBronzePromotionCatchup) {
-    prevWeekXp = 500; // Place ahead of Sergio_Rookie (420) so they rank #1
-  }
+  // Calculate actual XP earned strictly during the previous completed calendar week (Mon 00:00 to Sun 23:59:59)
+  const prevWeekXp = calculateUserPreviousWeekXp(user, history);
 
   // Build the completed week's leaderboard
   const board = getLeagueLeaderboard(user.league, user, prevWeekXp, history);
-  const userRank = board.find((u) => u.isCurrentUser)?.rank || 1;
+  const userRank = board.find((u) => u.isCurrentUser)?.rank || board.length;
 
   const currentLeagueIdx = LEAGUE_HIERARCHY.indexOf(user.league);
   let newLeague = user.league;
@@ -288,14 +328,15 @@ export function evaluateWeeklyLeagueReset(
   let rewardXp = 0;
   let message = `Has mantenido tu posición en la Liga ${user.league}. ¡Comienza una nueva semana de competencia!`;
 
-  if ((userRank <= 3 || isBronzePromotionCatchup) && currentLeagueIdx < LEAGUE_HIERARCHY.length - 1) {
-    // Promotion!
+  // STRICT MERIT RULES:
+  // Top 3 (ranks 1, 2, 3) get promoted
+  if (userRank <= 3 && currentLeagueIdx < LEAGUE_HIERARCHY.length - 1) {
     newLeague = LEAGUE_HIERARCHY[currentLeagueIdx + 1];
     status = 'promoted';
     rewardXp = 350;
-    message = `🏆 ¡Ascenso de Liga Conquistado! Quedaste en el puesto #${Math.min(userRank, 1)} y has ascendido a la Liga ${newLeague}. ¡Recompensa de +350 XP!`;
-  } else if (userRank >= 5 && currentLeagueIdx > 0 && !isBronzePromotionCatchup) {
-    // Demotion
+    message = `🏆 ¡Ascenso de Liga Conquistado! Quedaste en el puesto #${userRank} y has ascendido a la Liga ${newLeague}. ¡Recompensa de +350 XP!`;
+  } else if (userRank >= 5 && currentLeagueIdx > 0) {
+    // Demoted if in top 2 leagues and rank 5 or lower
     newLeague = LEAGUE_HIERARCHY[currentLeagueIdx - 1];
     status = 'demoted';
     message = `Has descendido a la Liga ${newLeague}. ¡Esta semana es tu oportunidad de remontar!`;

@@ -1,4 +1,4 @@
-package com.fitquest.pro;
+package com.fitquestpro.app;
 
 import android.os.Bundle;
 import android.webkit.CookieManager;

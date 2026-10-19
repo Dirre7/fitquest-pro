@@ -272,7 +272,7 @@ export default function App() {
         }
         const shieldResult = checkAndApplyStreakShield(cloudData.user, cloudData.history);
         const userToEvaluate = shieldResult.updatedUser;
-        const evaluated = evaluateWeeklyLeagueReset(userToEvaluate, cloudData.history);
+        const evaluated = evaluateWeeklyLeagueReset(userToEvaluate, cloudData.history, firebaseUser.email || undefined);
         if (evaluated.result && evaluated.result.hasEvaluated) {
           setLeagueEvaluationModal(evaluated.result);
         }

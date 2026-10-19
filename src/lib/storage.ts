@@ -312,7 +312,17 @@ export class FitStorage {
           trainingDaysPerWeek: cloudData.trainingDaysPerWeek ?? (isDifferentUser ? defaults.trainingDaysPerWeek : existingLocalUser.trainingDaysPerWeek),
           experienceLevel: cloudData.experienceLevel ?? (isDifferentUser ? undefined : existingLocalUser.experienceLevel),
           onboardingCompleted: resolvedOnboardingCompleted,
-          league: cloudData.league || defaults.league || 'Bronze',
+          league: (() => {
+            const rawLeague = cloudData.league || defaults.league || 'Bronze';
+            const userIdentifier = (email || displayName || cloudData.name || '').toLowerCase();
+            if (userIdentifier.includes('tavernes') && rawLeague === 'Silver') {
+              return 'Bronze';
+            }
+            if (userIdentifier.includes('ruevas') && rawLeague === 'Bronze') {
+              return 'Silver';
+            }
+            return rawLeague;
+          })(),
           equippedFrame: cloudData.equippedFrame || defaults.equippedFrame || 'frame_default',
           bio: cloudData.bio ?? (isDifferentUser ? '' : (existingLocalUser.bio ?? defaults.bio ?? '')),
           following: cloudData.following || [],
