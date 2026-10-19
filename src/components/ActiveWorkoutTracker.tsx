@@ -54,6 +54,8 @@ import { translations } from '../lib/i18n';
 import { sound } from '../lib/soundFx';
 import { FitStorage } from '../lib/storage';
 import { ExerciseSelectorModal } from './ExerciseSelectorModal';
+import { ExerciseGuideModal } from './exerciseVisuals/ExerciseGuideModal';
+import { getExerciseVisualGuide } from './exerciseVisuals/ExerciseGuideData';
 
 interface ActiveWorkoutTrackerProps {
   routine: WorkoutRoutine;
@@ -147,6 +149,7 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
   const [showHeaderMenu, setShowHeaderMenu] = useState<boolean>(false);
   const [showExerciseNotes, setShowExerciseNotes] = useState<boolean>(false);
   const [exerciseNotes, setExerciseNotes] = useState<Record<string, string>>({});
+  const [showGuideModal, setShowGuideModal] = useState<boolean>(false);
 
   const handleAddLiveExercises = (newExercises: Exercise[]) => {
     sound.playLevelUp();
@@ -1119,19 +1122,27 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
             {/* Exercise Header: Visual Icon + Title + Muscle targets + Prev/Next buttons */}
             <div className="flex items-start justify-between gap-3 relative z-10">
               <div className="flex items-start gap-3 sm:gap-4 min-w-0 flex-1">
-                {/* Exercise Muscle Visual Badge */}
-                <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-neutral-900 border border-white/10 flex items-center justify-center shrink-0 shadow-inner relative overflow-hidden group">
-                  <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/10 to-transparent" />
-                  <span className="text-xl sm:text-2xl relative z-10">
-                    {currentExercise.muscleGroup === 'Chest' ? '🏋️' :
-                     currentExercise.muscleGroup === 'Back' ? '💪' :
-                     currentExercise.muscleGroup === 'Legs' ? '🦵' :
-                     currentExercise.muscleGroup === 'Shoulders' ? '🦾' :
-                     currentExercise.muscleGroup === 'Arms' ? '🥊' :
-                     currentExercise.muscleGroup === 'Core' ? '⚡' :
-                     currentExercise.muscleGroup === 'Cardio' ? '🏃' : '🎯'}
-                  </span>
-                </div>
+                {/* Exercise Muscle Visual Badge & Anatomical 3D Preview (Option A) */}
+                <button
+                  type="button"
+                  onClick={() => setShowGuideModal(true)}
+                  className="w-13 h-13 sm:w-16 sm:h-16 rounded-2xl bg-neutral-900/90 border border-cyan-500/30 hover:border-cyan-400 flex items-center justify-center shrink-0 shadow-[0_0_15px_rgba(6,182,212,0.15)] hover:shadow-[0_0_20px_rgba(6,182,212,0.35)] relative overflow-hidden group cursor-pointer transition-all p-1"
+                  title="Toca para ver la técnica 3D y ejecución del ejercicio"
+                >
+                  <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/15 to-transparent pointer-events-none" />
+                  
+                  {/* Transparent preview model graphic */}
+                  <div className="w-full h-full flex items-center justify-center transform group-hover:scale-105 transition-transform">
+                    {getExerciseVisualGuide(currentExercise.name, currentExercise.muscleGroup).renderGraphic(
+                      'w-full h-full max-h-full drop-shadow-md'
+                    )}
+                  </div>
+
+                  {/* Expand icon pill badge */}
+                  <div className="absolute bottom-1 right-1 bg-black/80 rounded-md p-0.5 border border-cyan-500/40 opacity-80 group-hover:opacity-100 transition-opacity">
+                    <Sparkles className="w-2.5 h-2.5 text-cyan-400" />
+                  </div>
+                </button>
 
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 flex-wrap">
@@ -2120,6 +2131,15 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
         buttonLabel="Añadir a la Sesión"
         allowMultiSelect={true}
       />
+
+      {/* 3D Anatomical Technique & Execution Guide Modal (Option A) */}
+      {currentExercise && (
+        <ExerciseGuideModal
+          isOpen={showGuideModal}
+          onClose={() => setShowGuideModal(false)}
+          exercise={currentExercise}
+        />
+      )}
     </div>
   );
 };
